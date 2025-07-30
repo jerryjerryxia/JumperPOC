@@ -1,7 +1,6 @@
 using UnityEngine;
 using System.Collections;
 
-[RequireComponent(typeof(PlayerController))]
 [RequireComponent(typeof(Rigidbody2D))]
 [RequireComponent(typeof(Animator))]
 public class PlayerCombat : MonoBehaviour
@@ -70,7 +69,24 @@ public class PlayerCombat : MonoBehaviour
         rb = GetComponent<Rigidbody2D>();
         animator = GetComponent<Animator>();
         
+        // PlayerController may be disabled in new component system, that's OK
+        if (playerController == null)
+        {
+            Debug.LogWarning("PlayerCombat: PlayerController not found - some features may be limited");
+        }
+        
         originalGravityScale = rb.gravityScale;
+    }
+    
+    void OnEnable()
+    {
+        // Input is handled by PlayerController, which calls our HandleAttackInput() method
+        // No direct subscription needed to prevent double input handling
+    }
+    
+    void OnDisable()
+    {
+        // No input subscription to clean up
     }
     
     void Update()
@@ -150,7 +166,8 @@ public class PlayerCombat : MonoBehaviour
         }
         
         // Check for dash attack in grace period after dash - prevent when on wall
-        if (!playerController.OnWall && !isDuringDash && !isAttacking && dashEndTime > 0 && Time.time - dashEndTime <= dashAttackInputWindow && !dashAttackConsumed)
+        if (!playerController.OnWall && !isDuringDash && !isAttacking && dashEndTime > 0 && Time.time - dashEndTime <= dashAttackInputWindow && !dashAttackConsumed &&
+            PlayerAbilities.Instance != null && PlayerAbilities.Instance.HasDashAttack)
         {
             if (allowDashAttack)
             {
@@ -167,7 +184,8 @@ public class PlayerCombat : MonoBehaviour
         }
         
         // Check for air attack - prevent attack when on wall
-        if (!playerController.OnWall && !playerController.IsGrounded && !isAttacking && !isDashAttacking && !playerController.IsDashing && !HasUsedAirAttack)
+        if (!playerController.OnWall && !playerController.IsGrounded && !isAttacking && !isDashAttacking && !playerController.IsDashing && !HasUsedAirAttack &&
+            PlayerAbilities.Instance != null && PlayerAbilities.Instance.HasAirAttack)
         {
             StartAirAttack();
             return;
@@ -190,7 +208,8 @@ public class PlayerCombat : MonoBehaviour
         }
         
         // Check if we can do a combo attack
-        if (isAttacking && !isDashAttacking && !isAirAttacking)
+        if (isAttacking && !isDashAttacking && !isAirAttacking && 
+            PlayerAbilities.Instance != null && PlayerAbilities.Instance.HasComboAttack)
         {
             if (canCombo && !waitingForNextAttack)
             {
@@ -255,7 +274,8 @@ public class PlayerCombat : MonoBehaviour
     public void CheckBufferedDashAttack()
     {
         // Check if we have a buffered attack input that should become a dash attack - prevent when on wall
-        if (!playerController.OnWall && !isDuringDash && !isAttacking && dashEndTime > 0 && Time.time - dashEndTime <= dashAttackInputWindow && allowDashAttack && !dashAttackConsumed)
+        if (!playerController.OnWall && !isDuringDash && !isAttacking && dashEndTime > 0 && Time.time - dashEndTime <= dashAttackInputWindow && allowDashAttack && !dashAttackConsumed &&
+            PlayerAbilities.Instance != null && PlayerAbilities.Instance.HasDashAttack)
         {
             if (attackInputBuffered && inputBufferTimer > 0)
             {
@@ -479,7 +499,7 @@ public class PlayerCombat : MonoBehaviour
     
     private void EnableComboWindow()
     {
-        if (isAttacking)
+        if (isAttacking && PlayerAbilities.Instance != null && PlayerAbilities.Instance.HasComboAttack)
         {
             canCombo = true;
             comboWindowTimer = comboWindowTime;
@@ -498,7 +518,8 @@ public class PlayerCombat : MonoBehaviour
             AttackHitbox.SetActive(false);
         }
         
-        if (attackInputBuffered && !waitingForNextAttack)
+        if (attackInputBuffered && !waitingForNextAttack && 
+            PlayerAbilities.Instance != null && PlayerAbilities.Instance.HasComboAttack)
         {
             PerformNextCombo();
         }

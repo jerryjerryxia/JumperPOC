@@ -44,7 +44,7 @@ public class HealthUISetupHelper : EditorWindow
         
         // Find or create main canvas - be specific about screen space canvas
         Canvas mainCanvas = null;
-        Canvas[] canvases = GameObject.FindObjectsOfType<Canvas>();
+        Canvas[] canvases = GameObject.FindObjectsByType<Canvas>(FindObjectsSortMode.None);
         foreach (Canvas canvas in canvases)
         {
             if (canvas.renderMode == RenderMode.ScreenSpaceOverlay)

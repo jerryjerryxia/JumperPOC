@@ -1,7 +1,6 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
 
-[RequireComponent(typeof(PlayerController))]
 public class PlayerInteractionDetector : MonoBehaviour
 {
     [Header("Ledge Detection")]
@@ -42,6 +41,12 @@ public class PlayerInteractionDetector : MonoBehaviour
         playerController = GetComponent<PlayerController>();
         rb = GetComponent<Rigidbody2D>();
         input = new Controls();
+        
+        // PlayerController may be disabled in new component system, that's OK
+        if (playerController == null)
+        {
+            Debug.LogWarning("PlayerInteractionDetector: PlayerController not found - some features may be limited");
+        }
     }
     
     void OnEnable()
