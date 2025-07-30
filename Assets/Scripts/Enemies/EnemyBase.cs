@@ -343,6 +343,10 @@ namespace Enemies
     {
         isDead = true;
         isPatrolling = false;
+        isAttacking = false; // Immediately stop any ongoing attacks
+        
+        // Stop all coroutines to prevent attack animations from continuing
+        StopAllCoroutines();
         
         // Stop movement
         rb.linearVelocity = Vector2.zero;
@@ -354,9 +358,15 @@ namespace Enemies
             col.enabled = false;
         }
         
-        // Play death animation
+        // Reset animator to idle state before death animation
         if (animator != null)
         {
+            // Clear any attack states and reset to idle
+            animator.SetBool("IsAttacking", false);
+            animator.SetBool("IsMoving", false);
+            animator.SetBool("IsChasing", false);
+            
+            // Play death animation
             animator.SetTrigger("Death");
         }
         
@@ -372,7 +382,7 @@ namespace Enemies
     
     protected virtual void UpdateAnimations()
     {
-        if (animator == null) return;
+        if (animator == null || isDead) return; // Don't update animations if dead
         
         // Update animator parameters
         animator.SetBool("IsMoving", Mathf.Abs(rb.linearVelocity.x) > 0.1f && !isWaiting);

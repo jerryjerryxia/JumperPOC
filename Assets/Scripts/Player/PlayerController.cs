@@ -43,6 +43,11 @@ public class PlayerController : MonoBehaviour
     [Header("Wall Detection")]
     public float wallCheckDistance = 0.15f;
     
+    [Header("Wall Detection Raycasts")]
+    [SerializeField] private float wallRaycastTop = 0.32f;    // Top raycast position
+    [SerializeField] private float wallRaycastMiddle = 0.28f; // Middle raycast position  
+    [SerializeField] private float wallRaycastBottom = 0.02f; // Bottom raycast position
+    
     // Component references
     private Rigidbody2D rb;
     private Animator animator;
@@ -67,6 +72,10 @@ public class PlayerController : MonoBehaviour
     private float lastLandTime = 0f;
     private float lastJumpTime = 0f;
     private bool wasGroundedBeforeDash = false;
+    
+    // Wall state sequence tracking
+    private bool wasWallSticking = false;
+    private bool hasEverWallStuck = false;
     
     // Animation state tracking
     private bool isGrounded;
@@ -137,6 +146,42 @@ public class PlayerController : MonoBehaviour
     {
         // Validate animator parameters on start
         ValidateAnimatorSetup();
+        
+        // Ensure input is set up if InputManager is available
+        if (InputManager.Instance != null && inputManager == null)
+        {
+            SetupInputManager();
+        }
+        
+        // Debug: Check for physics materials that might cause unwanted friction
+        Collider2D playerCollider = GetComponent<Collider2D>();
+        if (playerCollider != null && playerCollider.sharedMaterial != null)
+        {
+            PhysicsMaterial2D mat = playerCollider.sharedMaterial;
+            // Debug.LogWarning($"[WallStick] Player has physics material: friction={mat.friction}, bounciness={mat.bounciness}. This might cause unwanted wall sticking!");
+        }
+        
+        // Auto-calculate upper-mid raycast position to match top of player collider
+        CalculateOptimalRaycastPositions();
+    }
+    
+    private void CalculateOptimalRaycastPositions()
+    {
+        // Get the player's BoxCollider2D to verify raycast positions
+        BoxCollider2D boxCollider = GetComponent<BoxCollider2D>();
+        if (boxCollider != null)
+        {
+            // Calculate the top edge of the collider relative to transform position
+            float colliderHalfHeight = boxCollider.size.y * 0.5f;
+            float colliderTopOffset = boxCollider.offset.y + colliderHalfHeight;
+            
+            Debug.Log($"[WallStick] Simplified wall detection initialized - Using 3 raycasts at: Top={wallRaycastTop:F3}, Middle={wallRaycastMiddle:F3}, Bottom={wallRaycastBottom:F3}");
+            Debug.Log($"[WallStick] Collider top offset: {colliderTopOffset:F3} for reference");
+        }
+        else
+        {
+            Debug.LogWarning("[WallStick] BoxCollider2D not found - using default raycast positions");
+        }
     }
     
     private void VerifyComponentSetup()
@@ -292,6 +337,10 @@ public class PlayerController : MonoBehaviour
         {
             moveInput = inputManager.MoveInput;
         }
+        else
+        {
+            Debug.LogError("[PlayerController] InputManager is NULL!");
+        }
         
         // Removed complex horizontal movement tracking
         
@@ -355,6 +404,13 @@ public class PlayerController : MonoBehaviour
         bool groundedByPlatform = Physics2D.OverlapCircle(feetPos, groundCheckRadius, platformMask);
         groundedByBuffer = Physics2D.OverlapCircle(feetPos, groundCheckRadius, bufferMask);
         
+        // DEBUG: Log when ground detection might be causing corner sticking (disabled - root cause identified)
+        // if (PlayerAbilities.Instance != null && !PlayerAbilities.Instance.HasWallStick && 
+        //     groundedByPlatform && Mathf.Abs(rb.linearVelocity.x) < 0.1f && Mathf.Abs(rb.linearVelocity.y) < 0.1f)
+        // {
+        //     Debug.Log($"[CORNER STICK DEBUG] Grounded detected at corner - feetPos: {feetPos}, velocity: {rb.linearVelocity}");
+        // }
+        
         
 
         // Only allow buffer grounding when moving downward or horizontally (prevent ghost jumps when jumping upward)
@@ -389,7 +445,14 @@ public class PlayerController : MonoBehaviour
         }
         else
         {
-            // Normal grounding logic - player is grounded if touching ground, regardless of wall state
+            // OLD FIX: False grounding override (likely not needed with wall friction fix)
+            // bool potentiallyStuckAtCorner = false;
+            // if (PlayerAbilities.Instance != null && !PlayerAbilities.Instance.HasWallStick)
+            // {
+            //     // This fix is disabled as the root cause is likely fixed in wall friction prevention
+            // }
+            
+            // Normal grounding logic
             isGrounded = groundedByPlatform || groundedByBuffer;
             isGroundedByPlatform = groundedByPlatform;
             isGroundedByBuffer = groundedByBuffer && !groundedByPlatform;
@@ -419,20 +482,21 @@ public class PlayerController : MonoBehaviour
     
     private void CheckWallDetection()
     {
-        // Simple wall detection - no complex timing or state persistence
+        // Simplified wall detection using only 3 raycasts
         Collider2D playerCollider = GetComponent<Collider2D>();
         int groundLayer = LayerMask.NameToLayer("Ground");
         int groundMask = 1 << groundLayer;
         
-        // Basic wall contact detection using 3 raycasts
+        // Wall detection using 3 raycasts at specified heights
         Vector2 wallDirection = facingRight ? Vector2.right : Vector2.left;
         Vector2[] checkPoints = {
-            transform.position + Vector3.up * 0.3f,   // Upper
-            transform.position,                       // Center
-            transform.position + Vector3.down * 0.3f  // Lower
+            transform.position + Vector3.up * wallRaycastTop,    // Top (0.32)
+            transform.position + Vector3.up * wallRaycastMiddle, // Middle (0.28)
+            transform.position + Vector3.up * wallRaycastBottom  // Bottom (0.02)
         };
         
-        bool hasWallContact = false;
+        // Count how many raycasts hit a wall
+        int wallHitCount = 0;
         
         foreach (Vector2 point in checkPoints)
         {
@@ -440,12 +504,11 @@ public class PlayerController : MonoBehaviour
             
             if (hit.collider != null && hit.collider != playerCollider)
             {
-                // Check if it's a valid vertical wall (normal pointing away from wall)
+                // Check if it's a valid vertical wall
                 bool isVerticalWall = Mathf.Abs(hit.normal.x) > 0.9f;
                 if (isVerticalWall)
                 {
-                    hasWallContact = true;
-                    break;
+                    wallHitCount++;
                 }
             }
         }
@@ -454,18 +517,34 @@ public class PlayerController : MonoBehaviour
         bool pressingTowardWall = (facingRight && moveInput.x > 0.1f) || (!facingRight && moveInput.x < -0.1f);
         bool notMovingAwayFromWall = !((facingRight && moveInput.x < -0.1f) || (!facingRight && moveInput.x > 0.1f));
         
-        // SIMPLE WALL LOGIC:
-        // Wall stick: Player actively pressing toward wall
-        bool canStickToWall = !isGrounded && hasWallContact && pressingTowardWall && !isBufferClimbing;
+        // Wall stick ability check
+        bool hasWallStickAbility = PlayerAbilities.Instance != null && PlayerAbilities.Instance.HasWallStick;
         
-        // Wall slide: Player touching wall but not pressing toward it (released input)
-        bool canSlideOnWall = !isGrounded && hasWallContact && notMovingAwayFromWall && !pressingTowardWall && !isBufferClimbing;
-        
-        // Set physics state - either sticking or sliding
-        onWall = canStickToWall || canSlideOnWall;
-        
-        // Store wall stick state for animation
-        wallStickAllowed = canStickToWall;
+        if (hasWallStickAbility)
+        {
+            // When wall stick enabled: Need at least 2 raycasts hitting to allow wall stick
+            bool hasEnoughContactForWallStick = wallHitCount >= 2;
+            
+            // Wall stick: Player actively pressing toward wall with enough contact
+            bool canStickToWall = !isGrounded && hasEnoughContactForWallStick && pressingTowardWall && !isBufferClimbing;
+            
+            // Wall slide: Player touching wall with enough contact but not pressing toward it
+            bool canSlideOnWall = !isGrounded && hasEnoughContactForWallStick && notMovingAwayFromWall && !pressingTowardWall && !isBufferClimbing;
+            
+            // Set physics state - either sticking or sliding
+            onWall = canStickToWall || canSlideOnWall;
+            
+            // Store wall stick state for animation
+            wallStickAllowed = canStickToWall;
+        }
+        else
+        {
+            // Wall stick ability disabled - no wall interaction at all
+            onWall = false;
+            wallStickAllowed = false;
+            
+            // Wall stick disabled - no wall interactions allowed
+        }
     }
     
     private void UpdateMovementStates()
@@ -474,9 +553,49 @@ public class PlayerController : MonoBehaviour
         bool prevIsFalling = isFalling;
         bool prevIsGrounded = isGrounded;
         
-        // Calculate wall states
-        isWallSliding = onWall && rb.linearVelocity.y < -wallSlideSpeed && !isDashing && !IsDashAttacking && !IsAirAttacking;
-        isWallSticking = wallStickAllowed && !isWallSliding && !isDashing && !IsDashAttacking && !IsAirAttacking;
+        // CRITICAL: Sequential wall state logic - stick must come before slide
+        // First, calculate if wall sticking conditions are met (requires wall stick ability)
+        bool canWallStick = wallStickAllowed && !isDashing && !IsDashAttacking && !IsAirAttacking &&
+                           PlayerAbilities.Instance != null && PlayerAbilities.Instance.HasWallStick;
+        isWallSticking = canWallStick;
+        
+        // Debug: Check if wall stick ability is disabled but onWall is somehow true
+        if (PlayerAbilities.Instance != null && !PlayerAbilities.Instance.HasWallStick && onWall)
+        {
+            // Debug.LogError($"[WallStick] BUG DETECTED! Wall stick disabled but onWall={onWall}. wallStickAllowed={wallStickAllowed}");
+        }
+        
+        // Comprehensive debug when ability is disabled
+        if (PlayerAbilities.Instance != null && !PlayerAbilities.Instance.HasWallStick && !isGrounded)
+        {
+            // Debug.Log($"[WallStick] DISABLED STATE: onWall={onWall}, isWallSticking={isWallSticking}, isWallSliding={isWallSliding}, velocity.y={rb.linearVelocity.y:F2}, wallStickAllowed={wallStickAllowed}");
+        }
+        
+        // Track wall stick history for sequential logic
+        if (isWallSticking)
+        {
+            hasEverWallStuck = true;
+        }
+        
+        // Wall slide can ONLY trigger if player has wall stuck during this wall contact session
+        bool canWallSlide = onWall && rb.linearVelocity.y < -wallSlideSpeed && !isDashing && !IsDashAttacking && !IsAirAttacking &&
+                           PlayerAbilities.Instance != null && PlayerAbilities.Instance.HasWallStick;
+        bool allowWallSlide = canWallSlide && hasEverWallStuck;
+        
+        // Only allow wall slide if player has been wall sticking first
+        isWallSliding = allowWallSlide;
+        
+        // Reset wall stick history when no longer on wall
+        if (!onWall)
+        {
+            hasEverWallStuck = false;
+        }
+        
+        // Update wall sticking state - can't be sticking while sliding
+        if (isWallSliding)
+        {
+            isWallSticking = false;
+        }
         
         // Then calculate running state (which depends on wall states)
         isRunning = Mathf.Abs(moveInput.x) > 0.1f && !isDashing && !IsDashAttacking && !IsAirAttacking && !onWall && !isWallSticking;
@@ -489,6 +608,9 @@ public class PlayerController : MonoBehaviour
         horizontalInput = moveInput.x;
         verticalInput = moveInput.y;
         facingDirection = facingRight ? 1f : -1f;
+        
+        // Store previous wall sticking state for next frame
+        wasWallSticking = isWallSticking;
     }
     
     private void HandleMovement()
@@ -496,18 +618,48 @@ public class PlayerController : MonoBehaviour
         // Buffer climbing assistance - provide upward and forward momentum
         if (isBufferClimbing)
         {
+            float horizontalVelocity = moveInput.x * runSpeed * forwardBoost;
+            
+            // CRITICAL FIX: Prevent horizontal movement when wall stick is disabled (even during ledge buffer)
+            if (PlayerAbilities.Instance != null && !PlayerAbilities.Instance.HasWallStick)
+            {
+                // Check if we're pushing against a wall when ability is disabled
+                Collider2D playerCollider = GetComponent<Collider2D>();
+                int groundLayer = LayerMask.NameToLayer("Ground");
+                int groundMask = 1 << groundLayer;
+                
+                Vector2 wallDirection = facingRight ? Vector2.right : Vector2.left;
+                Vector2 centerPoint = transform.position;
+                
+                RaycastHit2D wallHit = Physics2D.Raycast(centerPoint, wallDirection, wallCheckDistance, groundMask);
+                
+                if (wallHit.collider != null && wallHit.collider != playerCollider)
+                {
+                    bool isVerticalWall = Mathf.Abs(wallHit.normal.x) > 0.9f;
+                    bool pressingIntoWall = (facingRight && moveInput.x > 0.1f) || (!facingRight && moveInput.x < -0.1f);
+                    
+                    if (isVerticalWall && pressingIntoWall)
+                    {
+                        horizontalVelocity = 0f;
+                        // Debug.Log($"[WallStick] DISABLED - Preventing ledge buffer wall friction at platform bottom.");
+                    }
+                }
+            }
+            
             // Apply upward assist to help climb over platform edge
             if (rb.linearVelocity.y <= 0.5f) // Only if not already moving up significantly
             {
-                rb.linearVelocity = new Vector2(
-                    moveInput.x * runSpeed * forwardBoost, 
+                Vector2 newVelocity = new Vector2(
+                    horizontalVelocity, 
                     Mathf.Max(rb.linearVelocity.y, climbForce)
                 );
+                rb.linearVelocity = newVelocity;
             }
             else
             {
                 // Just apply forward momentum if already moving up
-                rb.linearVelocity = new Vector2(moveInput.x * runSpeed * forwardBoost, rb.linearVelocity.y);
+                Vector2 newVelocity = new Vector2(horizontalVelocity, rb.linearVelocity.y);
+                rb.linearVelocity = newVelocity;
             }
             
             // Debug.Log($"[BUFFER CLIMBING ASSIST] Applied climbing force: upward={climbForce}, forward boost={forwardBoost}");
@@ -517,27 +669,177 @@ public class PlayerController : MonoBehaviour
         // Horizontal run (skip during air attack and dashing as they have their own movement)
         if (!IsAirAttacking && !isDashing)
         {
-            rb.linearVelocity = new Vector2(moveInput.x * runSpeed, rb.linearVelocity.y);
+            float horizontalVelocity = moveInput.x * runSpeed;
+            
+            // Wall movement prevention logic
+            bool hasWallStickAbility = PlayerAbilities.Instance != null && PlayerAbilities.Instance.HasWallStick;
+            bool shouldCheckWallMovement = !isGrounded || isBufferClimbing;
+            
+            if (shouldCheckWallMovement)
+            {
+                // Perform wall detection using our 3 raycasts
+                Collider2D playerCollider = GetComponent<Collider2D>();
+                int groundLayer = LayerMask.NameToLayer("Ground");
+                int groundMask = 1 << groundLayer;
+                
+                Vector2 wallDirection = facingRight ? Vector2.right : Vector2.left;
+                Vector2[] checkPoints = {
+                    transform.position + Vector3.up * wallRaycastTop,    // Top (0.32)
+                    transform.position + Vector3.up * wallRaycastMiddle, // Middle (0.28)
+                    transform.position + Vector3.up * wallRaycastBottom  // Bottom (0.02)
+                };
+                
+                int wallHitCount = 0;
+                foreach (Vector2 point in checkPoints)
+                {
+                    RaycastHit2D wallHit = Physics2D.Raycast(point, wallDirection, wallCheckDistance, groundMask);
+                    
+                    if (wallHit.collider != null && wallHit.collider != playerCollider)
+                    {
+                        bool isVerticalWall = Mathf.Abs(wallHit.normal.x) > 0.9f;
+                        if (isVerticalWall)
+                        {
+                            wallHitCount++;
+                        }
+                    }
+                }
+                
+                bool pressingIntoWall = (facingRight && moveInput.x > 0.1f) || (!facingRight && moveInput.x < -0.1f);
+                
+                if (hasWallStickAbility)
+                {
+                    // Wall stick enabled: Need 2+ hits for wall stick, but prevent movement for 1 hit
+                    if (wallHitCount >= 1 && wallHitCount < 2 && pressingIntoWall)
+                    {
+                        // Not enough contact for wall stick - prevent movement to avoid getting stuck
+                        horizontalVelocity = 0f;
+                        Debug.Log($"[WallStick] ENABLED - Preventing movement, insufficient contact for wall stick (hits: {wallHitCount}/3, need 2+)");
+                    }
+                    // If 2+ hits, allow normal movement for wall stick behavior
+                }
+                else
+                {
+                    // Wall stick disabled: Any raycast hit prevents horizontal movement
+                    if (wallHitCount >= 1 && pressingIntoWall)
+                    {
+                        horizontalVelocity = 0f;
+                        Debug.Log($"[WallStick] DISABLED - Preventing wall movement (hits: {wallHitCount}/3)");
+                    }
+                }
+            }
+            
+            rb.linearVelocity = new Vector2(horizontalVelocity, rb.linearVelocity.y);
         }
 
-        // Wall slide slow-down
-        if (onWall && !isGrounded && rb.linearVelocity.y < -wallSlideSpeed)
+        // Wall slide slow-down - only if actually wall sliding (not just near wall)
+        if (isWallSliding)
         {
             rb.linearVelocity = new Vector2(rb.linearVelocity.x, -wallSlideSpeed);
         }
+        
+        // Debug: Check if player is moving slowly near walls when ability is disabled
+        if (PlayerAbilities.Instance != null && !PlayerAbilities.Instance.HasWallStick && !isGrounded)
+        {
+            // Check if velocity is being affected when it shouldn't be
+            if (Mathf.Abs(rb.linearVelocity.y) < 3f && Mathf.Abs(rb.linearVelocity.y) > 0.1f)
+            {
+                // Debug.Log($"[WallStick] PHYSICS DEBUG: Velocity unexpectedly slow when ability disabled: velocity={rb.linearVelocity}, onWall={onWall}");
+            }
+        }
+        
+        // OLD FIX: Velocity override (no longer needed with improved wall detection)
+        // if (PlayerAbilities.Instance != null && !PlayerAbilities.Instance.HasWallStick)
+        // {
+        //     // This fix is disabled as the root cause is fixed in wall friction prevention
+        // }
         
         // Handle attack movement overrides (allow reduced movement during attacks) - EXACTLY like original
         if (IsAttacking && isGrounded && !IsDashAttacking && !IsAirAttacking)
         {
             float attackSpeedMultiplier = combat?.attackMovementSpeed ?? 0.3f;
-            rb.linearVelocity = new Vector2(moveInput.x * runSpeed * attackSpeedMultiplier, rb.linearVelocity.y);
+            float attackHorizontalVelocity = moveInput.x * runSpeed * attackSpeedMultiplier;
+            
+            // Combat system respects wall movement rules
+            bool hasWallStickAbility = PlayerAbilities.Instance != null && PlayerAbilities.Instance.HasWallStick;
+            if (!hasWallStickAbility)
+            {
+                // Use simplified wall detection
+                Collider2D playerCollider = GetComponent<Collider2D>();
+                int groundLayer = LayerMask.NameToLayer("Ground");
+                int groundMask = 1 << groundLayer;
+                
+                Vector2 wallDirection = facingRight ? Vector2.right : Vector2.left;
+                Vector2[] checkPoints = {
+                    transform.position + Vector3.up * wallRaycastTop,
+                    transform.position + Vector3.up * wallRaycastMiddle,
+                    transform.position + Vector3.up * wallRaycastBottom
+                };
+                
+                bool hasAnyWallHit = false;
+                foreach (Vector2 point in checkPoints)
+                {
+                    RaycastHit2D wallHit = Physics2D.Raycast(point, wallDirection, wallCheckDistance, groundMask);
+                    if (wallHit.collider != null && wallHit.collider != playerCollider)
+                    {
+                        bool isVerticalWall = Mathf.Abs(wallHit.normal.x) > 0.9f;
+                        if (isVerticalWall)
+                        {
+                            hasAnyWallHit = true;
+                            break;
+                        }
+                    }
+                }
+                
+                bool pressingIntoWall = (facingRight && moveInput.x > 0.1f) || (!facingRight && moveInput.x < -0.1f);
+                
+                // When wall stick disabled, any hit prevents movement during combat
+                if (hasAnyWallHit && pressingIntoWall)
+                {
+                    attackHorizontalVelocity = 0f;
+                    // Debug.Log($"[WallStick] DISABLED - Combat system preventing wall movement.");
+                }
+            }
+            
+            rb.linearVelocity = new Vector2(attackHorizontalVelocity, rb.linearVelocity.y);
         }
         
         // Let combat system handle air attack and dash attack movement
         Vector2 combatMovement = combat?.GetAttackMovement() ?? Vector2.zero;
         if (combatMovement != Vector2.zero && (IsDashAttacking || IsAirAttacking))
         {
-            rb.linearVelocity = new Vector2(combatMovement.x, combatMovement.y != 0 ? combatMovement.y : rb.linearVelocity.y);
+            float combatHorizontalVelocity = combatMovement.x;
+            
+            // CRITICAL FIX: Combat movement must also respect wall stick prevention  
+            if (PlayerAbilities.Instance != null && !PlayerAbilities.Instance.HasWallStick)
+            {
+                // Check if combat movement would push against wall when ability is disabled
+                bool movingIntoWall = (facingRight && combatHorizontalVelocity > 0.1f) || (!facingRight && combatHorizontalVelocity < -0.1f);
+                
+                if (movingIntoWall)
+                {
+                    Collider2D playerCollider = GetComponent<Collider2D>();
+                    int groundLayer = LayerMask.NameToLayer("Ground");
+                    int groundMask = 1 << groundLayer;
+                    
+                    Vector2 wallDirection = facingRight ? Vector2.right : Vector2.left;
+                    Vector2 centerPoint = transform.position;
+                    
+                    RaycastHit2D wallHit = Physics2D.Raycast(centerPoint, wallDirection, wallCheckDistance, groundMask);
+                    
+                    if (wallHit.collider != null && wallHit.collider != playerCollider)
+                    {
+                        bool isVerticalWall = Mathf.Abs(wallHit.normal.x) > 0.9f;
+                        
+                        if (isVerticalWall)
+                        {
+                            combatHorizontalVelocity = 0f;
+                            // Debug.Log($"[WallStick] DISABLED - Combat movement respecting wall stick prevention.");
+                        }
+                    }
+                }
+            }
+            
+            rb.linearVelocity = new Vector2(combatHorizontalVelocity, combatMovement.y != 0 ? combatMovement.y : rb.linearVelocity.y);
         }
     }
     
@@ -560,7 +862,7 @@ public class PlayerController : MonoBehaviour
             airDashesUsed = 0;
             dashesRemaining = maxDashes;
         }
-        else if (onWall)
+        else if (onWall && PlayerAbilities.Instance != null && PlayerAbilities.Instance.HasWallStick)
         {
             facingRight = !facingRight;
             Jump(wallJump.y, wallJump.x * (facingRight ? 1 : -1));
@@ -569,7 +871,12 @@ public class PlayerController : MonoBehaviour
             airDashesUsed = 0;
             dashesRemaining = maxDashes;
         }
-        else if (jumpsRemaining > 0)
+        else if (onWall && PlayerAbilities.Instance != null && !PlayerAbilities.Instance.HasWallStick)
+        {
+            // DEBUG: Player tried to wall jump but ability is disabled
+            // Debug.LogError($"[WallStick] WALL JUMP BLOCKED! Ability disabled but onWall={onWall}. This suggests onWall is incorrectly true!");
+        }
+        else if (jumpsRemaining > 0 && PlayerAbilities.Instance != null && PlayerAbilities.Instance.HasDoubleJump)
         {
             Jump(jumpForce * 0.9f);
             jumpsRemaining--;
@@ -588,6 +895,13 @@ public class PlayerController : MonoBehaviour
     
     private void HandleDashInput()
     {
+        // Check if dash ability is unlocked
+        if (PlayerAbilities.Instance == null || !PlayerAbilities.Instance.HasDash)
+        {
+            dashQueued = false;
+            return;
+        }
+        
         bool canDash = false;
         if (isGrounded)
         {
@@ -646,15 +960,8 @@ public class PlayerController : MonoBehaviour
     
     private void UpdateSpriteFacing()
     {
-        bool oldFacing = facingRight;
         if (moveInput.x != 0) facingRight = moveInput.x > 0;
         transform.localScale = new Vector3(facingRight ? 1 : -1, 1, 1);
-        
-        // Debug facing changes
-        if (oldFacing != facingRight)
-        {
-            Debug.Log($"[FACING CHANGE] From {(oldFacing ? "Right" : "Left")} to {(facingRight ? "Right" : "Left")} | moveInput.x: {moveInput.x:F3}");
-        }
     }
     
     private void UpdateAnimatorParameters()
@@ -863,13 +1170,23 @@ public class PlayerController : MonoBehaviour
         GUILayout.BeginArea(new Rect(10, 10, 350, 600));
         GUILayout.Label("=== WALL LAND DEBUG ===", GUI.skin.label);
         
+        // Ability status
+        bool hasWallStickAbility = PlayerAbilities.Instance != null && PlayerAbilities.Instance.HasWallStick;
+        GUI.contentColor = hasWallStickAbility ? Color.green : Color.red;
+        GUILayout.Label($"Wall Stick Ability: {(hasWallStickAbility ? "ENABLED" : "DISABLED")}");
+        GUI.contentColor = Color.white;
+        
         // Key states only
         GUILayout.Label($"Grounded: {isGrounded}");
         GUILayout.Label($"Moving: {isRunning}");
         GUI.contentColor = isWallSticking ? Color.green : Color.red;
         GUILayout.Label($"Wall Sticking: {isWallSticking}");
+        GUI.contentColor = isWallSliding ? Color.green : Color.red;
+        GUILayout.Label($"Wall Sliding: {isWallSliding}");
         GUI.contentColor = onWall ? Color.green : Color.red;
         GUILayout.Label($"On Wall: {onWall}");
+        GUI.contentColor = hasEverWallStuck ? Color.green : Color.red;
+        GUILayout.Label($"Has Ever Wall Stuck: {hasEverWallStuck}");
         GUI.contentColor = Color.white;
         
         // Simple wall detection breakdown
@@ -896,6 +1213,17 @@ public class PlayerController : MonoBehaviour
         GUI.contentColor = !isBufferClimbing ? Color.green : Color.red;
         GUILayout.Label($"4. !isBufferClimbing: {!isBufferClimbing}");
         GUI.contentColor = Color.white;
+        
+        // Sequential wall logic status
+        GUILayout.Label("\n--- SEQUENTIAL WALL LOGIC ---");
+        bool canWallSlide = onWall && rb.linearVelocity.y < -wallSlideSpeed;
+        GUI.contentColor = canWallSlide ? Color.green : Color.red;
+        GUILayout.Label($"Can Wall Slide (Physics): {canWallSlide}");
+        GUI.contentColor = hasEverWallStuck ? Color.green : Color.red;
+        GUILayout.Label($"Allows Wall Slide (Logic): {hasEverWallStuck}");
+        GUI.contentColor = Color.white;
+        GUILayout.Label($"Velocity Y: {rb.linearVelocity.y:F2}");
+        GUILayout.Label($"Wall Slide Speed: -{wallSlideSpeed}");
         
         // Animation triggers
         GUILayout.Label("\n--- ANIMATION TRIGGERS ---");
@@ -938,28 +1266,35 @@ public class PlayerController : MonoBehaviour
     // Debug visualization for wall detection
     void OnDrawGizmos()
     {
-        if (!Application.isPlaying) return;
+        // Remove the isPlaying check so gizmos show in edit mode too
+        // if (!Application.isPlaying) return;
         
         Vector3 playerPos = transform.position;
         Vector3 direction = facingRight ? Vector3.right : Vector3.left;
         
-        // Simple wall detection rays - 3 rays only
+        // Main wall detection rays - 3 rays (using inspector parameters)
         if (!isGrounded)
         {
             Gizmos.color = onWall ? Color.red : Color.yellow;
-            // Draw the 3 simple wall check rays
-            Gizmos.DrawRay(playerPos + Vector3.up * 0.3f, direction * wallCheckDistance);    // Upper
-            Gizmos.DrawRay(playerPos, direction * wallCheckDistance);                        // Center
-            Gizmos.DrawRay(playerPos + Vector3.down * 0.3f, direction * wallCheckDistance);  // Lower
+            // Draw the 3 wall check rays
+            Gizmos.DrawRay(playerPos + Vector3.up * wallRaycastTop, direction * wallCheckDistance);    // Top (0.32)
+            Gizmos.DrawRay(playerPos + Vector3.up * wallRaycastMiddle, direction * wallCheckDistance); // Middle (0.28)
+            Gizmos.DrawRay(playerPos + Vector3.up * wallRaycastBottom, direction * wallCheckDistance); // Bottom (0.02)
         }
         else
         {
             Gizmos.color = Color.gray;
             // Show disabled wall detection when grounded
-            Gizmos.DrawRay(playerPos + Vector3.up * 0.3f, direction * wallCheckDistance);
-            Gizmos.DrawRay(playerPos, direction * wallCheckDistance);
-            Gizmos.DrawRay(playerPos + Vector3.down * 0.3f, direction * wallCheckDistance);
+            Gizmos.DrawRay(playerPos + Vector3.up * wallRaycastTop, direction * wallCheckDistance);
+            Gizmos.DrawRay(playerPos + Vector3.up * wallRaycastMiddle, direction * wallCheckDistance);
+            Gizmos.DrawRay(playerPos + Vector3.up * wallRaycastBottom, direction * wallCheckDistance);
         }
+        
+        // Draw small spheres at raycast origins for clarity
+        Gizmos.color = Color.cyan;
+        Gizmos.DrawWireSphere(playerPos + Vector3.up * wallRaycastTop, 0.02f);    // Top
+        Gizmos.DrawWireSphere(playerPos + Vector3.up * wallRaycastMiddle, 0.02f); // Middle
+        Gizmos.DrawWireSphere(playerPos + Vector3.up * wallRaycastBottom, 0.02f); // Bottom
         
         // Ground detection
         Gizmos.color = isGrounded ? Color.green : Color.blue;

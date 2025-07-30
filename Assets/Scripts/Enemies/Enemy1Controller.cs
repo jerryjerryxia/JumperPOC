@@ -541,6 +541,9 @@ namespace Enemies
     {
         yield return new WaitForSeconds(delay);
         
+        // Check if enemy died during the attack - if so, don't continue
+        if (isDead) yield break;
+        
         Enemy1Hitbox enemy1Hitbox = GetComponentInChildren<Enemy1Hitbox>();
         if (enemy1Hitbox != null)
         {
@@ -556,6 +559,9 @@ namespace Enemies
     private IEnumerator DealDamageAfterDelay(float delay)
     {
         yield return new WaitForSeconds(delay);
+        
+        // Check if enemy died during the attack - if so, don't continue
+        if (isDead) yield break;
         
         if (player != null && !isDead)
         {
@@ -582,7 +588,7 @@ namespace Enemies
     
     protected override void UpdateAnimations()
     {
-        if (animator == null) return;
+        if (animator == null || isDead) return; // Don't update animations if dead
         
         // Handle IsMoving with proper logic for chase-stop scenarios
         bool shouldBeMoving = false;
