@@ -11,24 +11,37 @@ using DG.Tweening;
 public class PlayerController : MonoBehaviour
 {
     [Header("Movement")]
-    public float runSpeed = 6f;
-    public float jumpForce = 8f;
+    public float runSpeed = 5f;
+    public float jumpForce = 10f;
     public int extraJumps = 1;
     public float wallSlideSpeed = 2f;
     public Vector2 wallJump = new(7f, 10f);
 
     [Header("Dash")]
-    public float dashSpeed = 10f;
+    public float dashSpeed = 8f;
     public float dashTime = 0.25f;
     public float dashCooldown = 0.4f;
     public int maxDashes = 2;
     public int maxAirDashes = 2;
+    
+    [Header("Dash Jump")]
+    [SerializeField] public Vector2 dashJump = new(5f, 10f); // (horizontal, vertical) force
+    [SerializeField] public float dashJumpWindow = 0.2f; // Grace period after dash ends
+    
+    [Header("Death Zone")]
+    [SerializeField] private float deathZoneY = -20f; // Y position that triggers reset
+    [SerializeField] private float deathZoneWidth = 100f; // Width of death zone visualization
+    [SerializeField] private bool showDeathZone = true; // Show death zone in scene view
 
     [Header("Buffer Climbing")]
-    [SerializeField] private float climbingAssistanceOffset = 0.2f; // How far below platform edge to trigger assistance
-    [SerializeField] private float climbForce = 3.0f;
-    [SerializeField] private float forwardBoost = 1.2f;
+    [SerializeField] private float climbingAssistanceOffset = 0.25f; // How far below platform edge to trigger assistance
+    [SerializeField] private float climbForce = 3f;
+    [SerializeField] private float forwardBoost = 0f;
     [SerializeField] private bool showClimbingGizmos = true;
+    
+    [Header("Jump Compensation")]
+    [SerializeField] private float wallJumpCompensation = 1.2f; // Multiplier to counteract friction
+    [SerializeField] private bool enableJumpCompensation = true;
     
     [Header("Animation")]
     public float animationTransitionSpeed = 0.1f;
@@ -37,7 +50,7 @@ public class PlayerController : MonoBehaviour
     
     
     [Header("Ground Check")]
-    public float groundCheckOffsetY = 0f;
+    public float groundCheckOffsetY = -0.02f;
     public float groundCheckRadius = 0.03f;
     
     [Header("Wall Detection")]
@@ -73,6 +86,13 @@ public class PlayerController : MonoBehaviour
     private float lastJumpTime = 0f;
     private bool wasGroundedBeforeDash = false;
     
+    // Dash jump momentum preservation
+    private float dashJumpTime = 0f;
+    private float dashJumpMomentumDuration = 0.3f; // Preserve momentum for 0.3 seconds
+    
+    // Death/Reset system
+    private Vector3 initialPosition;
+    
     // Wall state sequence tracking
     private bool wasWallSticking = false;
     private bool hasEverWallStuck = false;
@@ -104,6 +124,9 @@ public class PlayerController : MonoBehaviour
     
     // Basic attack state for compatibility (when no PlayerCombat)
     private bool isAttacking = false;
+    
+    // Jump compensation state
+    private bool isCompensatingJump = false;
     
     // Public properties for external access
     public bool IsGrounded => isGrounded;
@@ -163,6 +186,10 @@ public class PlayerController : MonoBehaviour
         
         // Auto-calculate upper-mid raycast position to match top of player collider
         CalculateOptimalRaycastPositions();
+        
+        // Store initial position for death/reset system
+        initialPosition = transform.position;
+        Debug.Log($"[Death/Reset] Initial position stored: {initialPosition}");
     }
     
     private void CalculateOptimalRaycastPositions()
@@ -347,6 +374,14 @@ public class PlayerController : MonoBehaviour
         // Check for buffered combat actions
         combat?.CheckBufferedDashAttack();
         
+        // Simple death zone check - if player falls below deathZoneY, reset
+        if (transform.position.y < deathZoneY)
+        {
+            Debug.Log($"[Death/Reset] Player fell below death zone (Y < -20). Current Y: {transform.position.y}");
+            ResetToInitialPosition();
+            return; // Skip rest of frame after reset
+        }
+        
         // Ground and wall detection
         CheckGrounding();
         CheckWallDetection();
@@ -372,12 +407,23 @@ public class PlayerController : MonoBehaviour
                 combat.ResetAttackSystem();
             }
             
+            // Check if dash should end early due to wall collision
+            bool dashEndedByWall = CheckDashWallCollision();
+            
             rb.linearVelocity = new Vector2(facingRight ? dashSpeed : -dashSpeed, 0);
-            if ((dashTimer += Time.fixedDeltaTime) >= dashTime)
+            
+            // End dash if timer expires OR wall collision detected
+            if ((dashTimer += Time.fixedDeltaTime) >= dashTime || dashEndedByWall)
             {
                 isDashing = false;
                 lastDashEndTime = Time.time;
                 combat?.OnDashEnd();
+                
+                if (dashEndedByWall)
+                {
+                    // Allow falling immediately after wall collision
+                    rb.linearVelocity = new Vector2(0, rb.linearVelocity.y);
+                }
             }
         }
         
@@ -467,6 +513,9 @@ public class PlayerController : MonoBehaviour
             airDashesUsed = 0;
             dashesRemaining = maxDashes;
             lastLandTime = Time.time; // Track landing time for wall detection
+            
+            // Clear dash jump momentum preservation on landing
+            dashJumpTime = 0f;
         }
 
         // Buffer logic for edge platforms
@@ -666,8 +715,15 @@ public class PlayerController : MonoBehaviour
             return; // Skip normal movement processing
         }
         
-        // Horizontal run (skip during air attack and dashing as they have their own movement)
-        if (!IsAirAttacking && !isDashing)
+        // Horizontal run (skip during air attack, dashing, and dash jump momentum preservation)
+        bool isDashJumpMomentumActive = dashJumpTime > 0 && Time.time - dashJumpTime <= dashJumpMomentumDuration;
+        if (isDashJumpMomentumActive && moveInput.x == 0)
+        {
+            // Debug log when momentum preservation is preventing movement override
+            Debug.Log($"[DashJump] Momentum preservation active - keeping horizontal velocity: {rb.linearVelocity.x:F2}");
+        }
+        
+        if (!IsAirAttacking && !isDashing && !isDashJumpMomentumActive)
         {
             float horizontalVelocity = moveInput.x * runSpeed;
             
@@ -854,6 +910,14 @@ public class PlayerController : MonoBehaviour
             return;
         }
         
+        // Dash Jump: Jump during active dash or shortly after dash ends
+        if (CanPerformDashJump())
+        {
+            PerformDashJump();
+            jumpQueued = false;
+            return;
+        }
+        
         if (isGrounded)
         {
             Jump(jumpForce);
@@ -861,6 +925,7 @@ public class PlayerController : MonoBehaviour
             airDashesRemaining = maxAirDashes;
             airDashesUsed = 0;
             dashesRemaining = maxDashes;
+            if (animator != null) SafeSetTrigger("Jump");
         }
         else if (onWall && PlayerAbilities.Instance != null && PlayerAbilities.Instance.HasWallStick)
         {
@@ -870,6 +935,7 @@ public class PlayerController : MonoBehaviour
             airDashesRemaining = maxAirDashes;
             airDashesUsed = 0;
             dashesRemaining = maxDashes;
+            if (animator != null) SafeSetTrigger("Jump");
         }
         else if (onWall && PlayerAbilities.Instance != null && !PlayerAbilities.Instance.HasWallStick)
         {
@@ -971,6 +1037,7 @@ public class PlayerController : MonoBehaviour
         SafeSetBool("IsGrounded", isGrounded);
         SafeSetBool("IsRunning", isRunning);
         SafeSetBool("IsJumping", isJumping);
+        SafeSetBool("IsDashing", isDashing);
         SafeSetBool("IsAttacking", IsAttacking);
         SafeSetBool("IsDashAttacking", IsDashAttacking);
         SafeSetBool("IsAirAttacking", IsAirAttacking);
@@ -1074,9 +1141,26 @@ public class PlayerController : MonoBehaviour
 
     private void Jump(float yForce, float xForce = 0)
     {
-        rb.linearVelocity = new Vector2(xForce == 0 ? rb.linearVelocity.x : xForce, 0);
-        rb.AddForce(new Vector2(0, yForce), ForceMode2D.Impulse);
-        lastJumpTime = Time.time; // Track jump time for wall stick timing
+        // Use compensation method if the separate file exists, otherwise fallback to original
+        if (enableJumpCompensation)
+        {
+            JumpWithCompensation(yForce, xForce);
+        }
+        else
+        {
+            // For horizontal force (like dash jump), apply as impulse for proper momentum
+            if (xForce != 0)
+            {
+                rb.linearVelocity = new Vector2(rb.linearVelocity.x, 0); // Keep horizontal velocity, clear vertical only
+                rb.AddForce(new Vector2(xForce, yForce), ForceMode2D.Impulse);
+            }
+            else
+            {
+                rb.linearVelocity = new Vector2(rb.linearVelocity.x, 0);
+                rb.AddForce(new Vector2(0, yForce), ForceMode2D.Impulse);
+            }
+            lastJumpTime = Time.time; // Track jump time for wall stick timing
+        }
     }
     
     public void ConsumeAirDash()
@@ -1263,6 +1347,222 @@ public class PlayerController : MonoBehaviour
         return belowPlatformEdge && nearWallEdge;
     }
     
+    /// <summary>
+    /// Enhanced jump method with wall friction compensation
+    /// </summary>
+    private void JumpWithCompensation(float yForce, float xForce = 0)
+    {
+        // Check if we need compensation
+        bool needsCompensation = CheckIfNeedsJumpCompensation();
+        
+        if (needsCompensation)
+        {
+            Debug.Log($"[JumpFix] Wall friction detected - applying {wallJumpCompensation}x compensation");
+            
+            // Apply force compensation
+            float compensatedForce = yForce * wallJumpCompensation;
+            // For horizontal force (like dash jump), apply as impulse for proper momentum
+            if (xForce != 0)
+            {
+                rb.linearVelocity = new Vector2(rb.linearVelocity.x, 0); // Keep horizontal velocity, clear vertical only
+                rb.AddForce(new Vector2(xForce, compensatedForce), ForceMode2D.Impulse);
+            }
+            else
+            {
+                rb.linearVelocity = new Vector2(rb.linearVelocity.x, 0);
+                rb.AddForce(new Vector2(0, compensatedForce), ForceMode2D.Impulse);
+            }
+        }
+        else
+        {
+            // Normal jump without compensation
+            // For horizontal force (like dash jump), apply as impulse for proper momentum
+            if (xForce != 0)
+            {
+                rb.linearVelocity = new Vector2(rb.linearVelocity.x, 0); // Keep horizontal velocity, clear vertical only
+                rb.AddForce(new Vector2(xForce, yForce), ForceMode2D.Impulse);
+            }
+            else
+            {
+                rb.linearVelocity = new Vector2(rb.linearVelocity.x, 0);
+                rb.AddForce(new Vector2(0, yForce), ForceMode2D.Impulse);
+            }
+        }
+        
+        lastJumpTime = Time.time;
+    }
+    
+    /// <summary>
+    /// Check if jump needs friction compensation
+    /// </summary>
+    private bool CheckIfNeedsJumpCompensation()
+    {
+        // Only compensate if wall stick is disabled
+        if (PlayerAbilities.Instance != null && PlayerAbilities.Instance.HasWallStick)
+            return false;
+        
+        // Check if we're against a wall
+        if (!CheckIfAgainstWall())
+            return false;
+        
+        // Check if player is pressing into the wall
+        bool pressingIntoWall = (facingRight && moveInput.x > 0.1f) || 
+                                (!facingRight && moveInput.x < -0.1f);
+        
+        return pressingIntoWall;
+    }
+    
+    /// <summary>
+    /// Check if player is physically against a wall
+    /// </summary>
+    private bool CheckIfAgainstWall()
+    {
+        Collider2D playerCollider = GetComponent<Collider2D>();
+        int groundLayer = LayerMask.NameToLayer("Ground");
+        int groundMask = 1 << groundLayer;
+        
+        Vector2 wallDirection = facingRight ? Vector2.right : Vector2.left;
+        
+        // Use the same 3 raycasts as wall detection
+        Vector2[] checkPoints = {
+            transform.position + Vector3.up * wallRaycastTop,
+            transform.position + Vector3.up * wallRaycastMiddle,
+            transform.position + Vector3.up * wallRaycastBottom
+        };
+        
+        foreach (Vector2 point in checkPoints)
+        {
+            // Use shorter distance to check for actual contact
+            RaycastHit2D hit = Physics2D.Raycast(point, wallDirection, wallCheckDistance * 0.7f, groundMask);
+            
+            if (hit.collider != null && hit.collider != playerCollider)
+            {
+                // Check if it's a vertical wall
+                if (Mathf.Abs(hit.normal.x) > 0.9f)
+                {
+                    return true; // We're against a wall
+                }
+            }
+        }
+        
+        return false;
+    }
+    
+    /// <summary>
+    /// Check if dash should end early due to wall collision
+    /// </summary>
+    private bool CheckDashWallCollision()
+    {
+        if (!isDashing) return false;
+        
+        // Only check for wall collision when wall stick is disabled
+        // When wall stick is enabled, dashing into walls is expected behavior
+        if (PlayerAbilities.Instance != null && PlayerAbilities.Instance.HasWallStick)
+            return false;
+            
+        // Use same wall detection as existing system
+        Vector2 wallDirection = facingRight ? Vector2.right : Vector2.left;
+        int groundLayer = LayerMask.NameToLayer("Ground");
+        int groundMask = 1 << groundLayer;
+        
+        // Check if we're hitting a wall during dash
+        Vector2[] checkPoints = {
+            transform.position + Vector3.up * wallRaycastTop,
+            transform.position + Vector3.up * wallRaycastMiddle,
+            transform.position + Vector3.up * wallRaycastBottom
+        };
+        
+        foreach (Vector2 point in checkPoints)
+        {
+            RaycastHit2D hit = Physics2D.Raycast(point, wallDirection, wallCheckDistance * 0.8f, groundMask);
+            
+            if (hit.collider != null)
+            {
+                // Check if it's a vertical wall (not a slope)
+                if (Mathf.Abs(hit.normal.x) > 0.9f)
+                {
+                    // Debug.Log($"[DashFix] Dash collision detected - ending dash early");
+                    return true; // End dash early
+                }
+            }
+        }
+        
+        return false; // No wall collision, continue dash
+    }
+    
+    /// <summary>
+    /// Check if player can perform dash jump
+    /// </summary>
+    private bool CanPerformDashJump()
+    {
+        // Must have dash jump ability
+        if (PlayerAbilities.Instance == null || !PlayerAbilities.Instance.GetAbility("dashjump"))
+            return false;
+        
+        // GROUND ONLY: Disable dash jump completely in air
+        if (!isGrounded)
+            return false;
+        
+        // Can dash jump during active dash
+        if (isDashing)
+            return true;
+        
+        // Can dash jump shortly after dash ends (grace period)
+        if (lastDashEndTime > 0 && Time.time - lastDashEndTime <= dashJumpWindow)
+            return true;
+        
+        return false;
+    }
+    
+    /// <summary>
+    /// Execute dash jump with horizontal momentum
+    /// </summary>
+    private void PerformDashJump()
+    {
+        // Use dashJump.x for proper horizontal impulse force
+        float horizontalForce = facingRight ? dashJump.x : -dashJump.x;
+        
+        // Store current velocity before ending dash
+        Vector2 currentVelocity = rb.linearVelocity;
+        Debug.Log($"[DashJump] Current velocity before dash jump: {currentVelocity}");
+        
+        // End dash if currently dashing (prevents physics conflicts)
+        if (isDashing)
+        {
+            isDashing = false;
+            dashTimer = dashTime; // Force dash timer to expire
+            lastDashEndTime = Time.time;
+            combat?.OnDashEnd();
+            Debug.Log("[DashJump] Ended dash to perform dash jump");
+        }
+        
+        // Apply dash jump manually without using Jump() method to avoid velocity clearing
+        rb.linearVelocity = new Vector2(currentVelocity.x, 0); // Keep dash momentum, clear vertical
+        rb.AddForce(new Vector2(horizontalForce, dashJump.y), ForceMode2D.Impulse);
+        
+        // Start momentum preservation period
+        dashJumpTime = Time.time;
+        
+        Debug.Log($"[DashJump] Applied force: H={horizontalForce}, V={dashJump.y}, Final velocity: {rb.linearVelocity}");
+        
+        // Ground dash jump: reset air abilities like normal jump
+        // (Air dash jump is disabled, so this only applies to ground)
+        jumpsRemaining = extraJumps;
+        airDashesRemaining = maxAirDashes;
+        airDashesUsed = 0;
+        
+        // Clear dash end time to prevent repeated dash jumps
+        lastDashEndTime = 0f;
+        
+        // Trigger jump animation (dash jumps use regular jump animation)
+        if (animator != null) 
+        {
+            SafeSetTrigger("Jump");
+        }
+        
+        Debug.Log($"[DashJump] Performed GROUND dash jump - Horizontal: {horizontalForce:F1}, Vertical: {dashJump.y:F1}, Result velocity: {rb.linearVelocity}");
+    }
+    
     // Debug visualization for wall detection
     void OnDrawGizmos()
     {
@@ -1307,7 +1607,8 @@ public class PlayerController : MonoBehaviour
             float feetY = col.bounds.min.y;
             Vector2 feetPos = new Vector2(transform.position.x, feetY + groundCheckOffsetY);
             
-            Gizmos.color = Color.magenta;
+            // Smaller, less prominent ground check visualization  
+            Gizmos.color = new Color(1f, 0f, 1f, 0.3f); // Transparent magenta
             Gizmos.DrawWireSphere(feetPos, groundCheckRadius);
             
             if (Application.isPlaying)
@@ -1326,10 +1627,11 @@ public class PlayerController : MonoBehaviour
                     groundedByBuffer = false;
                 }
                 
-                Gizmos.color = groundedByPlatform ? Color.green : Color.red;
+                // More subtle ground detection visualization
+                Gizmos.color = groundedByPlatform ? new Color(0f, 1f, 0f, 0.4f) : new Color(1f, 0f, 0f, 0.4f);
                 Gizmos.DrawWireSphere(feetPos, groundCheckRadius + 0.02f);
                 
-                Gizmos.color = groundedByBuffer ? Color.yellow : Color.cyan;
+                Gizmos.color = groundedByBuffer ? new Color(1f, 1f, 0f, 0.4f) : new Color(0f, 1f, 1f, 0.4f);
                 Gizmos.DrawWireSphere(feetPos, groundCheckRadius + 0.04f);
                 
                 
@@ -1371,6 +1673,160 @@ public class PlayerController : MonoBehaviour
                     }
                 }
             }
+        }
+        
+        // Draw death zone in scene view
+        if (showDeathZone)
+        {
+            Gizmos.color = Color.red;
+            
+            // Use adjustable width for death zone visualization
+            float halfWidth = deathZoneWidth / 2f;
+            float leftBound = -halfWidth;
+            float rightBound = halfWidth;
+            
+            // Center on player's initial X position for better visibility
+            if (initialPosition != Vector3.zero)
+            {
+                leftBound = initialPosition.x - halfWidth;
+                rightBound = initialPosition.x + halfWidth;
+            }
+            
+            // Draw death zone line
+            Vector3 leftPoint = new Vector3(leftBound, deathZoneY, 0);
+            Vector3 rightPoint = new Vector3(rightBound, deathZoneY, 0);
+            Gizmos.DrawLine(leftPoint, rightPoint);
+            
+            // Draw danger zone (area below death line)
+            Gizmos.color = new Color(1f, 0f, 0f, 0.1f); // Semi-transparent red
+            Vector3[] dangerZone = new Vector3[4];
+            dangerZone[0] = leftPoint;
+            dangerZone[1] = rightPoint;
+            dangerZone[2] = new Vector3(rightBound, deathZoneY - 10f, 0);
+            dangerZone[3] = new Vector3(leftBound, deathZoneY - 10f, 0);
+            
+            // Draw filled danger zone
+            Gizmos.DrawLine(dangerZone[0], dangerZone[1]);
+            Gizmos.DrawLine(dangerZone[1], dangerZone[2]);
+            Gizmos.DrawLine(dangerZone[2], dangerZone[3]);
+            Gizmos.DrawLine(dangerZone[3], dangerZone[0]);
+            
+            // Add warning text indicators
+            Gizmos.color = Color.red;
+            for (float x = leftBound; x <= rightBound; x += 10f)
+            {
+                // Draw small downward arrows to indicate danger
+                Vector3 arrowTop = new Vector3(x, deathZoneY, 0);
+                Vector3 arrowBottom = new Vector3(x, deathZoneY - 0.5f, 0);
+                Vector3 arrowLeft = new Vector3(x - 0.2f, deathZoneY - 0.3f, 0);
+                Vector3 arrowRight = new Vector3(x + 0.2f, deathZoneY - 0.3f, 0);
+                
+                Gizmos.DrawLine(arrowTop, arrowBottom);
+                Gizmos.DrawLine(arrowBottom, arrowLeft);
+                Gizmos.DrawLine(arrowBottom, arrowRight);
+            }
+        }
+    }
+    
+    // Death/Reset system for testing
+    void OnTriggerEnter2D(Collider2D other)
+    {
+        if (other.CompareTag("Camera Bounder"))
+        {
+            Debug.Log("[Death/Reset] Camera Bounder detected! Resetting...");
+            ResetToInitialPosition();
+        }
+    }
+    
+    void OnCollisionEnter2D(Collision2D other)
+    {
+        if (other.gameObject.CompareTag("Camera Bounder"))
+        {
+            Debug.Log("[Death/Reset] Camera Bounder detected! Resetting...");
+            ResetToInitialPosition();
+        }
+    }
+    
+    // Manual reset for testing - add this as a public method you can call from inspector
+    [ContextMenu("Test Reset")]
+    public void TestReset()
+    {
+        Debug.Log("[Death/Reset] Manual reset triggered");
+        ResetToInitialPosition();
+    }
+    
+    private void ResetToInitialPosition()
+    {
+        Debug.Log($"[Death/Reset] BEFORE RESET - Current: {transform.position}, Initial: {initialPosition}");
+        
+        // Reset physics FIRST to prevent interference
+        rb.linearVelocity = Vector2.zero;
+        rb.angularVelocity = 0f;
+        
+        // Force position through both transform and rigidbody
+        transform.position = initialPosition;
+        rb.position = initialPosition;
+        
+        // Force physics update
+        Physics2D.SyncTransforms();
+        
+        // Double-check position was set
+        Debug.Log($"[Death/Reset] AFTER RESET - Position is now: {transform.position}, RB position: {rb.position}");
+        
+        // Reset movement states
+        isDashing = false;
+        dashTimer = 0f;
+        dashJumpTime = 0f;
+        lastDashEndTime = 0f;
+        
+        // Reset abilities
+        jumpsRemaining = extraJumps;
+        dashesRemaining = maxDashes;
+        airDashesRemaining = maxAirDashes;
+        airDashesUsed = 0;
+        
+        // Reset combat system
+        if (combat != null)
+        {
+            combat.ResetAttackSystem();
+        }
+        
+        // Reset camera position by forcing Cinemachine to snap
+        StartCoroutine(ResetCameraPosition());
+        
+        Debug.Log("[Death/Reset] Player reset to initial position");
+    }
+    
+    private System.Collections.IEnumerator ResetCameraPosition()
+    {
+        // Wait one frame for position to be applied
+        yield return null;
+        
+        // Try to find and reset Cinemachine camera using reflection to avoid compile errors
+        var cinemachineType = System.Type.GetType("Cinemachine.CinemachineVirtualCamera, Cinemachine");
+        if (cinemachineType != null)
+        {
+            var vcam = FindFirstObjectByType(cinemachineType);
+            if (vcam != null)
+            {
+                // Use reflection to call OnTargetObjectWarped
+                var method = cinemachineType.GetMethod("OnTargetObjectWarped");
+                if (method != null)
+                {
+                    method.Invoke(vcam, new object[] { transform, transform.position - initialPosition });
+                    Debug.Log("[Death/Reset] Camera position reset via Cinemachine");
+                    yield break;
+                }
+            }
+        }
+        
+        // Fallback: try to find regular camera and snap it directly
+        var mainCamera = Camera.main;
+        if (mainCamera != null)
+        {
+            // Simple camera snap to player position
+            mainCamera.transform.position = new Vector3(initialPosition.x, initialPosition.y, mainCamera.transform.position.z);
+            Debug.Log("[Death/Reset] Camera position reset directly");
         }
     }
 }

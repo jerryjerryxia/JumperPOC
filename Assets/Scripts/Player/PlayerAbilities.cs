@@ -20,6 +20,7 @@ public class PlayerAbilities : MonoBehaviour
     [SerializeField] private bool hasComboAttack = true;
     
     [Header("Advanced Abilities - Future")]
+    [SerializeField] private bool hasDashJump = true; // Start enabled for testing
     [SerializeField] private bool hasDoubleAirDash = false;
     [SerializeField] private bool hasTripleJump = false;
     [SerializeField] private bool hasGlide = false;
@@ -44,6 +45,7 @@ public class PlayerAbilities : MonoBehaviour
     public bool HasAirAttack => hasAirAttack;
     public bool HasDashAttack => hasDashAttack;
     public bool HasComboAttack => hasComboAttack;
+    public bool HasDashJump => hasDashJump;
     public bool HasDoubleAirDash => hasDoubleAirDash;
     public bool HasTripleJump => hasTripleJump;
     public bool HasGlide => hasGlide;
@@ -150,6 +152,15 @@ public class PlayerAbilities : MonoBehaviour
                 }
                 break;
                 
+            case "dashjump":
+                if (hasDashJump != unlocked)
+                {
+                    hasDashJump = unlocked;
+                    changed = true;
+                    RefreshMovementAbilities();
+                }
+                break;
+                
             default:
                 Debug.LogWarning($"[PlayerAbilities] Unknown ability: {abilityName}");
                 return;
@@ -178,6 +189,7 @@ public class PlayerAbilities : MonoBehaviour
             "airattack" => hasAirAttack,
             "dashattack" => hasDashAttack,
             "comboattack" => hasComboAttack,
+            "dashjump" => hasDashJump,
             "doubleairdash" => hasDoubleAirDash,
             "triplejump" => hasTripleJump,
             "glide" => hasGlide,
@@ -269,6 +281,7 @@ public class PlayerAbilities : MonoBehaviour
             {"airattack", hasAirAttack},
             {"dashattack", hasDashAttack},
             {"comboattack", hasComboAttack},
+            {"dashjump", hasDashJump},
             {"doubleairdash", hasDoubleAirDash},
             {"triplejump", hasTripleJump},
             {"glide", hasGlide}
@@ -309,6 +322,8 @@ public class PlayerAbilities : MonoBehaviour
             ToggleAbility("wallstick");
         if (GUILayout.Button($"Ledge Grab: {(hasLedgeGrab ? "ON" : "OFF")}"))
             ToggleAbility("ledgegrab");
+        if (GUILayout.Button($"Dash Jump: {(hasDashJump ? "ON" : "OFF")}"))
+            ToggleAbility("dashjump");
             
         GUILayout.Space(10);
         
