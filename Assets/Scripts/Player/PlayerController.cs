@@ -97,6 +97,9 @@ public class PlayerController : MonoBehaviour
     private bool wasWallSticking = false;
     private bool hasEverWallStuck = false;
     
+    // Head stomp permission system
+    private bool canHeadStomp = true;
+    
     // Animation state tracking
     private bool isGrounded;
     private bool isRunning;
@@ -142,6 +145,7 @@ public class PlayerController : MonoBehaviour
     public bool IsLedgeGrabbing => isLedgeGrabbing;
     public bool IsFalling => isFalling;
     public bool IsLedgeClimbing => isLedgeClimbing;
+    public bool CanHeadStomp => canHeadStomp;
     public Vector2 MoveInput => moveInput;
     public bool FacingRight => facingRight;
     public bool OnWall => onWall;
@@ -189,7 +193,7 @@ public class PlayerController : MonoBehaviour
         
         // Store initial position for death/reset system
         initialPosition = transform.position;
-        Debug.Log($"[Death/Reset] Initial position stored: {initialPosition}");
+        // Debug.Log($"[Death/Reset] Initial position stored: {initialPosition}");
     }
     
     private void CalculateOptimalRaycastPositions()
@@ -202,12 +206,12 @@ public class PlayerController : MonoBehaviour
             float colliderHalfHeight = boxCollider.size.y * 0.5f;
             float colliderTopOffset = boxCollider.offset.y + colliderHalfHeight;
             
-            Debug.Log($"[WallStick] Simplified wall detection initialized - Using 3 raycasts at: Top={wallRaycastTop:F3}, Middle={wallRaycastMiddle:F3}, Bottom={wallRaycastBottom:F3}");
-            Debug.Log($"[WallStick] Collider top offset: {colliderTopOffset:F3} for reference");
+            // Debug.Log($"[WallStick] Simplified wall detection initialized - Using 3 raycasts at: Top={wallRaycastTop:F3}, Middle={wallRaycastMiddle:F3}, Bottom={wallRaycastBottom:F3}");
+            // Debug.Log($"[WallStick] Collider top offset: {colliderTopOffset:F3} for reference");
         }
         else
         {
-            Debug.LogWarning("[WallStick] BoxCollider2D not found - using default raycast positions");
+            // Debug.LogWarning("[WallStick] BoxCollider2D not found - using default raycast positions");
         }
     }
     
@@ -377,7 +381,7 @@ public class PlayerController : MonoBehaviour
         // Simple death zone check - if player falls below deathZoneY, reset
         if (transform.position.y < deathZoneY)
         {
-            Debug.Log($"[Death/Reset] Player fell below death zone (Y < -20). Current Y: {transform.position.y}");
+            // Debug.Log($"[Death/Reset] Player fell below death zone (Y < -20). Current Y: {transform.position.y}");
             ResetToInitialPosition();
             return; // Skip rest of frame after reset
         }
@@ -510,6 +514,7 @@ public class PlayerController : MonoBehaviour
         {
             combat?.OnLanding();
             airDashesRemaining = maxAirDashes;
+            canHeadStomp = true; // Reset head stomp on landing
             airDashesUsed = 0;
             dashesRemaining = maxDashes;
             lastLandTime = Time.time; // Track landing time for wall detection
@@ -621,6 +626,11 @@ public class PlayerController : MonoBehaviour
         }
         
         // Track wall stick history for sequential logic
+        if (!wasWallSticking && isWallSticking)
+        {
+            canHeadStomp = true; // Reset head stomp when starting to wall stick
+        }
+        
         if (isWallSticking)
         {
             hasEverWallStuck = true;
@@ -720,7 +730,7 @@ public class PlayerController : MonoBehaviour
         if (isDashJumpMomentumActive && moveInput.x == 0)
         {
             // Debug log when momentum preservation is preventing movement override
-            Debug.Log($"[DashJump] Momentum preservation active - keeping horizontal velocity: {rb.linearVelocity.x:F2}");
+            // Debug.Log($"[DashJump] Momentum preservation active - keeping horizontal velocity: {rb.linearVelocity.x:F2}");
         }
         
         if (!IsAirAttacking && !isDashing && !isDashJumpMomentumActive)
@@ -769,7 +779,7 @@ public class PlayerController : MonoBehaviour
                     {
                         // Not enough contact for wall stick - prevent movement to avoid getting stuck
                         horizontalVelocity = 0f;
-                        Debug.Log($"[WallStick] ENABLED - Preventing movement, insufficient contact for wall stick (hits: {wallHitCount}/3, need 2+)");
+                        // Debug.Log($"[WallStick] ENABLED - Preventing movement, insufficient contact for wall stick (hits: {wallHitCount}/3, need 2+)");
                     }
                     // If 2+ hits, allow normal movement for wall stick behavior
                 }
@@ -779,7 +789,7 @@ public class PlayerController : MonoBehaviour
                     if (wallHitCount >= 1 && pressingIntoWall)
                     {
                         horizontalVelocity = 0f;
-                        Debug.Log($"[WallStick] DISABLED - Preventing wall movement (hits: {wallHitCount}/3)");
+                        // Debug.Log($"[WallStick] DISABLED - Preventing wall movement (hits: {wallHitCount}/3)");
                     }
                 }
             }
@@ -1176,6 +1186,11 @@ public class PlayerController : MonoBehaviour
         }
     }
     
+    public void ConsumeHeadStomp()
+    {
+        canHeadStomp = false;
+    }
+    
     private IEnumerator BasicAttack()
     {
         isAttacking = true;
@@ -1241,7 +1256,7 @@ public class PlayerController : MonoBehaviour
         else
         {
             // Basic attack when PlayerCombat is not attached
-            Debug.Log("Attack input received - using basic attack (add PlayerCombat for full combat system)");
+            // Debug.Log("Attack input received - using basic attack (add PlayerCombat for full combat system)");
             StartCoroutine(BasicAttack());
         }
     }
@@ -1357,7 +1372,7 @@ public class PlayerController : MonoBehaviour
         
         if (needsCompensation)
         {
-            Debug.Log($"[JumpFix] Wall friction detected - applying {wallJumpCompensation}x compensation");
+            // Debug.Log($"[JumpFix] Wall friction detected - applying {wallJumpCompensation}x compensation");
             
             // Apply force compensation
             float compensatedForce = yForce * wallJumpCompensation;
@@ -1524,7 +1539,7 @@ public class PlayerController : MonoBehaviour
         
         // Store current velocity before ending dash
         Vector2 currentVelocity = rb.linearVelocity;
-        Debug.Log($"[DashJump] Current velocity before dash jump: {currentVelocity}");
+        // Debug.Log($"[DashJump] Current velocity before dash jump: {currentVelocity}");
         
         // End dash if currently dashing (prevents physics conflicts)
         if (isDashing)
@@ -1533,7 +1548,7 @@ public class PlayerController : MonoBehaviour
             dashTimer = dashTime; // Force dash timer to expire
             lastDashEndTime = Time.time;
             combat?.OnDashEnd();
-            Debug.Log("[DashJump] Ended dash to perform dash jump");
+            // Debug.Log("[DashJump] Ended dash to perform dash jump");
         }
         
         // Apply dash jump manually without using Jump() method to avoid velocity clearing
@@ -1543,7 +1558,7 @@ public class PlayerController : MonoBehaviour
         // Start momentum preservation period
         dashJumpTime = Time.time;
         
-        Debug.Log($"[DashJump] Applied force: H={horizontalForce}, V={dashJump.y}, Final velocity: {rb.linearVelocity}");
+        // Debug.Log($"[DashJump] Applied force: H={horizontalForce}, V={dashJump.y}, Final velocity: {rb.linearVelocity}");
         
         // Ground dash jump: reset air abilities like normal jump
         // (Air dash jump is disabled, so this only applies to ground)
@@ -1560,7 +1575,7 @@ public class PlayerController : MonoBehaviour
             SafeSetTrigger("Jump");
         }
         
-        Debug.Log($"[DashJump] Performed GROUND dash jump - Horizontal: {horizontalForce:F1}, Vertical: {dashJump.y:F1}, Result velocity: {rb.linearVelocity}");
+        // Debug.Log($"[DashJump] Performed GROUND dash jump - Horizontal: {horizontalForce:F1}, Vertical: {dashJump.y:F1}, Result velocity: {rb.linearVelocity}");
     }
     
     // Debug visualization for wall detection
@@ -1733,7 +1748,7 @@ public class PlayerController : MonoBehaviour
     {
         if (other.CompareTag("Camera Bounder"))
         {
-            Debug.Log("[Death/Reset] Camera Bounder detected! Resetting...");
+            // Debug.Log("[Death/Reset] Camera Bounder detected! Resetting...");
             ResetToInitialPosition();
         }
     }
@@ -1742,7 +1757,7 @@ public class PlayerController : MonoBehaviour
     {
         if (other.gameObject.CompareTag("Camera Bounder"))
         {
-            Debug.Log("[Death/Reset] Camera Bounder detected! Resetting...");
+            // Debug.Log("[Death/Reset] Camera Bounder detected! Resetting...");
             ResetToInitialPosition();
         }
     }
@@ -1751,13 +1766,13 @@ public class PlayerController : MonoBehaviour
     [ContextMenu("Test Reset")]
     public void TestReset()
     {
-        Debug.Log("[Death/Reset] Manual reset triggered");
+        // Debug.Log("[Death/Reset] Manual reset triggered");
         ResetToInitialPosition();
     }
     
-    private void ResetToInitialPosition()
+    public void ResetToInitialPosition()
     {
-        Debug.Log($"[Death/Reset] BEFORE RESET - Current: {transform.position}, Initial: {initialPosition}");
+        // Debug.Log($"[Death/Reset] BEFORE RESET - Current: {transform.position}, Initial: {initialPosition}");
         
         // Reset physics FIRST to prevent interference
         rb.linearVelocity = Vector2.zero;
@@ -1771,7 +1786,7 @@ public class PlayerController : MonoBehaviour
         Physics2D.SyncTransforms();
         
         // Double-check position was set
-        Debug.Log($"[Death/Reset] AFTER RESET - Position is now: {transform.position}, RB position: {rb.position}");
+        // Debug.Log($"[Death/Reset] AFTER RESET - Position is now: {transform.position}, RB position: {rb.position}");
         
         // Reset movement states
         isDashing = false;
@@ -1794,7 +1809,7 @@ public class PlayerController : MonoBehaviour
         // Reset camera position by forcing Cinemachine to snap
         StartCoroutine(ResetCameraPosition());
         
-        Debug.Log("[Death/Reset] Player reset to initial position");
+        // Debug.Log("[Death/Reset] Player reset to initial position");
     }
     
     private System.Collections.IEnumerator ResetCameraPosition()
@@ -1814,7 +1829,7 @@ public class PlayerController : MonoBehaviour
                 if (method != null)
                 {
                     method.Invoke(vcam, new object[] { transform, transform.position - initialPosition });
-                    Debug.Log("[Death/Reset] Camera position reset via Cinemachine");
+                    // Debug.Log("[Death/Reset] Camera position reset via Cinemachine");
                     yield break;
                 }
             }
@@ -1826,7 +1841,7 @@ public class PlayerController : MonoBehaviour
         {
             // Simple camera snap to player position
             mainCamera.transform.position = new Vector3(initialPosition.x, initialPosition.y, mainCamera.transform.position.z);
-            Debug.Log("[Death/Reset] Camera position reset directly");
+            // Debug.Log("[Death/Reset] Camera position reset directly");
         }
     }
 }

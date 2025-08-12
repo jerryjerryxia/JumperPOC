@@ -120,7 +120,15 @@ namespace Player
         Animator animator = GetComponent<Animator>();
         if (animator != null)
         {
-            animator.SetTrigger("Die");
+            // Check if Die parameter exists before setting it
+            foreach (var param in animator.parameters)
+            {
+                if (param.name == "Die" && param.type == AnimatorControllerParameterType.Trigger)
+                {
+                    animator.SetTrigger("Die");
+                    break;
+                }
+            }
         }
         
         // Handle death (respawn, game over, etc.)
@@ -130,11 +138,29 @@ namespace Player
     
     private void HandleDeathComplete()
     {
-        // For now, just reload the scene
-        // This can be replaced with a proper respawn system
-        UnityEngine.SceneManagement.SceneManager.LoadScene(
-            UnityEngine.SceneManagement.SceneManager.GetActiveScene().buildIndex
-        );
+        // Reset player to initial position and restore all states (same as fall death)
+        if (playerController != null)
+        {
+            playerController.ResetToInitialPosition();
+        }
+        
+        // Reset health state
+        isDead = false;
+        currentHealth = maxHealth;
+        
+        // Re-enable player controls
+        if (playerController != null)
+        {
+            playerController.enabled = true;
+        }
+        
+        if (playerCombat != null)
+        {
+            playerCombat.enabled = true;
+        }
+        
+        // Notify UI of health reset
+        OnHealthChanged?.Invoke(currentHealth, maxHealth);
     }
     
     private System.Collections.IEnumerator InvincibilityCoroutine()

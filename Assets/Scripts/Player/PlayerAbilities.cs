@@ -70,7 +70,7 @@ public class PlayerAbilities : MonoBehaviour
         
         if (playerController == null)
         {
-            Debug.LogError("[PlayerAbilities] PlayerController component not found!");
+            // Debug.LogError("[PlayerAbilities] PlayerController component not found!");
         }
     }
     
@@ -162,13 +162,13 @@ public class PlayerAbilities : MonoBehaviour
                 break;
                 
             default:
-                Debug.LogWarning($"[PlayerAbilities] Unknown ability: {abilityName}");
+                // Debug.LogWarning($"[PlayerAbilities] Unknown ability: {abilityName}");
                 return;
         }
         
         if (changed)
         {
-            Debug.Log($"[PlayerAbilities] {abilityName} {(unlocked ? "unlocked" : "locked")}");
+            // Debug.Log($"[PlayerAbilities] {abilityName} {(unlocked ? "unlocked" : "locked")}");
             OnAbilityChanged?.Invoke(abilityName, unlocked);
         }
     }
@@ -230,7 +230,7 @@ public class PlayerAbilities : MonoBehaviour
         // Access the public field directly (as per current PlayerController design)
         playerController.extraJumps = extraJumps;
         
-        Debug.Log($"[PlayerAbilities] Jump abilities refreshed - Extra jumps: {extraJumps}");
+        // Debug.Log($"[PlayerAbilities] Jump abilities refreshed - Extra jumps: {extraJumps}");
     }
     
     private void RefreshMovementAbilities()
@@ -240,7 +240,7 @@ public class PlayerAbilities : MonoBehaviour
         // Dash abilities are checked at runtime via HasDash property
         // No direct modification needed as PlayerController will query this
         
-        Debug.Log($"[PlayerAbilities] Movement abilities refreshed - Dash: {hasDash}");
+        // Debug.Log($"[PlayerAbilities] Movement abilities refreshed - Dash: {hasDash}");
     }
     
     private void RefreshWallAbilities()
@@ -250,13 +250,13 @@ public class PlayerAbilities : MonoBehaviour
         // Wall abilities are checked at runtime via HasWallSlide/HasWallJump properties
         // No direct modification needed
         
-        Debug.Log($"[PlayerAbilities] Wall abilities refreshed - WallStick: {hasWallStick} (enables slide & jump)");
+        // Debug.Log($"[PlayerAbilities] Wall abilities refreshed - WallStick: {hasWallStick} (enables slide & jump)");
     }
     
     private void RefreshInteractionAbilities()
     {
         // Ledge grab abilities would be handled by PlayerInteractionDetector
-        Debug.Log($"[PlayerAbilities] Interaction abilities refreshed - LedgeGrab: {hasLedgeGrab}");
+        // Debug.Log($"[PlayerAbilities] Interaction abilities refreshed - LedgeGrab: {hasLedgeGrab}");
     }
     
     private void RefreshCombatAbilities()
@@ -264,7 +264,7 @@ public class PlayerAbilities : MonoBehaviour
         if (playerCombat == null) return;
         
         // Combat abilities are checked at runtime via properties
-        Debug.Log($"[PlayerAbilities] Combat abilities refreshed - AirAttack: {hasAirAttack}, DashAttack: {hasDashAttack}, Combo: {hasComboAttack}");
+        // Debug.Log($"[PlayerAbilities] Combat abilities refreshed - AirAttack: {hasAirAttack}, DashAttack: {hasDashAttack}, Combo: {hasComboAttack}");
     }
     
     /// <summary>
