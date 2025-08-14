@@ -34,19 +34,22 @@ public class ProgressionSystemSetupHelper : EditorWindow
         
         GUILayout.Space(10);
         
-        if (GUILayout.Button("2. Create Ability Debug UI", GUILayout.Height(30)))
+        if (GUILayout.Button("2. Create Ability Debug UI (Disabled)", GUILayout.Height(30)))
         {
-            CreateAbilityDebugUI();
+            EditorUtility.DisplayDialog("Feature Disabled", 
+                "The AbilityDebugUI system has been removed from the project.\n\n" +
+                "This feature is no longer available.", 
+                "OK");
         }
         
         GUILayout.Space(20);
         
         EditorGUILayout.HelpBox(
             "Instructions:\n" +
-            "1. First click 'Setup Player Abilities' to add the system to your player\n" +
-            "2. Then click 'Create Ability Debug UI' to add testing interface\n" +
-            "3. In play mode, press F1 to toggle the ability panel\n" +
-            "4. Click buttons to enable/disable abilities in real-time",
+            "1. Click 'Setup Player Abilities' to add the progression system to your player\n" +
+            "2. The AbilityDebugUI system has been removed from the project\n" +
+            "3. Use the PlayerAbilities component directly for ability management\n" +
+            "4. Test abilities through code or inspector modifications",
             MessageType.Info);
     }
     
@@ -109,24 +112,26 @@ public class ProgressionSystemSetupHelper : EditorWindow
             canvasObj.layer = LayerMask.NameToLayer("UI");
         }
         
+        // AbilityDebugUI system has been removed - skip this check
         // Check if AbilityDebugUI already exists
-        AbilityDebugUI existingUI = FindFirstObjectByType<AbilityDebugUI>();
-        if (existingUI != null)
-        {
-            EditorUtility.DisplayDialog("Already Setup", 
-                "AbilityDebugUI already exists in the scene!", 
-                "OK");
-            Selection.activeGameObject = existingUI.gameObject;
-            return;
-        }
+        // AbilityDebugUI existingUI = FindFirstObjectByType<AbilityDebugUI>();
+        // if (existingUI != null)
+        // {
+        //     EditorUtility.DisplayDialog("Already Setup", 
+        //         "AbilityDebugUI already exists in the scene!", 
+        //         "OK");
+        //     Selection.activeGameObject = existingUI.gameObject;
+        //     return;
+        // }
         
         // Create main UI object
         GameObject uiObj = new GameObject("AbilityDebugUI");
         uiObj.transform.SetParent(canvas.transform, false);
         uiObj.layer = LayerMask.NameToLayer("UI");
         
+        // AbilityDebugUI system has been removed - skip component creation
         // Add AbilityDebugUI component
-        AbilityDebugUI debugUI = uiObj.AddComponent<AbilityDebugUI>();
+        // AbilityDebugUI debugUI = uiObj.AddComponent<AbilityDebugUI>();
         
         // Create main panel
         GameObject panelObj = CreateUIPanel("AbilityPanel", uiObj.transform);
@@ -176,21 +181,22 @@ public class ProgressionSystemSetupHelper : EditorWindow
         // Create button prefab
         GameObject buttonPrefab = CreateButtonPrefab();
         
+        // AbilityDebugUI system has been removed - skip reference setup
         // Setup references in AbilityDebugUI
-        var serializedObject = new SerializedObject(debugUI);
-        serializedObject.FindProperty("abilityPanel").objectReferenceValue = panelObj;
-        serializedObject.FindProperty("buttonContainer").objectReferenceValue = content;
-        serializedObject.FindProperty("buttonPrefab").objectReferenceValue = buttonPrefab;
-        serializedObject.ApplyModifiedProperties();
+        // var serializedObject = new SerializedObject(debugUI);
+        // serializedObject.FindProperty("abilityPanel").objectReferenceValue = panelObj;
+        // serializedObject.FindProperty("buttonContainer").objectReferenceValue = content;
+        // serializedObject.FindProperty("buttonPrefab").objectReferenceValue = buttonPrefab;
+        // serializedObject.ApplyModifiedProperties();
         
         // Mark as dirty
         EditorUtility.SetDirty(uiObj);
         
-        Debug.Log("[ProgressionSystemSetup] Created AbilityDebugUI");
-        EditorUtility.DisplayDialog("Success", 
-            "Ability Debug UI created!\n\n" +
-            "Press F1 in play mode to toggle the ability panel.\n" +
-            "Use the buttons to test enabling/disabling abilities.", 
+        Debug.Log("[ProgressionSystemSetup] Created UI placeholder (AbilityDebugUI system removed)");
+        EditorUtility.DisplayDialog("Note", 
+            "UI elements created but AbilityDebugUI component is not available.\n\n" +
+            "The AbilityDebugUI system has been removed from the project.\n" +
+            "This is a placeholder UI structure only.", 
             "OK");
         
         // Select the created object

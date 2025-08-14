@@ -12,7 +12,7 @@ public class PlayerController : MonoBehaviour
 {
     [Header("Movement")]
     public float runSpeed = 5f;
-    public float jumpForce = 10f;
+    public float jumpForce = 9f;
     public int extraJumps = 1;
     public float wallSlideSpeed = 2f;
     public Vector2 wallJump = new(7f, 10f);
@@ -25,7 +25,7 @@ public class PlayerController : MonoBehaviour
     public int maxAirDashes = 2;
     
     [Header("Dash Jump")]
-    [SerializeField] public Vector2 dashJump = new(5f, 10f); // (horizontal, vertical) force
+    [SerializeField] public Vector2 dashJump = new(5f, 9f); // (horizontal, vertical) force
     [SerializeField] public float dashJumpWindow = 0.2f; // Grace period after dash ends
     
     [Header("Death Zone")]

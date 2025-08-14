@@ -21,6 +21,16 @@ namespace Enemies
     [SerializeField] protected LayerMask groundLayer = 1 << 6; // Default to Ground layer (layer 6)
     [SerializeField] protected LayerMask wallLayer = 1 << 6; // Ground layer
     
+    [Header("Edge Detection (Fine Tuning)")]
+    [SerializeField] [Tooltip("How far down to raycast for edge detection. Reduce if platforms below interfere.")]
+    protected float edgeDetectionDistance = 0.5f;
+    [SerializeField] [Tooltip("Depth for scanning if player is on same platform. Affects chase behavior.")]
+    protected float platformScanDepth = 5f;
+    [SerializeField] [Tooltip("Depth for basic IsGrounded check. Keep small for responsive ground detection.")]
+    protected float basicGroundDepth = 0.2f;
+    [SerializeField] [Tooltip("Show ground detection visualization in scene view when enemy is selected.")]
+    protected bool showGroundDetection = true;
+    
     [Header("Combat")]
     [SerializeField] protected float maxHealth = 100f;
     [SerializeField] protected float attackDamage = 10f;
@@ -172,7 +182,7 @@ namespace Enemies
         // CORRECT EDGE DETECTION: Check if there's ground at the same level ahead
         // Step 1: Find the current ground level
         Vector2 currentGroundCheck = (Vector2)transform.position;
-        RaycastHit2D currentGround = Physics2D.Raycast(currentGroundCheck, Vector2.down, 2f, detectionLayer);
+        RaycastHit2D currentGround = Physics2D.Raycast(currentGroundCheck, Vector2.down, edgeDetectionDistance, detectionLayer);
         
         if (currentGround.collider != null)
         {
@@ -181,7 +191,7 @@ namespace Enemies
             Vector2 aheadCheckPos = (Vector2)transform.position + new Vector2((edgeDetectionOffset.x + currentEdgeOffset) * movementDirection, 0f);
             
             // Cast down from ahead position to see if ground continues at same level
-            RaycastHit2D aheadGroundCheck = Physics2D.Raycast(aheadCheckPos, Vector2.down, 2f, detectionLayer);
+            RaycastHit2D aheadGroundCheck = Physics2D.Raycast(aheadCheckPos, Vector2.down, edgeDetectionDistance, detectionLayer);
             
             if (aheadGroundCheck.collider != null)
             {
@@ -392,14 +402,13 @@ namespace Enemies
     
     protected virtual bool IsGrounded()
     {
-        // Check if the enemy is on the ground (use a reasonable distance)
+        // Check if the enemy is on the ground (use configurable depth)
         Vector2 position = transform.position;
-        float checkDistance = groundCheckDistance + 0.1f; // Use configured distance + small buffer
         LayerMask detectionLayer = groundLayer != 0 ? groundLayer : (1 << 6); // Consistent with boundary detection
-        RaycastHit2D hit = Physics2D.Raycast(position, Vector2.down, checkDistance, detectionLayer);
+        RaycastHit2D hit = Physics2D.Raycast(position, Vector2.down, basicGroundDepth, detectionLayer);
         
         // Debug visualization for ground check
-        // Debug.DrawRay(position, Vector2.down * checkDistance, hit.collider ? Color.green : Color.yellow, 0.1f);
+        // Debug.DrawRay(position, Vector2.down * basicGroundDepth, hit.collider ? Color.green : Color.yellow, 0.1f);
         
         return hit.collider != null;
     }
@@ -435,8 +444,8 @@ namespace Enemies
         Vector2 playerPos = player.transform.position;
         Vector2 enemyPos = transform.position;
         
-        RaycastHit2D playerGroundHit = Physics2D.Raycast(playerPos, Vector2.down, 5f, groundLayer);
-        RaycastHit2D enemyGroundHit = Physics2D.Raycast(enemyPos, Vector2.down, 5f, groundLayer);
+        RaycastHit2D playerGroundHit = Physics2D.Raycast(playerPos, Vector2.down, platformScanDepth, groundLayer);
+        RaycastHit2D enemyGroundHit = Physics2D.Raycast(enemyPos, Vector2.down, platformScanDepth, groundLayer);
         
         // As long as both have some ground/platform nearby, consider them valid for detection
         bool playerHasGround = playerGroundHit.collider != null;
@@ -512,10 +521,10 @@ namespace Enemies
     {
         Vector3 position = transform.position;
         
-        // Draw edge detection
-        Gizmos.color = Color.yellow;
-        Vector3 edgeCheckPos = position + new Vector3(edgeDetectionOffset.x * (isFacingRight ? 1 : -1), edgeDetectionOffset.y, 0);
-        Gizmos.DrawLine(edgeCheckPos, edgeCheckPos + Vector3.down * 2f); // Fixed distance for visualization
+        if (showGroundDetection)
+        {
+            DrawGroundDetectionGizmos(position);
+        }
         
         // Draw wall detection
         Gizmos.color = Color.blue;
@@ -536,6 +545,102 @@ namespace Enemies
             Gizmos.color = new Color(1, 1, 0, 0.5f);
             Gizmos.DrawLine(position, offsetPos);
         }
+    }
+    
+    protected virtual void DrawGroundDetectionGizmos(Vector3 position)
+    {
+        // Get the detection layer
+        LayerMask detectionLayer = groundLayer != 0 ? groundLayer : (1 << 6);
+        
+        // 1. Draw current ground check (directly below enemy)
+        Gizmos.color = Color.green;
+        Vector3 currentGroundStart = position;
+        Vector3 currentGroundEnd = currentGroundStart + Vector3.down * edgeDetectionDistance;
+        Gizmos.DrawLine(currentGroundStart, currentGroundEnd);
+        
+        // Show current ground hit if available
+        RaycastHit2D currentGroundHit = Physics2D.Raycast(currentGroundStart, Vector2.down, edgeDetectionDistance, detectionLayer);
+        if (currentGroundHit.collider != null)
+        {
+            Gizmos.color = Color.green;
+            Gizmos.DrawWireSphere(currentGroundHit.point, 0.1f);
+        }
+        
+        // 2. Draw edge detection check (ahead position)
+        Vector3 aheadCheckPos = position + new Vector3((edgeDetectionOffset.x + (Application.isPlaying ? currentEdgeOffset : 0.4f)) * (isFacingRight ? 1 : -1), 0f, 0f);
+        
+        // Draw the ahead ground check
+        Gizmos.color = Color.yellow;
+        Vector3 aheadGroundStart = aheadCheckPos;
+        Vector3 aheadGroundEnd = aheadGroundStart + Vector3.down * edgeDetectionDistance;
+        Gizmos.DrawLine(aheadGroundStart, aheadGroundEnd);
+        
+        // Show ahead ground hit if available
+        RaycastHit2D aheadGroundHit = Physics2D.Raycast(aheadCheckPos, Vector2.down, edgeDetectionDistance, detectionLayer);
+        if (aheadGroundHit.collider != null)
+        {
+            // Check if it would be considered an edge (different level)
+            bool wouldBeEdge = currentGroundHit.collider != null && 
+                              Mathf.Abs(aheadGroundHit.point.y - currentGroundHit.point.y) > levelTolerance;
+            
+            Gizmos.color = wouldBeEdge ? Color.red : Color.yellow;
+            Gizmos.DrawWireSphere(aheadGroundHit.point, 0.1f);
+            
+            // Draw line connecting current and ahead ground levels
+            if (currentGroundHit.collider != null)
+            {
+                Gizmos.color = wouldBeEdge ? Color.red : Color.green;
+                Gizmos.DrawLine((Vector3)currentGroundHit.point, (Vector3)aheadGroundHit.point);
+            }
+        }
+        else
+        {
+            // No ground found ahead - definitely an edge
+            Gizmos.color = Color.red;
+            Gizmos.DrawWireSphere(aheadGroundEnd, 0.1f);
+        }
+        
+        // 3. Draw level tolerance indicator
+        if (currentGroundHit.collider != null)
+        {
+            Gizmos.color = new Color(0, 1, 1, 0.3f); // Cyan, semi-transparent
+            Vector3 toleranceCenter = (Vector3)currentGroundHit.point;
+            Vector3 toleranceSize = new Vector3(2f, levelTolerance * 2f, 0.1f);
+            Gizmos.DrawCube(toleranceCenter, toleranceSize);
+        }
+        
+        // 4. Draw basic ground check (for IsGrounded)
+        Gizmos.color = Color.cyan;
+        Vector3 basicGroundStart = position;
+        Vector3 basicGroundEnd = basicGroundStart + Vector3.down * basicGroundDepth;
+        Gizmos.DrawLine(basicGroundStart, basicGroundEnd);
+        
+        // 5. Add labels in scene view
+        #if UNITY_EDITOR
+        if (currentGroundHit.collider != null)
+        {
+            UnityEditor.Handles.Label((Vector3)currentGroundHit.point + Vector3.up * 0.2f, $"Current Ground: {currentGroundHit.point.y:F2}");
+        }
+        if (aheadGroundHit.collider != null)
+        {
+            UnityEditor.Handles.Label((Vector3)aheadGroundHit.point + Vector3.up * 0.2f, $"Ahead Ground: {aheadGroundHit.point.y:F2}");
+            if (currentGroundHit.collider != null)
+            {
+                float diff = Mathf.Abs(aheadGroundHit.point.y - currentGroundHit.point.y);
+                UnityEditor.Handles.Label((Vector3)aheadGroundHit.point + Vector3.up * 0.4f, $"Diff: {diff:F2} (Tolerance: {levelTolerance:F2})");
+            }
+        }
+        
+        // Parameter labels
+        UnityEditor.Handles.Label(position + Vector3.up * 1f, $"Edge Detection Distance: {edgeDetectionDistance:F2}");
+        UnityEditor.Handles.Label(position + Vector3.up * 1.2f, $"Platform Scan Depth: {platformScanDepth:F2}");
+        UnityEditor.Handles.Label(position + Vector3.up * 1.4f, $"Basic Ground Depth: {basicGroundDepth:F2}");
+        UnityEditor.Handles.Label(position + Vector3.up * 1.6f, $"Level Tolerance: {levelTolerance:F2}");
+        if (Application.isPlaying)
+        {
+            UnityEditor.Handles.Label(position + Vector3.up * 1.8f, $"Current Edge Offset: {currentEdgeOffset:F2}");
+        }
+        #endif
     }
     }
 }
