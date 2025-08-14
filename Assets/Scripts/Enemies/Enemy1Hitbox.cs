@@ -201,7 +201,7 @@ namespace Enemies
             }
             
             // Visual/audio feedback could go here
-            Debug.Log($"Enemy1 hit {other.name} for {chopDamage} damage with lance chop!");
+            // Debug.Log($"Enemy1 hit {other.name} for {chopDamage} damage with lance chop!");
             
             // Disable hitbox if we only want one hit per attack and we don't allow multiple hits
             if (!canHitMultipleTimes)
@@ -226,13 +226,13 @@ namespace Enemies
     {
         SetActive(true);
         // Could add attack duration timer here if needed
-        Debug.Log("Enemy1 lance chop attack started!");
+        // Debug.Log("Enemy1 lance chop attack started!");
     }
     
     public void EndLanceChopAttack()
     {
         SetActive(false);
-        Debug.Log("Enemy1 lance chop attack ended!");
+        // Debug.Log("Enemy1 lance chop attack ended!");
     }
     
     // Debug visualization
@@ -275,7 +275,7 @@ namespace Enemies
     private void ApplyConfiguration()
     {
         ConfigureHitbox();
-        Debug.Log($"Applied Enemy1 lance chop configuration - Size: {chopSize}, Offset: {chopOffset}, Damage: {chopDamage}");
+        // Debug.Log($"Applied Enemy1 lance chop configuration - Size: {chopSize}, Offset: {chopOffset}, Damage: {chopDamage}");
     }
     
     // Called when values are changed in the Inspector

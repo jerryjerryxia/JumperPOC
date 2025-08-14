@@ -281,7 +281,7 @@ namespace UI
 #if UNITY_EDITOR
             if (!Application.isPlaying)
             {
-                Debug.Log($"[Editor] EnemyHealthUI - Sprite bounds: {spriteBounds}, Sprite top: {spriteTop}, Dynamic offset: {dynamicOffset}, Transform pos: {enemyTransform.position}");
+                // Debug.Log($"[Editor] EnemyHealthUI - Sprite bounds: {spriteBounds}, Sprite top: {spriteTop}, Dynamic offset: {dynamicOffset}, Transform pos: {enemyTransform.position}");
             }
 #endif
         }

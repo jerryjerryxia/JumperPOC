@@ -530,7 +530,7 @@ namespace Enemies
             }
             else
             {
-                Debug.LogWarning("Enemy1Hitbox not found! Please add Enemy1Hitbox component to a child GameObject.");
+                // Debug.LogWarning("Enemy1Hitbox not found! Please add Enemy1Hitbox component to a child GameObject.");
                 // Fallback to old damage system if no hitbox
                 StartCoroutine(DealDamageAfterDelay(0.2f));
             }
@@ -576,7 +576,7 @@ namespace Enemies
                     if (playerHealth != null && !playerHealth.IsInvincible)
                     {
                         playerHealth.TakeDamage(attackDamage);
-                        Debug.Log($"Enemy1 dealt {attackDamage} damage to player! (fallback method)");
+                        // Debug.Log($"Enemy1 dealt {attackDamage} damage to player! (fallback method)");
                     }
                 }
             }

@@ -72,7 +72,7 @@ public class PlayerCombat : MonoBehaviour
         // PlayerController may be disabled in new component system, that's OK
         if (playerController == null)
         {
-            Debug.LogWarning("PlayerCombat: PlayerController not found - some features may be limited");
+            // Debug.LogWarning("PlayerCombat: PlayerController not found - some features may be limited");
         }
         
         originalGravityScale = rb.gravityScale;

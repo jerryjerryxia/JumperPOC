@@ -50,14 +50,14 @@ namespace UI
                 float maxHealth = playerHealth.GetMaxHealth();
                 float currentHealth = playerHealth.GetCurrentHealth();
                 
-                Debug.Log($"PLAYER HEALTH DEBUG: maxHealth={maxHealth}, currentHealth={currentHealth}");
+                // Debug.Log($"PLAYER HEALTH DEBUG: maxHealth={maxHealth}, currentHealth={currentHealth}");
                 
                 healthBar.SetMaxHealth(maxHealth);
                 healthBar.SetHealth(currentHealth);
             }
             else
             {
-                Debug.LogError($"PLAYER HEALTH UI FAILED: playerHealth={playerHealth}, healthBar={healthBar}");
+                // Debug.LogError($"PLAYER HEALTH UI FAILED: playerHealth={playerHealth}, healthBar={healthBar}");
             }
             
             SetupUIPosition();

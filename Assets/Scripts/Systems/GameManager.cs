@@ -73,7 +73,7 @@ public class GameManager : MonoBehaviour
         
         if (enableDebugMode)
         {
-            Debug.Log("GameManager: Game initialized in debug mode");
+            // Debug.Log("GameManager: Game initialized in debug mode");
         }
     }
     
@@ -152,7 +152,7 @@ public class GameManager : MonoBehaviour
         
         if (enableDebugMode)
         {
-            Debug.Log($"GameManager: State changed from {previousState} to {newState}");
+            // Debug.Log($"GameManager: State changed from {previousState} to {newState}");
         }
     }
     
@@ -190,7 +190,7 @@ public class GameManager : MonoBehaviour
     {
         if (enableDebugMode)
         {
-            Debug.Log("GameManager: Quitting game");
+            // Debug.Log("GameManager: Quitting game");
         }
         
         #if UNITY_EDITOR
@@ -220,13 +220,16 @@ public class GameManager : MonoBehaviour
             inputManager.SetInputDebugging(enableDebugMode);
         }
         
-        Debug.Log($"Debug mode: {(enableDebugMode ? "Enabled" : "Disabled")}");
+        // Debug.Log($"Debug mode: {(enableDebugMode ? "Enabled" : "Disabled")}");
     }
     
     #if UNITY_EDITOR
     private void OnGUI()
     {
         if (!enableDebugMode) return;
+        
+        // Hide debug panel for clean play mode - only show abilities and health
+        return;
         
         GUILayout.BeginArea(new Rect(10, Screen.height - 120, 200, 110));
         GUILayout.Label("Game Manager Debug:", GUI.skin.label);

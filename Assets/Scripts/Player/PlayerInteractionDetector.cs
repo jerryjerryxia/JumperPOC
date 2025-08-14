@@ -45,7 +45,7 @@ public class PlayerInteractionDetector : MonoBehaviour
         // PlayerController may be disabled in new component system, that's OK
         if (playerController == null)
         {
-            Debug.LogWarning("PlayerInteractionDetector: PlayerController not found - some features may be limited");
+            // Debug.LogWarning("PlayerInteractionDetector: PlayerController not found - some features may be limited");
         }
     }
     
@@ -325,10 +325,13 @@ public class PlayerInteractionDetector : MonoBehaviour
         }
     }
 
-    // Debug info display
+    // Debug info display - DISABLED for clean play mode
     void OnGUI()
     {
         if (!Application.isPlaying) return;
+        
+        // Hide debug panel for clean play mode - only show abilities and health
+        return;
         
         GUILayout.BeginArea(new Rect(10, 220, 300, 150));
         GUILayout.Label("Interaction Debug:", GUI.skin.label);

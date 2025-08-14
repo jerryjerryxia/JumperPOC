@@ -211,6 +211,9 @@ public class InputManager : MonoBehaviour
     {
         if (!enableInputDebugging) return;
         
+        // Hide debug panel for clean play mode - only show abilities and health
+        return;
+        
         GUILayout.BeginArea(new Rect(Screen.width - 200, 10, 190, 150));
         GUILayout.Label("Input Debug:", GUI.skin.label);
         GUILayout.Label($"Move: {MoveInput}");

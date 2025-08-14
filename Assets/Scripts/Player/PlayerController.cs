@@ -37,6 +37,12 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private float climbingAssistanceOffset = 0.25f; // How far below platform edge to trigger assistance
     [SerializeField] private float climbForce = 3f;
     [SerializeField] private float forwardBoost = 0f;
+    
+    [Header("Coyote Time")]
+    [SerializeField] private bool enableCoyoteTime = true; // Enable coyote time feature
+    [SerializeField] private float coyoteTimeDuration = 0.12f; // Grace period after leaving ground
+    [SerializeField] private bool coyoteTimeDuringDashWindow = false; // Allow coyote time during dash jump window
+    [SerializeField] private bool showCoyoteTimeDebug = false; // Show debug info for coyote time
     [SerializeField] private bool showClimbingGizmos = true;
     
     [Header("Jump Compensation")]
@@ -96,6 +102,10 @@ public class PlayerController : MonoBehaviour
     // Wall state sequence tracking
     private bool wasWallSticking = false;
     private bool hasEverWallStuck = false;
+    
+    // Coyote time tracking
+    private float coyoteTimeCounter = 0f;
+    private bool leftGroundByJumping = false;
     
     // Head stomp permission system
     private bool canHeadStomp = true;
@@ -523,6 +533,48 @@ public class PlayerController : MonoBehaviour
             dashJumpTime = 0f;
         }
 
+        // Coyote time tracking
+        if (enableCoyoteTime)
+        {
+            if (isGrounded)
+            {
+                // Reset coyote time when grounded
+                coyoteTimeCounter = coyoteTimeDuration;
+                leftGroundByJumping = false;
+            }
+            else if (wasGrounded && !isGrounded)
+            {
+                // Just left ground - check if it was from jumping
+                if (rb.linearVelocity.y > 0.5f) // Positive Y velocity suggests jumping
+                {
+                    // Left ground by jumping - disable coyote time
+                    leftGroundByJumping = true;
+                    coyoteTimeCounter = 0f;
+                }
+                else
+                {
+                    // Left ground by walking/falling off - preserve coyote time
+                    leftGroundByJumping = false;
+                    // Keep existing counter value
+                }
+            }
+            else if (!isGrounded && coyoteTimeCounter > 0f)
+            {
+                // Decrement coyote time while airborne
+                coyoteTimeCounter -= Time.fixedDeltaTime;
+                if (coyoteTimeCounter < 0f)
+                {
+                    coyoteTimeCounter = 0f;
+                }
+            }
+        }
+        else
+        {
+            // Coyote time disabled - always reset
+            coyoteTimeCounter = 0f;
+            leftGroundByJumping = false;
+        }
+
         // Buffer logic for edge platforms
         if (isGroundedByBuffer)
         {
@@ -629,6 +681,13 @@ public class PlayerController : MonoBehaviour
         if (!wasWallSticking && isWallSticking)
         {
             canHeadStomp = true; // Reset head stomp when starting to wall stick
+            
+            // Clear coyote time when starting to wall stick
+            if (enableCoyoteTime)
+            {
+                coyoteTimeCounter = 0f;
+                leftGroundByJumping = false;
+            }
         }
         
         if (isWallSticking)
@@ -914,7 +973,8 @@ public class PlayerController : MonoBehaviour
         if (!jumpQueued) return;
         
         // CRITICAL: Block jumping during active air attacks to prevent infinite elevation exploit
-        if (combat != null && (combat.IsAirAttacking || combat.IsDashAttacking))
+        // Allow normal jumps when airborne after dashing off platform
+        if (combat != null && (combat.IsAirAttacking || (combat.IsDashAttacking && isGrounded)))
         {
             jumpQueued = false;
             return;
@@ -928,7 +988,11 @@ public class PlayerController : MonoBehaviour
             return;
         }
         
-        if (isGrounded)
+        // Ground jump (including coyote time with dash window separation)
+        bool inDashJumpWindow = lastDashEndTime > 0 && Time.time - lastDashEndTime <= dashJumpWindow;
+        bool allowCoyoteTime = enableCoyoteTime && (!inDashJumpWindow || coyoteTimeDuringDashWindow);
+        bool canGroundJump = isGrounded || (allowCoyoteTime && coyoteTimeCounter > 0f && !leftGroundByJumping);
+        if (canGroundJump)
         {
             Jump(jumpForce);
             jumpsRemaining = extraJumps;
@@ -936,6 +1000,13 @@ public class PlayerController : MonoBehaviour
             airDashesUsed = 0;
             dashesRemaining = maxDashes;
             if (animator != null) SafeSetTrigger("Jump");
+            
+            // Consume coyote time if it was used
+            if (!isGrounded && enableCoyoteTime && coyoteTimeCounter > 0f)
+            {
+                coyoteTimeCounter = 0f;
+                leftGroundByJumping = true; // Prevent further coyote jumps
+            }
         }
         else if (onWall && PlayerAbilities.Instance != null && PlayerAbilities.Instance.HasWallStick)
         {
@@ -1261,10 +1332,13 @@ public class PlayerController : MonoBehaviour
         }
     }
 
-    // Debug info
+    // Debug info - DISABLED for clean play mode
     void OnGUI()
     {
         if (!Application.isPlaying) return;
+        
+        // Hide debug panel for clean play mode - only show abilities and health
+        return;
         
         GUILayout.BeginArea(new Rect(10, 10, 350, 600));
         GUILayout.Label("=== WALL LAND DEBUG ===", GUI.skin.label);
@@ -1329,6 +1403,30 @@ public class PlayerController : MonoBehaviour
         bool pressingTowardWallAnim = (facingRight && horizontalInput > 0.1f) || (!facingRight && horizontalInput < -0.1f);
         GUILayout.Label($"IsWallSticking: {isWallSticking}");
         GUILayout.Label($"PressingTowardWall: {pressingTowardWallAnim}");
+        
+        // Coyote time debug (only show when enabled)
+        if (showCoyoteTimeDebug && enableCoyoteTime)
+        {
+            GUILayout.Label("\n--- COYOTE TIME ---");
+            GUI.contentColor = coyoteTimeCounter > 0f ? Color.yellow : Color.gray;
+            GUILayout.Label($"Coyote Counter: {coyoteTimeCounter:F3}s");
+            GUI.contentColor = leftGroundByJumping ? Color.red : Color.green;
+            GUILayout.Label($"Left By Jumping: {leftGroundByJumping}");
+            
+            // Show dash window separation info
+            bool inDashWindow = lastDashEndTime > 0 && Time.time - lastDashEndTime <= dashJumpWindow;
+            GUI.contentColor = inDashWindow ? Color.red : Color.gray;
+            GUILayout.Label($"In Dash Window: {inDashWindow}");
+            GUI.contentColor = coyoteTimeDuringDashWindow ? Color.green : Color.red;
+            GUILayout.Label($"Coyote During Dash: {coyoteTimeDuringDashWindow}");
+            
+            GUI.contentColor = Color.white;
+            bool allowCoyoteTime = enableCoyoteTime && (!inDashWindow || coyoteTimeDuringDashWindow);
+            bool coyoteActive = allowCoyoteTime && coyoteTimeCounter > 0f && !leftGroundByJumping && !isGrounded;
+            GUI.contentColor = coyoteActive ? Color.green : Color.gray;
+            GUILayout.Label($"Coyote Jump Available: {coyoteActive}");
+            GUI.contentColor = Color.white;
+        }
         
         GUILayout.EndArea();
     }
@@ -1793,6 +1891,10 @@ public class PlayerController : MonoBehaviour
         dashTimer = 0f;
         dashJumpTime = 0f;
         lastDashEndTime = 0f;
+        
+        // Reset coyote time
+        coyoteTimeCounter = 0f;
+        leftGroundByJumping = false;
         
         // Reset abilities
         jumpsRemaining = extraJumps;

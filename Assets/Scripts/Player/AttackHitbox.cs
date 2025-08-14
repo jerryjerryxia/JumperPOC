@@ -226,7 +226,7 @@ public class AttackHitbox : MonoBehaviour
             }
             
             // Visual/audio feedback could go here
-            Debug.Log($"Player hit {enemy.name} for {damage} damage with {attackType}!");
+            // Debug.Log($"Player hit {enemy.name} for {damage} damage with {attackType}!");
             
             // Disable hitbox if we only want one hit per attack and we don't allow multiple enemies
             if (!canHitMultipleEnemies)
@@ -287,6 +287,6 @@ public class AttackHitbox : MonoBehaviour
     private void ApplyCurrentConfiguration()
     {
         ConfigureHitboxForAttackType();
-        Debug.Log($"Applied {attackType} configuration - Size: {damage}, Damage: {damage}");
+        // Debug.Log($"Applied {attackType} configuration - Size: {damage}, Damage: {damage}");
     }
 }

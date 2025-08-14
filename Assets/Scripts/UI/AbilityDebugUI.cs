@@ -33,6 +33,16 @@ public class AbilityDebugUI : MonoBehaviour
     
     void Start()
     {
+        // DISABLED: Don't create UI panel - use PlayerAbilities OnGUI instead
+        // Hide panel completely from scene and game view
+        if (abilityPanel != null)
+        {
+            abilityPanel.SetActive(false);
+            // Also hide from scene view by disabling the GameObject entirely
+            gameObject.SetActive(false);
+        }
+        return;
+        
         if (autoCreateButtons)
         {
             CreateAbilityButtons();
@@ -47,6 +57,9 @@ public class AbilityDebugUI : MonoBehaviour
     
     void Update()
     {
+        // DISABLED: F1 toggle functionality - use PlayerAbilities OnGUI instead
+        return;
+        
         // Toggle UI visibility using new Input System
         if (Keyboard.current != null && Keyboard.current[toggleKey].wasPressedThisFrame)
         {
@@ -171,6 +184,9 @@ public class AbilityDebugUI : MonoBehaviour
     
     void OnGUI()
     {
+        // DISABLED: Hide instruction box - use PlayerAbilities OnGUI instead
+        return;
+        
         if (!isUIVisible) return;
         
         // Show instructions
