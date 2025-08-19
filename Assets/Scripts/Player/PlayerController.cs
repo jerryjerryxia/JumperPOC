@@ -102,6 +102,7 @@ public class PlayerController : MonoBehaviour
     // Wall state sequence tracking
     private bool wasWallSticking = false;
     private bool hasEverWallStuck = false;
+    private bool wasAgainstWall = false; // Track wall contact for mid-jump compensation
     
     // Coyote time tracking
     private float coyoteTimeCounter = 0f;
@@ -402,6 +403,9 @@ public class PlayerController : MonoBehaviour
         
         // Update movement states
         UpdateMovementStates();
+        
+        // Handle mid-jump wall contact compensation (for wall stick disabled scenarios)
+        HandleMidJumpWallCompensation();
         
         // Handle movement
         HandleMovement();
@@ -1526,6 +1530,43 @@ public class PlayerController : MonoBehaviour
     }
     
     /// <summary>
+    /// Handle mid-jump wall contact compensation for consistent jump height
+    /// </summary>
+    private void HandleMidJumpWallCompensation()
+    {
+        // Only compensate if wall stick is disabled
+        if (PlayerAbilities.Instance == null || PlayerAbilities.Instance.HasWallStick)
+        {
+            wasAgainstWall = CheckIfAgainstWall();
+            return;
+        }
+        
+        bool currentlyAgainstWall = CheckIfAgainstWall();
+        bool isJumpingUp = rb.linearVelocity.y > 1f && Time.time - lastJumpTime < 0.5f;
+        
+        // Check if we just made wall contact during an upward jump
+        if (isJumpingUp && !wasAgainstWall && currentlyAgainstWall)
+        {
+            // Detect jump type based on momentum preservation period and velocity characteristics
+            bool isDashJumpActive = dashJumpTime > 0 && Time.time - dashJumpTime <= dashJumpMomentumDuration;
+            bool hasHighHorizontalVelocity = Mathf.Abs(rb.linearVelocity.x) > runSpeed * 1.5f;
+            bool likelyDashJump = isDashJumpActive || (Time.time - lastJumpTime < 0.15f && hasHighHorizontalVelocity);
+            
+            // Use appropriate base force for compensation depending on jump type
+            float baseForce = likelyDashJump ? dashJump.y : jumpForce;
+            float compensationForce = baseForce * (wallJumpCompensation - 1f);
+            
+            // Apply compensation force
+            rb.AddForce(Vector2.up * compensationForce, ForceMode2D.Impulse);
+            
+            // Debug.Log($"[JumpFix] {(likelyDashJump ? "Dash" : "Normal")} jump wall contact - applying compensation: {compensationForce:F2} (base: {baseForce:F2})");
+        }
+        
+        // Update wall contact state for next frame
+        wasAgainstWall = currentlyAgainstWall;
+    }
+    
+    /// <summary>
     /// Check if player is physically against a wall
     /// </summary>
     private bool CheckIfAgainstWall()
@@ -1653,8 +1694,9 @@ public class PlayerController : MonoBehaviour
         rb.linearVelocity = new Vector2(currentVelocity.x, 0); // Keep dash momentum, clear vertical
         rb.AddForce(new Vector2(horizontalForce, dashJump.y), ForceMode2D.Impulse);
         
-        // Start momentum preservation period
+        // Start momentum preservation period and track jump time
         dashJumpTime = Time.time;
+        lastJumpTime = Time.time; // Track for compensation system
         
         // Debug.Log($"[DashJump] Applied force: H={horizontalForce}, V={dashJump.y}, Final velocity: {rb.linearVelocity}");
         
@@ -1891,6 +1933,7 @@ public class PlayerController : MonoBehaviour
         dashTimer = 0f;
         dashJumpTime = 0f;
         lastDashEndTime = 0f;
+        wasAgainstWall = false;
         
         // Reset coyote time
         coyoteTimeCounter = 0f;

@@ -52,9 +52,9 @@ public class AddLandingBuffersToTilemap : EditorWindow
         foreach (var tilemap in tilemaps)
         {
             string name = tilemap.name.ToLower();
-            bool isPlatform = name.Contains("platform");
-            bool isWallOrFloor = name.Contains("wall") || name.Contains("floor");
-            if (!(isPlatform || isWallOrFloor))
+            // Check if this tilemap should have buffers (platforms, walls, or floors)
+            bool shouldAddBuffers = name.Contains("platform") || name.Contains("wall") || name.Contains("floor");
+            if (!shouldAddBuffers)
                 continue;
 
             BoundsInt bounds = tilemap.cellBounds;
@@ -65,34 +65,20 @@ public class AddLandingBuffersToTilemap : EditorWindow
                     Vector3Int pos = new Vector3Int(x, y, 0);
                     if (!tilemap.HasTile(pos)) continue;
 
-                    // For platforms: add buffer to any left/right edge
-                    if (isPlatform)
+                    // Only add buffers to topmost tiles (tiles with no tile above them)
+                    if (tilemap.HasTile(pos + Vector3Int.up)) continue; // Skip if not topmost
+                    
+                    // Check left edge
+                    if (!tilemap.HasTile(pos + Vector3Int.left))
                     {
-                        if (!tilemap.HasTile(pos + Vector3Int.left))
-                        {
-                            CreateBuffer(tilemap, pos, bufferLayer, -1, bufferWidth, bufferHeight);
-                            count++;
-                        }
-                        if (!tilemap.HasTile(pos + Vector3Int.right))
-                        {
-                            CreateBuffer(tilemap, pos, bufferLayer, 1, bufferWidth, bufferHeight);
-                            count++;
-                        }
+                        CreateBuffer(tilemap, pos, bufferLayer, -1, bufferWidth, bufferHeight);
+                        count++;
                     }
-                    // For walls/floors: only add buffer to left/right edge of topmost tile in column
-                    else if (isWallOrFloor)
+                    // Check right edge
+                    if (!tilemap.HasTile(pos + Vector3Int.right))
                     {
-                        if (tilemap.HasTile(pos + Vector3Int.up)) continue; // Not topmost
-                        if (!tilemap.HasTile(pos + Vector3Int.left))
-                        {
-                            CreateBuffer(tilemap, pos, bufferLayer, -1, bufferWidth, bufferHeight);
-                            count++;
-                        }
-                        if (!tilemap.HasTile(pos + Vector3Int.right))
-                        {
-                            CreateBuffer(tilemap, pos, bufferLayer, 1, bufferWidth, bufferHeight);
-                            count++;
-                        }
+                        CreateBuffer(tilemap, pos, bufferLayer, 1, bufferWidth, bufferHeight);
+                        count++;
                     }
                 }
             }
