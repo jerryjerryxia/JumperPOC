@@ -289,17 +289,10 @@ public class SimpleEnemy : MonoBehaviour, IEnemyBase
             // Check if in attack range - USE EXACT SAME LOGIC AS WORKING SYSTEM
             if (distanceToPlayer <= attackRange)
             {
-                // Within attack range - stop moving and face player (with anti-flicker logic)
+                // Within attack range - stop moving and face player
                 rb.linearVelocity = new Vector2(0, rb.linearVelocity.y);
-                
-                // Only update facing if threshold is met (prevents flickering when player is above)
-                if (ShouldUpdateFacing(directionToPlayer, ATTACK_FACING_THRESHOLD))
-                {
-                    facingRight = directionToPlayer.x > 0;
-                    UpdateSpriteFlip();
-                    lastFacingChangeTime = Time.time;
-                }
-                
+                facingRight = directionToPlayer.x > 0;
+                UpdateSpriteFlip();
                 moveDirection = 0;
                 
                 if (CanAttack())
@@ -323,14 +316,8 @@ public class SimpleEnemy : MonoBehaviour, IEnemyBase
             
             // Safe to move toward player - only update facing when we can actually move
             moveDirection = chaseDirection;
-            
-            // Only update facing if threshold is met (prevents flickering during chase)
-            if (ShouldUpdateFacing(directionToPlayer, CHASE_FACING_THRESHOLD))
-            {
-                facingRight = directionToPlayer.x > 0;
-                UpdateSpriteFlip();
-                lastFacingChangeTime = Time.time;
-            }
+            facingRight = directionToPlayer.x > 0;
+            UpdateSpriteFlip();
         }
         
         private bool CanMoveInDirection(int direction)
@@ -489,26 +476,6 @@ public class SimpleEnemy : MonoBehaviour, IEnemyBase
             }
         }
         
-        private bool ShouldUpdateFacing(Vector2 directionToPlayer, float threshold)
-        {
-            // Don't change facing too frequently
-            if (Time.time - lastFacingChangeTime < FACING_CHANGE_COOLDOWN)
-                return false;
-                
-            float horizontalOffset = directionToPlayer.x;
-            
-            // Only change facing if player is significantly on the other side
-            if (facingRight && horizontalOffset < -threshold)
-            {
-                return true; // Should face left
-            }
-            else if (!facingRight && horizontalOffset > threshold)
-            {
-                return true; // Should face right
-            }
-            
-            return false; // Stay with current facing
-        }
         
         #endregion
         
