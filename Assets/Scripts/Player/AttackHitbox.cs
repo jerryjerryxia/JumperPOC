@@ -209,13 +209,38 @@ public class AttackHitbox : MonoBehaviour
         // Prevent multiple hits on same enemy per attack
         if (oneHitPerAttack && hitEnemies.Contains(other.gameObject)) return;
         
-        // Try to deal damage
+        // Try to deal damage - support both old and new enemy systems
+        bool hitEnemy = false;
+        
+        // Try old enemy system first (EnemyBase)
         EnemyBase enemy = other.GetComponent<EnemyBase>();
         if (enemy != null)
         {
-            // Deal damage
+            // Deal damage using old system
             enemy.TakeDamage(damage);
+            hitEnemy = true;
             
+            // Visual/audio feedback could go here
+            // Debug.Log($"Player hit {enemy.name} for {damage} damage with {attackType}!");
+        }
+        else
+        {
+            // Try new enemy system (IEnemyBase interface)
+            IEnemyBase enemyInterface = other.GetComponent<IEnemyBase>();
+            if (enemyInterface != null)
+            {
+                // Deal damage using new interface system
+                enemyInterface.TakeDamage(damage);
+                hitEnemy = true;
+                
+                // Visual/audio feedback could go here
+                // Debug.Log($"Player hit {other.name} for {damage} damage with {attackType}!");
+            }
+        }
+        
+        // Apply common hit effects if we hit any enemy
+        if (hitEnemy)
+        {
             // Apply knockback
             ApplyKnockback(other.gameObject);
             
@@ -224,9 +249,6 @@ public class AttackHitbox : MonoBehaviour
             {
                 hitEnemies.Add(other.gameObject);
             }
-            
-            // Visual/audio feedback could go here
-            // Debug.Log($"Player hit {enemy.name} for {damage} damage with {attackType}!");
             
             // Disable hitbox if we only want one hit per attack and we don't allow multiple enemies
             if (!canHitMultipleEnemies)

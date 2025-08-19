@@ -24,8 +24,10 @@ namespace UI
         [SerializeField] private Vector2 healthBarSize = new Vector2(100, 20);
         
         private EnemyBase enemy;
+        private IEnemyBase enemyInterface; // Support for new enemy system
         private Transform enemyTransform;
         private SpriteRenderer enemySprite;
+        // private bool usingInterface = false; // Track which system we're using (removed - was unused)
         private Camera mainCamera;
         private float hideTimer;
         private bool isVisible;
@@ -59,22 +61,32 @@ namespace UI
                 healthBar = GetComponentInChildren<HealthBarUI>();
             }
             
-            if (enemy == null)
+            if (enemy == null && enemyInterface == null)
             {
+                // Try old system first (EnemyBase)
                 enemy = GetComponentInParent<EnemyBase>();
                 if (enemy != null)
                 {
                     Initialize(enemy);
                 }
-                else if (enemySprite == null)
+                else
                 {
-                    // Try to find sprite renderer in parent if enemy base wasn't found yet
-                    enemySprite = GetComponentInParent<SpriteRenderer>();
-                    if (enemyTransform == null && enemySprite != null)
+                    // Try new system (IEnemyBase interface)
+                    var enemyInterfaceComponent = GetComponentInParent<IEnemyBase>();
+                    if (enemyInterfaceComponent != null)
                     {
-                        enemyTransform = enemySprite.transform;
+                        InitializeFromInterface(enemyInterfaceComponent);
                     }
-                    CalculateDynamicOffset();
+                    else if (enemySprite == null)
+                    {
+                        // Fallback: Try to find sprite renderer in parent if no enemy found yet
+                        enemySprite = GetComponentInParent<SpriteRenderer>();
+                        if (enemyTransform == null && enemySprite != null)
+                        {
+                            enemyTransform = enemySprite.transform;
+                        }
+                        CalculateDynamicOffset();
+                    }
                 }
             }
             
@@ -104,6 +116,7 @@ namespace UI
             if (enemyBase == null) return;
             
             enemy = enemyBase;
+            enemyInterface = null;
             enemyTransform = enemy.transform;
             enemySprite = enemy.GetComponent<SpriteRenderer>();
             
@@ -130,12 +143,50 @@ namespace UI
             CalculateDynamicOffset();
         }
         
+        public void InitializeFromInterface(IEnemyBase enemyInterfaceComponent)
+        {
+            if (enemyInterfaceComponent == null) return;
+            
+            enemy = null;
+            enemyInterface = enemyInterfaceComponent;
+            
+            // Get transform from the MonoBehaviour that implements the interface
+            if (enemyInterfaceComponent is MonoBehaviour monoBehaviour)
+            {
+                enemyTransform = monoBehaviour.transform;
+                enemySprite = monoBehaviour.GetComponent<SpriteRenderer>();
+            }
+            
+            if (enemyInterface != null && healthBar != null)
+            {
+                // Subscribe to interface events
+                enemyInterface.OnHealthChanged -= UpdateHealthBar;
+                enemyInterface.OnDamageTaken -= ShowHealthBar;
+                enemyInterface.OnHealthChanged += UpdateHealthBar;
+                enemyInterface.OnDamageTaken += ShowHealthBar;
+                
+                float maxHealth = enemyInterface.GetMaxHealth();
+                float currentHealth = enemyInterface.GetCurrentHealth();
+                
+                healthBar.SetMaxHealth(maxHealth);
+                healthBar.SetHealth(currentHealth);
+                
+                if (showOnStart || alwaysVisible)
+                {
+                    healthBar.Show();
+                    isVisible = true;
+                }
+            }
+            
+            CalculateDynamicOffset();
+        }
+        
         private void Update()
         {
             if (!Application.isPlaying)
             {
                 // In editor mode
-                if (enemy == null && enemyTransform == null)
+                if (enemy == null && enemyInterface == null && enemyTransform == null)
                 {
                     var parentEnemy = GetComponentInParent<EnemyBase>();
                     if (parentEnemy != null)
@@ -143,6 +194,17 @@ namespace UI
                         enemyTransform = parentEnemy.transform;
                         enemySprite = parentEnemy.GetComponent<SpriteRenderer>();
                         CalculateDynamicOffset();
+                    }
+                    else
+                    {
+                        // Try interface approach in editor
+                        var parentEnemyInterface = GetComponentInParent<IEnemyBase>();
+                        if (parentEnemyInterface != null && parentEnemyInterface is MonoBehaviour mb)
+                        {
+                            enemyTransform = mb.transform;
+                            enemySprite = mb.GetComponent<SpriteRenderer>();
+                            CalculateDynamicOffset();
+                        }
                     }
                 }
                 
@@ -156,7 +218,7 @@ namespace UI
                 return; // Skip the rest in editor mode
             }
             
-            if (Application.isPlaying && enemy == null)
+            if (Application.isPlaying && enemy == null && enemyInterface == null)
             {
                 Destroy(gameObject);
                 return;
@@ -191,6 +253,12 @@ namespace UI
             {
                 enemy.OnHealthChanged -= UpdateHealthBar;
                 enemy.OnDamageTaken -= ShowHealthBar;
+            }
+            
+            if (enemyInterface != null)
+            {
+                enemyInterface.OnHealthChanged -= UpdateHealthBar;
+                enemyInterface.OnDamageTaken -= ShowHealthBar;
             }
         }
         
@@ -299,6 +367,16 @@ namespace UI
                     {
                         enemyTransform = parentEnemy.transform;
                         enemySprite = parentEnemy.GetComponent<SpriteRenderer>();
+                    }
+                    else
+                    {
+                        // Try interface approach in editor
+                        var parentEnemyInterface = GetComponentInParent<IEnemyBase>();
+                        if (parentEnemyInterface != null && parentEnemyInterface is MonoBehaviour mb)
+                        {
+                            enemyTransform = mb.transform;
+                            enemySprite = mb.GetComponent<SpriteRenderer>();
+                        }
                     }
                 }
                 

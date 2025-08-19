@@ -330,9 +330,9 @@ public class PlayerInteractionDetector : MonoBehaviour
     {
         if (!Application.isPlaying) return;
         
-        // Hide debug panel for clean play mode - only show abilities and health
-        return;
-        
+        // Debug panel is currently disabled for clean play mode
+        // Uncomment below to show interaction debugging
+        /*
         GUILayout.BeginArea(new Rect(10, 220, 300, 150));
         GUILayout.Label("Interaction Debug:", GUI.skin.label);
         GUILayout.Label($"Ledge Detected: {ledgeDetected}");
@@ -341,6 +341,7 @@ public class PlayerInteractionDetector : MonoBehaviour
         GUILayout.Label($"Ledge Position: {ledgePosition}");
         GUILayout.Label($"Facing Right: {facingRight}");
         GUILayout.EndArea();
+        */
     }
 #endif
 } 

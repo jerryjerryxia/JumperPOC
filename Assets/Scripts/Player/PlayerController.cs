@@ -139,8 +139,8 @@ public class PlayerController : MonoBehaviour
     // Basic attack state for compatibility (when no PlayerCombat)
     private bool isAttacking = false;
     
-    // Jump compensation state
-    private bool isCompensatingJump = false;
+    // Jump compensation state (removed - was unused)
+    // private bool isCompensatingJump = false;
     
     // Public properties for external access
     public bool IsGrounded => isGrounded;
@@ -1341,9 +1341,9 @@ public class PlayerController : MonoBehaviour
     {
         if (!Application.isPlaying) return;
         
-        // Hide debug panel for clean play mode - only show abilities and health
-        return;
-        
+        // Debug panel is currently disabled for clean play mode
+        // Uncomment below to show wall debug information
+        /*
         GUILayout.BeginArea(new Rect(10, 10, 350, 600));
         GUILayout.Label("=== WALL LAND DEBUG ===", GUI.skin.label);
         
@@ -1433,6 +1433,7 @@ public class PlayerController : MonoBehaviour
         }
         
         GUILayout.EndArea();
+        */
     }
 
     private bool CheckClimbingAssistanceZone()

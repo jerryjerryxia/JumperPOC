@@ -211,9 +211,9 @@ public class InputManager : MonoBehaviour
     {
         if (!enableInputDebugging) return;
         
-        // Hide debug panel for clean play mode - only show abilities and health
-        return;
-        
+        // Debug panel is currently disabled for clean play mode
+        // Uncomment below to show input debugging
+        /*
         GUILayout.BeginArea(new Rect(Screen.width - 200, 10, 190, 150));
         GUILayout.Label("Input Debug:", GUI.skin.label);
         GUILayout.Label($"Move: {MoveInput}");
@@ -222,6 +222,7 @@ public class InputManager : MonoBehaviour
         GUILayout.Label($"Horizontal: {GetHorizontalInput():F2}");
         GUILayout.Label($"Vertical: {GetVerticalInput():F2}");
         GUILayout.EndArea();
+        */
     }
     #endif
 }

@@ -228,9 +228,9 @@ public class GameManager : MonoBehaviour
     {
         if (!enableDebugMode) return;
         
-        // Hide debug panel for clean play mode - only show abilities and health
-        return;
-        
+        // Debug panel is currently disabled for clean play mode
+        // Uncomment below to show game manager debugging
+        /*
         GUILayout.BeginArea(new Rect(10, Screen.height - 120, 200, 110));
         GUILayout.Label("Game Manager Debug:", GUI.skin.label);
         GUILayout.Label($"State: {currentState}");
@@ -246,6 +246,7 @@ public class GameManager : MonoBehaviour
         }
         
         GUILayout.EndArea();
+        */
     }
     #endif
 }

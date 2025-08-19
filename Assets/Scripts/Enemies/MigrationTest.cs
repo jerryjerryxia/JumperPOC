@@ -26,11 +26,11 @@ namespace Enemies
             Debug.Log("=== SimpleEnemy Migration Test ===");
             
             // Find all SimpleEnemy instances
-            SimpleEnemy[] simpleEnemies = FindObjectsOfType<SimpleEnemy>();
+            SimpleEnemy[] simpleEnemies = FindObjectsByType<SimpleEnemy>(FindObjectsSortMode.None);
             Debug.Log($"Found {simpleEnemies.Length} SimpleEnemy instances");
             
             // Find any remaining Enemy1Controller instances
-            Enemy1Controller[] oldEnemies = FindObjectsOfType<Enemy1Controller>();
+            Enemy1Controller[] oldEnemies = FindObjectsByType<Enemy1Controller>(FindObjectsSortMode.None);
             
             if (oldEnemies.Length > 0)
             {
