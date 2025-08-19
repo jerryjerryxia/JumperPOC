@@ -72,6 +72,10 @@ public class SimpleEnemy : MonoBehaviour, IEnemyBase
         private float playerLostTime; // When we last saw the player
         private bool playerLost = false; // Are we in the 5s delay period?
         
+        // Anti-flickering: Dead zone for floating-point precision when vertically aligned
+        private const float MINIMUM_DIRECTION_THRESHOLD = 0.1f;
+        
+        
         void Awake()
         {
             // Get components
@@ -86,6 +90,7 @@ public class SimpleEnemy : MonoBehaviour, IEnemyBase
             
             // Initialize movement
             GenerateRandomEdgeOffset();
+            
             
             // Initialize combat
             currentAttackCooldown = UnityEngine.Random.Range(attackCooldownMin, attackCooldownMax);
@@ -291,8 +296,13 @@ public class SimpleEnemy : MonoBehaviour, IEnemyBase
             {
                 // Within attack range - stop moving and face player
                 rb.linearVelocity = new Vector2(0, rb.linearVelocity.y);
-                facingRight = directionToPlayer.x > 0;
-                UpdateSpriteFlip();
+                
+                // Only update facing if horizontal direction is significant (prevents floating-point flickering)
+                if (Mathf.Abs(directionToPlayer.x) > MINIMUM_DIRECTION_THRESHOLD)
+                {
+                    facingRight = directionToPlayer.x > 0;
+                    UpdateSpriteFlip();
+                }
                 moveDirection = 0;
                 
                 if (CanAttack())
@@ -314,10 +324,14 @@ public class SimpleEnemy : MonoBehaviour, IEnemyBase
                 return;
             }
             
-            // Safe to move toward player - only update facing when we can actually move
+            // Safe to move toward player - use dead zone for facing to prevent flickering
             moveDirection = chaseDirection;
-            facingRight = directionToPlayer.x > 0;
-            UpdateSpriteFlip();
+            // Only update facing if horizontal direction is significant (prevents floating-point flickering)
+            if (Mathf.Abs(directionToPlayer.x) > MINIMUM_DIRECTION_THRESHOLD)
+            {
+                facingRight = directionToPlayer.x > 0;
+                UpdateSpriteFlip();
+            }
         }
         
         private bool CanMoveInDirection(int direction)
@@ -475,6 +489,7 @@ public class SimpleEnemy : MonoBehaviour, IEnemyBase
                 spriteRenderer.flipX = !facingRight;
             }
         }
+        
         
         
         #endregion
