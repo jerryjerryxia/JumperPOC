@@ -2753,44 +2753,28 @@ MonoBehaviour:
   m_GameObject: {fileID: 412763964}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: d6f3221df0cbc5a4a8b0057564563b21, type: 3}
+  m_Script: {fileID: 11500000, guid: 945a7057b03f41a4b9a45fc83d83c159, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Enemy1Controller
-  moveSpeed: 1
+  m_EditorClassIdentifier: Assembly-CSharp::SimpleEnemy
+  patrolSpeed: 1
+  chaseSpeed: 2
   patrolWaitTime: 2
-  wallCheckDistance: 0.5
-  groundLayer:
-    serializedVersion: 2
-    m_Bits: 64
-  wallLayer:
-    serializedVersion: 2
-    m_Bits: 64
-  groundCheckDepth: 0.2
-  patrolEdgeCheckDepth: 0.5
-  chaseValidationDepth: 5
-  showGroundDetection: 1
-  maxHealth: 100
-  attackDamage: 10
-  attackRange: 0.5
-  attackCooldownMin: 3
-  attackCooldownMax: 5
-  levelTolerance: 0.1
-  edgeDetectionOffset: {x: 0, y: -0.1}
-  playerSlowdownFactor: 0.3
+  detectionRange: 5
+  chaseExitDelay: 5
   playerLayer:
     serializedVersion: 2
     m_Bits: 1
-  playerDetectionRange: 5
-  chaseSpeed: 2
-  directionChangeDelay: 0.2
-  chaseExitDelay: 5
-  debugPatrolTargets: 0
+  attackRange: 0.5
+  attackCooldownMin: 3
+  attackCooldownMax: 5
+  attackDamage: 10
+  edgeCheckDistance: 1
   minEdgeOffset: 0.1
   maxEdgeOffset: 0.8
-  requireFacingForDetection: 1
-  detectionArcAngle: 90
-  useDirectionalAttack: 1
-  verticalDetectionTolerance: 0.1
+  groundLayer:
+    serializedVersion: 2
+    m_Bits: 64
+  maxHealth: 100
 --- !u!61 &412763967
 BoxCollider2D:
   m_ObjectHideFlags: 0
@@ -13797,44 +13781,28 @@ MonoBehaviour:
   m_GameObject: {fileID: 748527876}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: d6f3221df0cbc5a4a8b0057564563b21, type: 3}
+  m_Script: {fileID: 11500000, guid: 945a7057b03f41a4b9a45fc83d83c159, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Enemy1Controller
-  moveSpeed: 1
+  m_EditorClassIdentifier: Assembly-CSharp::SimpleEnemy
+  patrolSpeed: 1
+  chaseSpeed: 2
   patrolWaitTime: 2
-  wallCheckDistance: 0.5
-  groundLayer:
-    serializedVersion: 2
-    m_Bits: 0
-  wallLayer:
-    serializedVersion: 2
-    m_Bits: 64
-  groundCheckDepth: 0.2
-  patrolEdgeCheckDepth: 0.5
-  chaseValidationDepth: 5
-  showGroundDetection: 1
-  maxHealth: 100
-  attackDamage: 10
-  attackRange: 0.5
-  attackCooldownMin: 3
-  attackCooldownMax: 5
-  levelTolerance: 0.1
-  edgeDetectionOffset: {x: 0, y: -0.1}
-  playerSlowdownFactor: 0.3
+  detectionRange: 5
+  chaseExitDelay: 5
   playerLayer:
     serializedVersion: 2
     m_Bits: 1
-  playerDetectionRange: 5
-  chaseSpeed: 2
-  directionChangeDelay: 0.2
-  chaseExitDelay: 5
-  debugPatrolTargets: 0
+  attackRange: 0.5
+  attackCooldownMin: 3
+  attackCooldownMax: 5
+  attackDamage: 10
+  edgeCheckDistance: 1
   minEdgeOffset: 0.1
   maxEdgeOffset: 0.8
-  requireFacingForDetection: 1
-  detectionArcAngle: 90
-  useDirectionalAttack: 1
-  verticalDetectionTolerance: 0.1
+  groundLayer:
+    serializedVersion: 2
+    m_Bits: 64
+  maxHealth: 100
 --- !u!61 &748527879
 BoxCollider2D:
   m_ObjectHideFlags: 0
@@ -14270,44 +14238,28 @@ MonoBehaviour:
   m_GameObject: {fileID: 806046873}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: d6f3221df0cbc5a4a8b0057564563b21, type: 3}
+  m_Script: {fileID: 11500000, guid: 945a7057b03f41a4b9a45fc83d83c159, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Enemy1Controller
-  moveSpeed: 1
+  m_EditorClassIdentifier: Assembly-CSharp::SimpleEnemy
+  patrolSpeed: 1
+  chaseSpeed: 2
   patrolWaitTime: 2
-  wallCheckDistance: 0.5
-  groundLayer:
-    serializedVersion: 2
-    m_Bits: 64
-  wallLayer:
-    serializedVersion: 2
-    m_Bits: 64
-  groundCheckDepth: 0.2
-  patrolEdgeCheckDepth: 0.5
-  chaseValidationDepth: 5
-  showGroundDetection: 1
-  maxHealth: 100
-  attackDamage: 10
-  attackRange: 0.5
-  attackCooldownMin: 3
-  attackCooldownMax: 5
-  levelTolerance: 0.1
-  edgeDetectionOffset: {x: 0, y: -0.1}
-  playerSlowdownFactor: 0.3
+  detectionRange: 5
+  chaseExitDelay: 5
   playerLayer:
     serializedVersion: 2
     m_Bits: 1
-  playerDetectionRange: 5
-  chaseSpeed: 2
-  directionChangeDelay: 0.2
-  chaseExitDelay: 5
-  debugPatrolTargets: 0
+  attackRange: 0.5
+  attackCooldownMin: 3
+  attackCooldownMax: 5
+  attackDamage: 10
+  edgeCheckDistance: 1
   minEdgeOffset: 0.1
   maxEdgeOffset: 0.8
-  requireFacingForDetection: 1
-  detectionArcAngle: 90
-  useDirectionalAttack: 1
-  verticalDetectionTolerance: 0.1
+  groundLayer:
+    serializedVersion: 2
+    m_Bits: 64
+  maxHealth: 100
 --- !u!61 &806046876
 BoxCollider2D:
   m_ObjectHideFlags: 0
@@ -20671,46 +20623,30 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1486204339}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: d6f3221df0cbc5a4a8b0057564563b21, type: 3}
+  m_Script: {fileID: 11500000, guid: 945a7057b03f41a4b9a45fc83d83c159, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Enemy1Controller
-  moveSpeed: 1
+  m_EditorClassIdentifier: Assembly-CSharp::SimpleEnemy
+  patrolSpeed: 1
+  chaseSpeed: 2
   patrolWaitTime: 2
-  wallCheckDistance: 0.5
-  groundLayer:
-    serializedVersion: 2
-    m_Bits: 64
-  wallLayer:
-    serializedVersion: 2
-    m_Bits: 64
-  groundCheckDepth: 0.2
-  patrolEdgeCheckDepth: 0.2
-  chaseValidationDepth: 0.5
-  showGroundDetection: 1
-  maxHealth: 100
-  attackDamage: 10
-  attackRange: 0.5
-  attackCooldownMin: 3
-  attackCooldownMax: 5
-  levelTolerance: 0.01
-  edgeDetectionOffset: {x: 0, y: -0.1}
-  playerSlowdownFactor: 0.3
+  detectionRange: 5
+  chaseExitDelay: 5
   playerLayer:
     serializedVersion: 2
     m_Bits: 1
-  playerDetectionRange: 5
-  chaseSpeed: 2
-  directionChangeDelay: 0.2
-  chaseExitDelay: 5
-  debugPatrolTargets: 1
+  attackRange: 0.5
+  attackCooldownMin: 3
+  attackCooldownMax: 5
+  attackDamage: 10
+  edgeCheckDistance: 1
   minEdgeOffset: 0.1
   maxEdgeOffset: 0.8
-  requireFacingForDetection: 1
-  detectionArcAngle: 90
-  useDirectionalAttack: 1
-  verticalDetectionTolerance: 0.1
+  groundLayer:
+    serializedVersion: 2
+    m_Bits: 64
+  maxHealth: 100
 --- !u!114 &1486204346
 MonoBehaviour:
   m_ObjectHideFlags: 0

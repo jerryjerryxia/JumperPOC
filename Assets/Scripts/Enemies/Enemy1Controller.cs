@@ -22,7 +22,7 @@ namespace Enemies
     [SerializeField] private bool requireFacingForDetection = true; // Only detect player when facing them
     [SerializeField] private float detectionArcAngle = 90f; // Detection arc angle in patrol mode (90 = front quarter)
     [SerializeField] private bool useDirectionalAttack = true; // Use directional attack in patrol mode
-    [SerializeField] private float heightTolerance = 0.1f; // How far below enemy level player can be and still be detected
+    [SerializeField] private float verticalDetectionTolerance = 0.1f; // How far below enemy level player can be and still be detected
     
     // Detection
     private GameObject player;
@@ -50,6 +50,9 @@ namespace Enemies
     protected override void Start()
     {
         base.Start();
+        
+        // Debug the layer configuration
+        // Debug.Log($"[{gameObject.name}] LAYER CONFIG - playerLayer value: {playerLayer.value}, should be: {1 << 0} (layer 0)");
         
         // Ensure we start in patrol mode
         isPatrolling = true;
@@ -83,6 +86,25 @@ namespace Enemies
         }
     }
     
+    protected override void CheckPlatformBoundaries()
+    {
+        if (isChasing)
+        {
+            // During chase, use aggressive edge detection (0.1f from edge)
+            float originalOffset = currentEdgeOffset;
+            currentEdgeOffset = 0.1f; // Hard-coded aggressive chase distance
+            
+            base.CheckPlatformBoundaries();
+            
+            currentEdgeOffset = originalOffset; // Restore original for patrol
+        }
+        else
+        {
+            // During patrol, use normal randomized behavior to preserve patrol cycle
+            base.CheckPlatformBoundaries();
+        }
+    }
+
     protected override void Update()
     {
         if (isDead) return;
@@ -151,7 +173,7 @@ namespace Enemies
                     // Enemy not facing player - no detection (patrol mode only)
                     if (isPlayerDetected)
                     {
-                        // Debug.Log($"{gameObject.name}: Player behind enemy in patrol mode. Stopping detection. Was chasing: {isChasing}");
+                        // Debug.Log($"[{gameObject.name}] LOST PLAYER - Behind enemy (facing={(isFacingRight ? "RIGHT" : "LEFT")}, was chasing={isChasing})");
                         isPlayerDetected = false;
                         player = null;
                         
@@ -178,7 +200,7 @@ namespace Enemies
                 // Player is detected but not on our platform - don't chase
                 if (isPlayerDetected)
                 {
-                    // Debug.Log($"{gameObject.name}: Player no longer on same platform. Was chasing: {isChasing}");
+                    // Debug.Log($"[{gameObject.name}] LOST PLAYER - Not on same platform");
                     isPlayerDetected = false;
                     player = null;
                     
@@ -202,7 +224,7 @@ namespace Enemies
                 // Player just entered detection range and is on our platform
                 player = detectedPlayer;
                 isPlayerDetected = true;
-                // Debug.Log($"{gameObject.name}: Player detected and on same platform! Starting chase immediately.");
+                // Debug.Log($"[{gameObject.name}] PLAYER DETECTED - Starting chase");
                 OnPlayerDetected(player);
                 
                 // Cancel any pending chase exit
@@ -268,7 +290,7 @@ namespace Enemies
                 if (isChasing && !waitingToExitChase)
                 {
                     // Start delayed chase exit timer
-                    // Debug.Log($"{gameObject.name}: Player out of detection range! Starting {chaseExitDelay}s timer before returning to patrol.");
+                    // Debug.Log($"[{gameObject.name}] LOST PLAYER - Out of range, starting {chaseExitDelay}s exit timer");
                     waitingToExitChase = true;
                     chaseExitTimer = chaseExitDelay;
                 }
@@ -411,7 +433,7 @@ namespace Enemies
     
     private void StopChasing()
     {
-        // Debug.Log($"{gameObject.name}: StopChasing called! Before - isChasing={isChasing}, cooldown={currentAttackCooldown:F2}");
+        // Debug.Log($"[{gameObject.name}] STOP CHASING - Returning to patrol");
         
         isChasing = false;
         isPatrolling = true;
@@ -429,7 +451,6 @@ namespace Enemies
         isWaiting = true;
         waitTimer = patrolWaitTime * 0.5f; // Shorter wait when transitioning back from chase
         
-        // Debug.Log($"{gameObject.name}: StopChasing complete! After - isChasing={isChasing}, new cooldown={currentAttackCooldown:F2}");
     }
     
     protected override void OnPlayerDetected(GameObject player)
@@ -625,7 +646,7 @@ namespace Enemies
             Vector3 directionToPlayer = collider.transform.position - transform.position;
             
             // NORTHERN HEMISPHERE CHECK: Only detect players at same level or above
-            if (directionToPlayer.y < -heightTolerance) // Player is significantly below enemy
+            if (directionToPlayer.y < -verticalDetectionTolerance) // Player is significantly below enemy
             {
                 continue; // Skip this player - they're on a lower platform
             }
@@ -647,12 +668,30 @@ namespace Enemies
         // Get all colliders in detection range
         Collider2D[] colliders = Physics2D.OverlapCircleAll(transform.position, playerDetectionRange, playerLayer);
         
+        // Debug when we suddenly lose all colliders
+        if (colliders.Length == 0 && Time.time % 1.0f < 0.1f) // Log once per second when no colliders
+        {
+            // Find the player manually to debug
+            GameObject manualPlayer = GameObject.FindWithTag("Player");
+            if (manualPlayer != null)
+            {
+                float distance = Vector2.Distance(transform.position, manualPlayer.transform.position);
+                int actualPlayerLayer = manualPlayer.layer;
+                // Debug.Log($"[{gameObject.name}] DETECTION MISMATCH - Player found at distance {distance:F2}, Player layer: {actualPlayerLayer}, Searching layer MASK: {playerLayer.value}, Searching for layers: {string.Join(",", GetLayersFromMask(playerLayer))}");
+            }
+            else
+            {
+                // Debug.Log($"[{gameObject.name}] NO PLAYER OBJECT FOUND IN SCENE");
+            }
+        }
+        
+        
         foreach (Collider2D collider in colliders)
         {
             Vector3 directionToPlayer = collider.transform.position - transform.position;
             
             // NORTHERN HEMISPHERE CHECK: Only detect players at same level or above
-            if (directionToPlayer.y < -heightTolerance) // Player is significantly below enemy
+            if (directionToPlayer.y < -verticalDetectionTolerance) // Player is significantly below enemy
             {
                 continue; // Skip this player - they're on a lower platform
             }
@@ -676,6 +715,19 @@ namespace Enemies
         return null; // No player found in northern hemisphere
     }
     
+    private string[] GetLayersFromMask(LayerMask mask)
+    {
+        var layers = new System.Collections.Generic.List<string>();
+        for (int i = 0; i < 32; i++)
+        {
+            if ((mask.value & (1 << i)) != 0)
+            {
+                layers.Add(i.ToString());
+            }
+        }
+        return layers.ToArray();
+    }
+    
     private void DrawNorthernHemisphereSphere(Vector3 center, float radius)
     {
         // Draw upper semicircle (northern hemisphere)
@@ -697,7 +749,7 @@ namespace Enemies
             );
             
             // Only draw if both points are in northern hemisphere
-            if (point1.y >= center.y - heightTolerance && point2.y >= center.y - heightTolerance)
+            if (point1.y >= center.y - verticalDetectionTolerance && point2.y >= center.y - verticalDetectionTolerance)
             {
                 Gizmos.DrawLine(point1, point2);
             }
@@ -705,8 +757,8 @@ namespace Enemies
         
         // Draw horizontal line at the height tolerance level
         Gizmos.color = new Color(1, 1, 1, 0.5f); // White line for height boundary
-        Vector3 leftBoundary = center + Vector3.left * radius + Vector3.down * heightTolerance;
-        Vector3 rightBoundary = center + Vector3.right * radius + Vector3.down * heightTolerance;
+        Vector3 leftBoundary = center + Vector3.left * radius + Vector3.down * verticalDetectionTolerance;
+        Vector3 rightBoundary = center + Vector3.right * radius + Vector3.down * verticalDetectionTolerance;
         Gizmos.DrawLine(leftBoundary, rightBoundary);
     }
     
@@ -717,7 +769,7 @@ namespace Enemies
         Vector3 directionToPlayer = playerPosition - transform.position;
         
         // NORTHERN HEMISPHERE CHECK: Don't attack players below
-        if (directionToPlayer.y < -heightTolerance)
+        if (directionToPlayer.y < -verticalDetectionTolerance)
         {
             return false; // Player is on a lower platform - can't attack
         }
@@ -769,8 +821,8 @@ namespace Enemies
                     0
                 );
                 
-                // Only draw if point is in northern hemisphere (y >= -heightTolerance)
-                if (point1.y >= position.y - heightTolerance)
+                // Only draw if point is in northern hemisphere (y >= -verticalDetectionTolerance)
+                if (point1.y >= position.y - verticalDetectionTolerance)
                 {
                     float nextAngle = (i + 10f) * Mathf.Deg2Rad + (isFacingRight ? 0 : Mathf.PI);
                     Vector3 point2 = position + new Vector3(
@@ -779,7 +831,7 @@ namespace Enemies
                         0
                     );
                     
-                    if (point2.y >= position.y - heightTolerance)
+                    if (point2.y >= position.y - verticalDetectionTolerance)
                     {
                         Gizmos.DrawLine(point1, point2);
                     }
@@ -829,7 +881,7 @@ namespace Enemies
                 );
                 
                 // Only draw if point is in northern hemisphere
-                if (point1.y >= position.y - heightTolerance)
+                if (point1.y >= position.y - verticalDetectionTolerance)
                 {
                     float nextAngle = (i + 15f) * Mathf.Deg2Rad + (isFacingRight ? 0 : Mathf.PI);
                     Vector3 point2 = position + new Vector3(
@@ -838,7 +890,7 @@ namespace Enemies
                         0
                     );
                     
-                    if (point2.y >= position.y - heightTolerance)
+                    if (point2.y >= position.y - verticalDetectionTolerance)
                     {
                         Gizmos.DrawLine(point1, point2);
                     }
@@ -861,11 +913,11 @@ namespace Enemies
             );
             
             // Only draw boundary lines if they're in northern hemisphere
-            if (leftPoint.y >= position.y - heightTolerance)
+            if (leftPoint.y >= position.y - verticalDetectionTolerance)
             {
                 Gizmos.DrawLine(position, leftPoint);
             }
-            if (rightPoint.y >= position.y - heightTolerance)
+            if (rightPoint.y >= position.y - verticalDetectionTolerance)
             {
                 Gizmos.DrawLine(position, rightPoint);
             }

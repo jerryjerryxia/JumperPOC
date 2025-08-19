@@ -16,18 +16,17 @@ namespace Enemies
     
     
     [Header("Detection")]
-    [SerializeField] protected float groundCheckDistance = 0.1f; // Basic ground detection
     [SerializeField] protected float wallCheckDistance = 0.5f; // Match inspector value
     [SerializeField] protected LayerMask groundLayer = 1 << 6; // Default to Ground layer (layer 6)
     [SerializeField] protected LayerMask wallLayer = 1 << 6; // Ground layer
     
-    [Header("Edge Detection (Fine Tuning)")]
-    [SerializeField] [Tooltip("How far down to raycast for edge detection. Reduce if platforms below interfere.")]
-    protected float edgeDetectionDistance = 0.5f;
-    [SerializeField] [Tooltip("Depth for scanning if player is on same platform. Affects chase behavior.")]
-    protected float platformScanDepth = 5f;
-    [SerializeField] [Tooltip("Depth for basic IsGrounded check. Keep small for responsive ground detection.")]
-    protected float basicGroundDepth = 0.2f;
+    [Header("Ground Detection Distances")]
+    [SerializeField] [Tooltip("Basic grounded check - how far down to check if enemy is on solid ground")]
+    protected float groundCheckDepth = 0.2f;
+    [SerializeField] [Tooltip("Patrol edge detection - how far down to look ahead for platform boundaries")]
+    protected float patrolEdgeCheckDepth = 0.5f;
+    [SerializeField] [Tooltip("Chase validation - how far down to scan when checking if player is reachable")]
+    protected float chaseValidationDepth = 5f;
     [SerializeField] [Tooltip("Show ground detection visualization in scene view when enemy is selected.")]
     protected bool showGroundDetection = true;
     
@@ -41,13 +40,11 @@ namespace Enemies
     [Header("Platform Detection")]
     [SerializeField] protected float levelTolerance = 0.1f; // How much height difference is allowed for same platform
     [SerializeField] protected Vector2 edgeDetectionOffset = new Vector2(0f, -0.1f); // How far ahead to check (x + random offset)
-    [SerializeField] protected float platformScanDistance = 10f;
-    [SerializeField] protected float platformScanHeight = 0.5f;
     
     
     [Header("Player Interaction")]
     [SerializeField] protected float playerSlowdownFactor = 0.3f;
-    [SerializeField] protected LayerMask playerLayer = 1 << 0; // Default layer
+    [SerializeField] protected LayerMask playerLayer = 1 << 0; // Default layer (layer 0)
     
     // Components
     protected Rigidbody2D rb;
@@ -182,7 +179,7 @@ namespace Enemies
         // CORRECT EDGE DETECTION: Check if there's ground at the same level ahead
         // Step 1: Find the current ground level
         Vector2 currentGroundCheck = (Vector2)transform.position;
-        RaycastHit2D currentGround = Physics2D.Raycast(currentGroundCheck, Vector2.down, edgeDetectionDistance, detectionLayer);
+        RaycastHit2D currentGround = Physics2D.Raycast(currentGroundCheck, Vector2.down, patrolEdgeCheckDepth, detectionLayer);
         
         if (currentGround.collider != null)
         {
@@ -191,7 +188,7 @@ namespace Enemies
             Vector2 aheadCheckPos = (Vector2)transform.position + new Vector2((edgeDetectionOffset.x + currentEdgeOffset) * movementDirection, 0f);
             
             // Cast down from ahead position to see if ground continues at same level
-            RaycastHit2D aheadGroundCheck = Physics2D.Raycast(aheadCheckPos, Vector2.down, edgeDetectionDistance, detectionLayer);
+            RaycastHit2D aheadGroundCheck = Physics2D.Raycast(aheadCheckPos, Vector2.down, patrolEdgeCheckDepth, detectionLayer);
             
             if (aheadGroundCheck.collider != null)
             {
@@ -405,10 +402,10 @@ namespace Enemies
         // Check if the enemy is on the ground (use configurable depth)
         Vector2 position = transform.position;
         LayerMask detectionLayer = groundLayer != 0 ? groundLayer : (1 << 6); // Consistent with boundary detection
-        RaycastHit2D hit = Physics2D.Raycast(position, Vector2.down, basicGroundDepth, detectionLayer);
+        RaycastHit2D hit = Physics2D.Raycast(position, Vector2.down, groundCheckDepth, detectionLayer);
         
         // Debug visualization for ground check
-        // Debug.DrawRay(position, Vector2.down * basicGroundDepth, hit.collider ? Color.green : Color.yellow, 0.1f);
+        // Debug.DrawRay(position, Vector2.down * groundCheckDepth, hit.collider ? Color.green : Color.yellow, 0.1f);
         
         return hit.collider != null;
     }
@@ -428,6 +425,7 @@ namespace Enemies
             // Only exclude if player is freely falling (not on ground or wall)
             if (playerController.IsFalling)
             {
+                // Debug.Log($"[{gameObject.name}] Platform check FAILED - Player falling through air");
                 return false; // Player is falling through air
             }
         }
@@ -436,6 +434,7 @@ namespace Enemies
         float heightDifference = Mathf.Abs(player.transform.position.y - transform.position.y);
         if (heightDifference > 6f) // Allow significant height differences
         {
+            // Debug.Log($"[{gameObject.name}] Platform check FAILED - Height difference too large: {heightDifference:F2}");
             return false; // Only exclude if extremely far vertically
         }
         
@@ -444,8 +443,8 @@ namespace Enemies
         Vector2 playerPos = player.transform.position;
         Vector2 enemyPos = transform.position;
         
-        RaycastHit2D playerGroundHit = Physics2D.Raycast(playerPos, Vector2.down, platformScanDepth, groundLayer);
-        RaycastHit2D enemyGroundHit = Physics2D.Raycast(enemyPos, Vector2.down, platformScanDepth, groundLayer);
+        RaycastHit2D playerGroundHit = Physics2D.Raycast(playerPos, Vector2.down, chaseValidationDepth, groundLayer);
+        RaycastHit2D enemyGroundHit = Physics2D.Raycast(enemyPos, Vector2.down, chaseValidationDepth, groundLayer);
         
         // As long as both have some ground/platform nearby, consider them valid for detection
         bool playerHasGround = playerGroundHit.collider != null;
@@ -458,7 +457,16 @@ namespace Enemies
             playerOnWall = true;
         }
         
-        return enemyHasGround && (playerHasGround || playerOnWall);
+        bool result = enemyHasGround && (playerHasGround || playerOnWall);
+        
+        if (!result)
+        {
+            // Debug.Log($"[{gameObject.name}] Platform check FAILED - Enemy has ground: {enemyHasGround}, Player has ground: {playerHasGround}, Player on wall: {playerOnWall}");
+            // Debug.Log($"  Player state: IsGrounded={playerController?.IsGrounded}, OnWall={playerController?.OnWall}, IsFalling={playerController?.IsFalling}");
+            // Debug.Log($"  Scan depth: {chaseValidationDepth}, Ground layer: {groundLayer}");
+        }
+        
+        return result;
     }
     
     protected virtual float GetRandomAttackCooldown()
@@ -555,11 +563,11 @@ namespace Enemies
         // 1. Draw current ground check (directly below enemy)
         Gizmos.color = Color.green;
         Vector3 currentGroundStart = position;
-        Vector3 currentGroundEnd = currentGroundStart + Vector3.down * edgeDetectionDistance;
+        Vector3 currentGroundEnd = currentGroundStart + Vector3.down * patrolEdgeCheckDepth;
         Gizmos.DrawLine(currentGroundStart, currentGroundEnd);
         
         // Show current ground hit if available
-        RaycastHit2D currentGroundHit = Physics2D.Raycast(currentGroundStart, Vector2.down, edgeDetectionDistance, detectionLayer);
+        RaycastHit2D currentGroundHit = Physics2D.Raycast(currentGroundStart, Vector2.down, patrolEdgeCheckDepth, detectionLayer);
         if (currentGroundHit.collider != null)
         {
             Gizmos.color = Color.green;
@@ -572,11 +580,11 @@ namespace Enemies
         // Draw the ahead ground check
         Gizmos.color = Color.yellow;
         Vector3 aheadGroundStart = aheadCheckPos;
-        Vector3 aheadGroundEnd = aheadGroundStart + Vector3.down * edgeDetectionDistance;
+        Vector3 aheadGroundEnd = aheadGroundStart + Vector3.down * patrolEdgeCheckDepth;
         Gizmos.DrawLine(aheadGroundStart, aheadGroundEnd);
         
         // Show ahead ground hit if available
-        RaycastHit2D aheadGroundHit = Physics2D.Raycast(aheadCheckPos, Vector2.down, edgeDetectionDistance, detectionLayer);
+        RaycastHit2D aheadGroundHit = Physics2D.Raycast(aheadCheckPos, Vector2.down, patrolEdgeCheckDepth, detectionLayer);
         if (aheadGroundHit.collider != null)
         {
             // Check if it would be considered an edge (different level)
@@ -612,7 +620,7 @@ namespace Enemies
         // 4. Draw basic ground check (for IsGrounded)
         Gizmos.color = Color.cyan;
         Vector3 basicGroundStart = position;
-        Vector3 basicGroundEnd = basicGroundStart + Vector3.down * basicGroundDepth;
+        Vector3 basicGroundEnd = basicGroundStart + Vector3.down * groundCheckDepth;
         Gizmos.DrawLine(basicGroundStart, basicGroundEnd);
         
         // 5. Add labels in scene view
@@ -632,9 +640,9 @@ namespace Enemies
         }
         
         // Parameter labels
-        UnityEditor.Handles.Label(position + Vector3.up * 1f, $"Edge Detection Distance: {edgeDetectionDistance:F2}");
-        UnityEditor.Handles.Label(position + Vector3.up * 1.2f, $"Platform Scan Depth: {platformScanDepth:F2}");
-        UnityEditor.Handles.Label(position + Vector3.up * 1.4f, $"Basic Ground Depth: {basicGroundDepth:F2}");
+        UnityEditor.Handles.Label(position + Vector3.up * 1f, $"Edge Detection Distance: {patrolEdgeCheckDepth:F2}");
+        UnityEditor.Handles.Label(position + Vector3.up * 1.2f, $"Platform Scan Depth: {chaseValidationDepth:F2}");
+        UnityEditor.Handles.Label(position + Vector3.up * 1.4f, $"Basic Ground Depth: {groundCheckDepth:F2}");
         UnityEditor.Handles.Label(position + Vector3.up * 1.6f, $"Level Tolerance: {levelTolerance:F2}");
         if (Application.isPlaying)
         {

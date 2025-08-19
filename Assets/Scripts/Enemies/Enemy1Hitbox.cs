@@ -27,6 +27,7 @@ namespace Enemies
     // Components
     private Collider2D hitboxCollider;
     private Enemy1Controller enemy1Controller;
+    private IEnemyBase enemyBase; // For compatibility with new enemy system
     
     // State
     private bool isActive = false;
@@ -40,10 +41,11 @@ namespace Enemies
     {
         hitboxCollider = GetComponent<Collider2D>();
         enemy1Controller = GetComponentInParent<Enemy1Controller>();
+        enemyBase = GetComponentInParent<IEnemyBase>(); // Support new enemy system
         
         if (hitboxCollider == null)
         {
-            Debug.LogError($"Enemy1Hitbox on {gameObject.name} requires a Collider2D component!");
+            // Debug.LogError($"Enemy1Hitbox on {gameObject.name} requires a Collider2D component!");
         }
         
         // Set as trigger for hit detection
@@ -64,12 +66,12 @@ namespace Enemies
             // This prevents the hitbox from interfering with enemy's edge/ground detection
             if (enemyHitboxLayer == 6)
             {
-                Debug.LogError("EnemyHitbox layer should NOT be the same as Ground layer (6)! This will break enemy patrol behavior.");
+                // Debug.LogError("EnemyHitbox layer should NOT be the same as Ground layer (6)! This will break enemy patrol behavior.");
             }
         }
         else
         {
-            Debug.LogWarning($"EnemyHitbox layer not found! Enemy1Hitbox on {gameObject.name} may not collide with player properly. Please create an 'EnemyHitbox' layer and set it to collide with the player layer.");
+            // Debug.LogWarning($"EnemyHitbox layer not found! Enemy1Hitbox on {gameObject.name} may not collide with player properly. Please create an 'EnemyHitbox' layer and set it to collide with the player layer.");
         }
         
         // Configure hitbox size and position
@@ -86,26 +88,40 @@ namespace Enemies
         {
             previousFacingRight = enemy1Controller.IsFacingRight;
         }
+        else if (enemyBase != null)
+        {
+            previousFacingRight = enemyBase.IsFacingRight;
+        }
     }
     
     private void LateUpdate()
     {
         // Update hitbox position if enemy changes facing direction
         // Use LateUpdate to avoid interfering with enemy movement logic
-        // Only update if we have a valid enemy controller
-        if (enemy1Controller != null)
+        // Check both enemy controller types for compatibility
+        bool currentFacing = GetEnemyFacingDirection();
+        if (currentFacing != previousFacingRight)
         {
-            bool currentFacing = enemy1Controller.IsFacingRight;
-            if (currentFacing != previousFacingRight)
+            previousFacingRight = currentFacing;
+            // Only reconfigure if hitbox collider exists
+            if (hitboxCollider != null)
             {
-                previousFacingRight = currentFacing;
-                // Only reconfigure if hitbox collider exists
-                if (hitboxCollider != null)
-                {
-                    ConfigureHitbox();
-                }
+                ConfigureHitbox();
             }
         }
+    }
+    
+    private bool GetEnemyFacingDirection()
+    {
+        if (enemy1Controller != null)
+        {
+            return enemy1Controller.IsFacingRight;
+        }
+        else if (enemyBase != null)
+        {
+            return enemyBase.IsFacingRight;
+        }
+        return previousFacingRight; // Fallback to last known direction
     }
     
     private void ConfigureHitbox()
@@ -117,7 +133,8 @@ namespace Enemies
         Vector2 offset = chopOffset;
         
         // Flip the X offset if enemy is facing left
-        if (enemy1Controller != null && !enemy1Controller.IsFacingRight)
+        bool facingRight = GetEnemyFacingDirection();
+        if (!facingRight)
         {
             offset.x = -offset.x;
         }
@@ -154,10 +171,8 @@ namespace Enemies
             ConfigureHitbox();
             
             // Update knockback direction based on enemy facing
-            if (enemy1Controller != null)
-            {
-                knockbackDirection = enemy1Controller.IsFacingRight ? Vector2.right : Vector2.left;
-            }
+            bool facingRight = GetEnemyFacingDirection();
+            knockbackDirection = facingRight ? Vector2.right : Vector2.left;
         }
     }
     
