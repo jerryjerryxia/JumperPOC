@@ -3,12 +3,13 @@ using UnityEngine;
 namespace Enemies
 {
     /// <summary>
-    /// Test script to verify SimpleEnemy migration is working correctly.
+    /// Test script to verify SimpleEnemy implementation is working correctly.
     /// Attach to any GameObject to run basic validation in play mode.
+    /// This script validates that the enemy system is using the IEnemyBase interface correctly.
     /// </summary>
     public class MigrationTest : MonoBehaviour
     {
-        [Header("Migration Verification")]
+        [Header("Enemy System Verification")]
         [SerializeField] private bool runTestOnStart = true;
         [SerializeField] private bool logDetailedResults = true;
         
@@ -16,34 +17,30 @@ namespace Enemies
         {
             if (runTestOnStart)
             {
-                TestSimpleEnemyMigration();
+                TestEnemySystem();
             }
         }
         
-        [ContextMenu("Test SimpleEnemy Migration")]
-        public void TestSimpleEnemyMigration()
+        [ContextMenu("Test Enemy System")]
+        public void TestEnemySystem()
         {
-            Debug.Log("=== SimpleEnemy Migration Test ===");
+            Debug.Log("=== Enemy System Validation Test ===");
             
             // Find all SimpleEnemy instances
             SimpleEnemy[] simpleEnemies = FindObjectsByType<SimpleEnemy>(FindObjectsSortMode.None);
             Debug.Log($"Found {simpleEnemies.Length} SimpleEnemy instances");
             
-            // Find any remaining Enemy1Controller instances
-            Enemy1Controller[] oldEnemies = FindObjectsByType<Enemy1Controller>(FindObjectsSortMode.None);
-            
-            if (oldEnemies.Length > 0)
+            // Verify all enemies implement IEnemyBase interface
+            int interfaceImplementations = 0;
+            foreach (var enemy in simpleEnemies)
             {
-                Debug.LogError($"MIGRATION INCOMPLETE: {oldEnemies.Length} Enemy1Controller instances still exist!");
-                foreach (var enemy in oldEnemies)
+                if (enemy is IEnemyBase)
                 {
-                    Debug.LogError($"  - {enemy.gameObject.name} still uses Enemy1Controller", enemy.gameObject);
+                    interfaceImplementations++;
                 }
             }
-            else
-            {
-                Debug.Log("✅ No Enemy1Controller instances found - migration successful!");
-            }
+            
+            Debug.Log($"✅ {interfaceImplementations}/{simpleEnemies.Length} enemies implement IEnemyBase interface");
             
             // Test each SimpleEnemy instance
             int workingEnemies = 0;
@@ -55,18 +52,18 @@ namespace Enemies
                 }
             }
             
-            Debug.Log($"=== Migration Test Results ===");
+            Debug.Log($"=== Enemy System Test Results ===");
             Debug.Log($"SimpleEnemy instances: {simpleEnemies.Length}");
             Debug.Log($"Working correctly: {workingEnemies}");
-            Debug.Log($"Old Enemy1Controller instances: {oldEnemies.Length}");
+            Debug.Log($"IEnemyBase implementations: {interfaceImplementations}");
             
-            if (oldEnemies.Length == 0 && workingEnemies == simpleEnemies.Length)
+            if (interfaceImplementations == simpleEnemies.Length && workingEnemies == simpleEnemies.Length)
             {
-                Debug.Log("🎉 MIGRATION SUCCESSFUL! All enemies are using SimpleEnemy and working correctly.");
+                Debug.Log("🎉 ENEMY SYSTEM VALIDATION SUCCESSFUL! All enemies implement IEnemyBase and are working correctly.");
             }
             else
             {
-                Debug.LogWarning("⚠️ Migration may have issues. Check logs above for details.");
+                Debug.LogWarning("⚠️ Enemy system may have issues. Check logs above for details.");
             }
         }
         

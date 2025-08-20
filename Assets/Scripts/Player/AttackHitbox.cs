@@ -209,52 +209,30 @@ public class AttackHitbox : MonoBehaviour
         // Prevent multiple hits on same enemy per attack
         if (oneHitPerAttack && hitEnemies.Contains(other.gameObject)) return;
         
-        // Try to deal damage - support both old and new enemy systems
-        bool hitEnemy = false;
+        // Try to deal damage using the IEnemyBase interface
+        IEnemyBase enemyInterface = other.GetComponent<IEnemyBase>();
+        if (enemyInterface == null) return;
         
-        // Try old enemy system first (EnemyBase)
-        EnemyBase enemy = other.GetComponent<EnemyBase>();
-        if (enemy != null)
+        // Deal damage using interface system
+        enemyInterface.TakeDamage(damage);
+        
+        // Visual/audio feedback could go here
+        // Debug.Log($"Player hit {other.name} for {damage} damage with {attackType}!");
+        
+        // Apply hit effects
+        // Apply knockback
+        ApplyKnockback(other.gameObject);
+        
+        // Track hit enemy
+        if (oneHitPerAttack)
         {
-            // Deal damage using old system
-            enemy.TakeDamage(damage);
-            hitEnemy = true;
-            
-            // Visual/audio feedback could go here
-            // Debug.Log($"Player hit {enemy.name} for {damage} damage with {attackType}!");
-        }
-        else
-        {
-            // Try new enemy system (IEnemyBase interface)
-            IEnemyBase enemyInterface = other.GetComponent<IEnemyBase>();
-            if (enemyInterface != null)
-            {
-                // Deal damage using new interface system
-                enemyInterface.TakeDamage(damage);
-                hitEnemy = true;
-                
-                // Visual/audio feedback could go here
-                // Debug.Log($"Player hit {other.name} for {damage} damage with {attackType}!");
-            }
+            hitEnemies.Add(other.gameObject);
         }
         
-        // Apply common hit effects if we hit any enemy
-        if (hitEnemy)
+        // Disable hitbox if we only want one hit per attack and we don't allow multiple enemies
+        if (!canHitMultipleEnemies)
         {
-            // Apply knockback
-            ApplyKnockback(other.gameObject);
-            
-            // Track hit enemy
-            if (oneHitPerAttack)
-            {
-                hitEnemies.Add(other.gameObject);
-            }
-            
-            // Disable hitbox if we only want one hit per attack and we don't allow multiple enemies
-            if (!canHitMultipleEnemies)
-            {
-                SetActive(false);
-            }
+            SetActive(false);
         }
     }
     

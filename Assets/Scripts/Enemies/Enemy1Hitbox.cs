@@ -26,8 +26,7 @@ namespace Enemies
     
     // Components
     private Collider2D hitboxCollider;
-    private Enemy1Controller enemy1Controller;
-    private IEnemyBase enemyBase; // For compatibility with new enemy system
+    private IEnemyBase enemyBase;
     
     // State
     private bool isActive = false;
@@ -40,8 +39,7 @@ namespace Enemies
     private void Awake()
     {
         hitboxCollider = GetComponent<Collider2D>();
-        enemy1Controller = GetComponentInParent<Enemy1Controller>();
-        enemyBase = GetComponentInParent<IEnemyBase>(); // Support new enemy system
+        enemyBase = GetComponentInParent<IEnemyBase>();
         
         if (hitboxCollider == null)
         {
@@ -84,11 +82,7 @@ namespace Enemies
     private void Start()
     {
         // Initialize facing direction after all components are ready
-        if (enemy1Controller != null)
-        {
-            previousFacingRight = enemy1Controller.IsFacingRight;
-        }
-        else if (enemyBase != null)
+        if (enemyBase != null)
         {
             previousFacingRight = enemyBase.IsFacingRight;
         }
@@ -98,7 +92,6 @@ namespace Enemies
     {
         // Update hitbox position if enemy changes facing direction
         // Use LateUpdate to avoid interfering with enemy movement logic
-        // Check both enemy controller types for compatibility
         bool currentFacing = GetEnemyFacingDirection();
         if (currentFacing != previousFacingRight)
         {
@@ -113,11 +106,7 @@ namespace Enemies
     
     private bool GetEnemyFacingDirection()
     {
-        if (enemy1Controller != null)
-        {
-            return enemy1Controller.IsFacingRight;
-        }
-        else if (enemyBase != null)
+        if (enemyBase != null)
         {
             return enemyBase.IsFacingRight;
         }
@@ -236,7 +225,7 @@ namespace Enemies
         }
     }
     
-    // Public methods for Enemy1Controller to use
+    // Public methods for enemy AI to use
     public void StartLanceChopAttack()
     {
         SetActive(true);

@@ -8,6 +8,8 @@ using UnityEditor;
 /// Simple head stomp system that creates a separate trigger collider
 /// on a layer that interacts with the player. When player falls into
 /// the trigger, they get an automatic velocity boost (like auto-jump).
+/// 
+/// Supports IEnemyBase interface for enemy integration.
 /// </summary>
 public class SimpleHeadStomp : MonoBehaviour
 {
@@ -27,18 +29,21 @@ public class SimpleHeadStomp : MonoBehaviour
     [SerializeField] private Color gizmoColor = Color.green;
     [SerializeField] private Color hitColor = Color.red;
     
-    private EnemyBase enemyBase;
+    private IEnemyBase enemyInterface;
     private Collider2D enemyCollider;
     private bool lastFrameHit = false;
     
     void Awake()
     {
-        enemyBase = GetComponent<EnemyBase>();
+        // Get IEnemyBase interface for enemy integration
+        enemyInterface = GetComponent<IEnemyBase>();
+        
         enemyCollider = GetComponent<Collider2D>();
         
-        if (enemyBase == null)
+        // Check if we have the interface
+        if (enemyInterface == null)
         {
-            // Debug.LogWarning($"[SimpleHeadStomp] {name} requires EnemyBase component!");
+            // Debug.LogWarning($"[SimpleHeadStomp] {name} requires IEnemyBase component!");
         }
         
         if (enemyCollider == null)
@@ -49,22 +54,17 @@ public class SimpleHeadStomp : MonoBehaviour
         // Auto-configure player layer if not set
         if (playerLayer == -1)
         {
-            // Try to get player layer from EnemyBase if available
-            if (enemyBase != null)
+            // Try to get player layer from IEnemyBase interface
+            if (enemyInterface != null)
             {
-                var enemyBaseType = enemyBase.GetType();
-                var playerLayerField = enemyBaseType.GetField("playerLayer", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-                if (playerLayerField != null)
+                playerLayer = enemyInterface.PlayerLayer;
+                if (enableDebugLogging)
                 {
-                    playerLayer = (LayerMask)playerLayerField.GetValue(enemyBase);
-                    if (enableDebugLogging)
-                    {
-                        // Debug.Log($"[SimpleHeadStomp] Auto-configured player layer from EnemyBase: {playerLayer}");
-                    }
+                    // Debug.Log($"[SimpleHeadStomp] Auto-configured player layer from IEnemyBase: {playerLayer}");
                 }
             }
             
-            // Fallback: try common player layers
+            // Final fallback: try common player layers
             if (playerLayer == -1)
             {
                 int playerLayerNum = LayerMask.NameToLayer("Player");
@@ -76,7 +76,7 @@ public class SimpleHeadStomp : MonoBehaviour
                 playerLayer = 1 << playerLayerNum;
                 if (enableDebugLogging)
                 {
-                    // Debug.Log($"[SimpleHeadStomp] Auto-configured player layer: {playerLayerNum} (mask: {playerLayer})");
+                    // Debug.Log($"[SimpleHeadStomp] Auto-configured player layer fallback: {playerLayerNum} (mask: {playerLayer})");
                 }
             }
         }
@@ -86,7 +86,8 @@ public class SimpleHeadStomp : MonoBehaviour
         
         if (enableDebugLogging)
         {
-            // Debug.Log($"[SimpleHeadStomp] Initialized on {name}:");
+            string systemType = enemyInterface != null ? "IEnemyBase" : "None";
+            // Debug.Log($"[SimpleHeadStomp] Initialized on {name} using {systemType}:");
             // Debug.Log($"  • Bounce Force: {bounceForce}");
             // Debug.Log($"  • Min Fall Speed: {minimumFallSpeed}");
             // Debug.Log($"  • Trigger Position: {triggerPosition}");

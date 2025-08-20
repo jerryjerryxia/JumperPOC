@@ -105,7 +105,7 @@ public class SimpleHeadStompSetup : EditorWindow
     
     private void AddToAllEnemies()
     {
-        EnemyBase[] enemies = FindObjectsByType<EnemyBase>(FindObjectsSortMode.None);
+        SimpleEnemy[] enemies = FindObjectsByType<SimpleEnemy>(FindObjectsSortMode.None);
         int added = 0;
         int updated = 0;
         
@@ -136,7 +136,7 @@ public class SimpleHeadStompSetup : EditorWindow
         
         foreach (var obj in selected)
         {
-            if (obj.GetComponent<EnemyBase>() != null)
+            if (obj.GetComponent<SimpleEnemy>() != null)
             {
                 if (AddSimpleHeadStomp(obj))
                     added++;
@@ -148,7 +148,7 @@ public class SimpleHeadStompSetup : EditorWindow
         if (added == 0 && updated == 0)
         {
             EditorUtility.DisplayDialog("No Enemies Selected", 
-                "Please select enemy GameObjects with EnemyBase component.", "OK");
+                "Please select enemy GameObjects with SimpleEnemy component.", "OK");
         }
         else
         {
@@ -335,7 +335,7 @@ public class SimpleHeadStompSetup : EditorWindow
             string path = AssetDatabase.GUIDToAssetPath(guid);
             GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(path);
             
-            if (prefab != null && prefab.GetComponent<EnemyBase>() != null)
+            if (prefab != null && prefab.GetComponent<SimpleEnemy>() != null)
             {
                 // Load prefab for editing
                 GameObject prefabInstance = PrefabUtility.LoadPrefabContents(path);
@@ -384,7 +384,7 @@ public class SimpleHeadStompSetup : EditorWindow
         int enemiesWithOld = 0;
         int enemiesWithout = 0;
         
-        EnemyBase[] enemies = FindObjectsByType<EnemyBase>(FindObjectsSortMode.None);
+        SimpleEnemy[] enemies = FindObjectsByType<SimpleEnemy>(FindObjectsSortMode.None);
         
         foreach (var enemy in enemies)
         {
