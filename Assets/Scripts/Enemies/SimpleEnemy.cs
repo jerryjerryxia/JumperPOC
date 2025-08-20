@@ -244,9 +244,19 @@ public class SimpleEnemy : MonoBehaviour, IEnemyBase
         {
             // Check for ground at offset distance in movement direction
             Vector2 checkPosition = transform.position + Vector3.right * moveDirection * currentEdgeOffset;
-            RaycastHit2D groundCheck = Physics2D.Raycast(checkPosition, Vector2.down, edgeCheckDistance, groundLayer);
             
-            return groundCheck.collider == null; // No ground = edge detected
+            // Existing downward raycast (detects open platform edges)
+            RaycastHit2D groundCheck = Physics2D.Raycast(checkPosition, Vector2.down, edgeCheckDistance, groundLayer);
+            bool hasOpenEdge = groundCheck.collider == null;
+            
+            // NEW: Horizontal raycast (detects walls before reaching edge check position)
+            float horizontalRaycastDistance = currentEdgeOffset * 0.85f; // Slightly shorter than edge offset
+            Vector2 horizontalOrigin = transform.position;
+            RaycastHit2D wallCheck = Physics2D.Raycast(horizontalOrigin, Vector2.right * moveDirection, horizontalRaycastDistance, groundLayer);
+            bool hasWallAhead = wallCheck.collider != null;
+            
+            // Edge detected if either: no ground below OR wall ahead (before reaching edge)
+            return hasOpenEdge || hasWallAhead;
         }
         
         private void StartWaiting()
@@ -343,13 +353,24 @@ public class SimpleEnemy : MonoBehaviour, IEnemyBase
             
             // Only check Ground layer (layer 6) - exclude player and other layers
             int groundLayerOnly = 1 << 6;
-            RaycastHit2D groundCheck = Physics2D.Raycast(edgeCheckPosition, Vector2.down, chaseEdgeDistance, groundLayerOnly);
-            bool wouldReachEdge = !groundCheck.collider;
             
-            // Check for wall in the direction we want to move - only check Ground layer
-            Vector2 wallCheckPosition = (Vector2)transform.position;
-            RaycastHit2D wallCheck = Physics2D.Raycast(wallCheckPosition, Vector2.right * direction, 0.5f, groundLayerOnly);
-            bool wouldHitWall = wallCheck.collider != null;
+            // Existing downward raycast (detects open platform edges)
+            RaycastHit2D groundCheck = Physics2D.Raycast(edgeCheckPosition, Vector2.down, chaseEdgeDistance, groundLayerOnly);
+            bool wouldReachOpenEdge = !groundCheck.collider;
+            
+            // NEW: Horizontal raycast (detects walls before reaching edge check position)
+            float horizontalRaycastDistance = chaseEdgeOffset * 0.85f; // Slightly shorter than edge offset
+            Vector2 horizontalOrigin = transform.position;
+            RaycastHit2D wallCheck = Physics2D.Raycast(horizontalOrigin, Vector2.right * direction, horizontalRaycastDistance, groundLayerOnly);
+            bool wouldReachWallEdge = wallCheck.collider != null;
+            
+            // Combined edge detection: either open edge OR wall ahead (before reaching edge)
+            bool wouldReachEdge = wouldReachOpenEdge || wouldReachWallEdge;
+            
+            // Check for immediate wall collision - only check Ground layer
+            Vector2 immediateWallCheckPosition = (Vector2)transform.position;
+            RaycastHit2D immediateWallCheck = Physics2D.Raycast(immediateWallCheckPosition, Vector2.right * direction, 0.5f, groundLayerOnly);
+            bool wouldHitWall = immediateWallCheck.collider != null;
             
             return !wouldReachEdge && !wouldHitWall;
         }
@@ -631,6 +652,12 @@ public class SimpleEnemy : MonoBehaviour, IEnemyBase
                 Gizmos.DrawWireSphere(edgeCheckPos, 0.1f);
                 Gizmos.DrawRay(edgeCheckPos, Vector2.down * edgeCheckDistance);
                 
+                // NEW: Horizontal raycast visualization for patrol wall detection
+                Gizmos.color = Color.magenta;
+                float horizontalRaycastDistance = currentEdgeOffset * 0.85f;
+                Vector2 horizontalOrigin = position;
+                Gizmos.DrawRay(horizontalOrigin, Vector2.right * moveDirection * horizontalRaycastDistance);
+                
                 // Chase edge detection
                 if (currentState == EnemyState.Chase && moveDirection != 0)
                 {
@@ -638,6 +665,11 @@ public class SimpleEnemy : MonoBehaviour, IEnemyBase
                     Vector2 chaseEdgePos = position + Vector3.right * moveDirection * 0.3f;
                     Gizmos.DrawWireSphere(chaseEdgePos, 0.05f);
                     Gizmos.DrawRay(chaseEdgePos, Vector2.down * 1f);
+                    
+                    // NEW: Horizontal raycast visualization for chase wall detection
+                    Gizmos.color = Color.yellow;
+                    float chaseHorizontalDistance = 0.3f * 0.85f; // chaseEdgeOffset * 0.85f
+                    Gizmos.DrawRay(position, Vector2.right * moveDirection * chaseHorizontalDistance);
                 }
                 
                 // Attack safety check
