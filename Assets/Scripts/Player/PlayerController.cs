@@ -98,6 +98,8 @@ public class PlayerController : MonoBehaviour
     
     // Death/Reset system
     private Vector3 initialPosition;
+    private Vector3 respawnPosition;
+    private bool hasRespawnPoint = false;
     
     // Wall state sequence tracking
     private bool wasWallSticking = false;
@@ -204,6 +206,7 @@ public class PlayerController : MonoBehaviour
         
         // Store initial position for death/reset system
         initialPosition = transform.position;
+        respawnPosition = initialPosition; // Default respawn is initial position
         // Debug.Log($"[Death/Reset] Initial position stored: {initialPosition}");
     }
     
@@ -393,7 +396,7 @@ public class PlayerController : MonoBehaviour
         if (transform.position.y < deathZoneY)
         {
             // Debug.Log($"[Death/Reset] Player fell below death zone (Y < -20). Current Y: {transform.position.y}");
-            ResetToInitialPosition();
+            ResetToRespawnPoint();
             return; // Skip rest of frame after reset
         }
         
@@ -1890,7 +1893,7 @@ public class PlayerController : MonoBehaviour
         if (other.CompareTag("Camera Bounder"))
         {
             // Debug.Log("[Death/Reset] Camera Bounder detected! Resetting...");
-            ResetToInitialPosition();
+            ResetToRespawnPoint();
         }
     }
     
@@ -1899,7 +1902,7 @@ public class PlayerController : MonoBehaviour
         if (other.gameObject.CompareTag("Camera Bounder"))
         {
             // Debug.Log("[Death/Reset] Camera Bounder detected! Resetting...");
-            ResetToInitialPosition();
+            ResetToRespawnPoint();
         }
     }
     
@@ -1908,20 +1911,69 @@ public class PlayerController : MonoBehaviour
     public void TestReset()
     {
         // Debug.Log("[Death/Reset] Manual reset triggered");
-        ResetToInitialPosition();
+        ResetToRespawnPoint();
     }
     
+    /// <summary>
+    /// Set a new respawn point (called by save points)
+    /// </summary>
+    public void SetRespawnPoint(Vector3 newRespawnPosition)
+    {
+        respawnPosition = newRespawnPosition;
+        hasRespawnPoint = true;
+        Debug.Log($"[SavePoint] Respawn point set to: {respawnPosition}");
+    }
+    
+    /// <summary>
+    /// Reset to the current respawn point (save point or initial position)
+    /// </summary>
+    public void ResetToRespawnPoint()
+    {
+        Vector3 targetPosition;
+        
+        // Use SimpleRespawnManager if available, otherwise fall back to existing system
+        if (SimpleRespawnManager.Instance != null)
+        {
+            targetPosition = SimpleRespawnManager.Instance.GetRespawnPosition();
+        }
+        else
+        {
+            targetPosition = hasRespawnPoint ? respawnPosition : initialPosition;
+        }
+        
+        ResetToPosition(targetPosition);
+    }
+    
+    /// <summary>
+    /// Reset to save point position
+    /// </summary>
+    public void ResetToSavePoint(Vector3 savePosition)
+    {
+        ResetToPosition(savePosition);
+    }
+    
+    /// <summary>
+    /// Reset to initial position (legacy method)
+    /// </summary>
     public void ResetToInitialPosition()
     {
-        // Debug.Log($"[Death/Reset] BEFORE RESET - Current: {transform.position}, Initial: {initialPosition}");
+        ResetToPosition(initialPosition);
+    }
+    
+    /// <summary>
+    /// Core reset method that handles position reset and state cleanup
+    /// </summary>
+    private void ResetToPosition(Vector3 targetPosition)
+    {
+        // Debug.Log($"[Death/Reset] BEFORE RESET - Current: {transform.position}, Target: {targetPosition}");
         
         // Reset physics FIRST to prevent interference
         rb.linearVelocity = Vector2.zero;
         rb.angularVelocity = 0f;
         
         // Force position through both transform and rigidbody
-        transform.position = initialPosition;
-        rb.position = initialPosition;
+        transform.position = targetPosition;
+        rb.position = targetPosition;
         
         // Force physics update
         Physics2D.SyncTransforms();
@@ -1955,7 +2007,7 @@ public class PlayerController : MonoBehaviour
         // Reset camera position by forcing Cinemachine to snap
         StartCoroutine(ResetCameraPosition());
         
-        // Debug.Log("[Death/Reset] Player reset to initial position");
+        // Debug.Log($"[Death/Reset] Player reset to position: {targetPosition}");
     }
     
     private System.Collections.IEnumerator ResetCameraPosition()
