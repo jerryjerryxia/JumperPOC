@@ -138,10 +138,10 @@ namespace Player
     
     private void HandleDeathComplete()
     {
-        // Reset player to initial position and restore all states (same as fall death)
+        // Reset player using save point system or initial position
         if (playerController != null)
         {
-            playerController.ResetToInitialPosition();
+            playerController.ResetToRespawnPoint();
         }
         
         // Reset health state

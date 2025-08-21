@@ -29,8 +29,10 @@ public class SimpleEnemy : MonoBehaviour, IEnemyBase
         
         [Header("Platform Constraints")]
         [SerializeField] private float edgeCheckDistance = 1f;
-        [SerializeField] private float minEdgeOffset = 0.1f;
+        [SerializeField] private float minEdgeOffset = 0.2f;
         [SerializeField] private float maxEdgeOffset = 0.8f;
+        [SerializeField] [Range(0.5f, 2.0f)] [Tooltip("Multiplier for wall detection distance relative to edge offset. Higher values make enemies more cautious around walls.")]
+        private float wallDetectionMultiplier = 1.4f;
         [SerializeField] private LayerMask groundLayer = 1 << 6;
         
         [Header("Health")]
@@ -196,6 +198,18 @@ public class SimpleEnemy : MonoBehaviour, IEnemyBase
                 isWaiting = false;
                 waitTimer = 0f;
             }
+            else if (newState == EnemyState.Patrol)
+            {
+                // When returning to patrol, ensure proper movement direction
+                if (moveDirection == 0)
+                {
+                    // Restore movement direction based on current facing
+                    moveDirection = facingRight ? 1 : -1;
+                }
+                // Reset waiting state
+                isWaiting = false;
+                waitTimer = 0f;
+            }
         }
         
         private void UpdateState()
@@ -250,7 +264,7 @@ public class SimpleEnemy : MonoBehaviour, IEnemyBase
             bool hasOpenEdge = groundCheck.collider == null;
             
             // NEW: Horizontal raycast (detects walls before reaching edge check position)
-            float horizontalRaycastDistance = currentEdgeOffset * 0.85f; // Slightly shorter than edge offset
+            float horizontalRaycastDistance = currentEdgeOffset * wallDetectionMultiplier;
             Vector2 horizontalOrigin = transform.position;
             RaycastHit2D wallCheck = Physics2D.Raycast(horizontalOrigin, Vector2.right * moveDirection, horizontalRaycastDistance, groundLayer);
             bool hasWallAhead = wallCheck.collider != null;
@@ -359,7 +373,7 @@ public class SimpleEnemy : MonoBehaviour, IEnemyBase
             bool wouldReachOpenEdge = !groundCheck.collider;
             
             // NEW: Horizontal raycast (detects walls before reaching edge check position)
-            float horizontalRaycastDistance = chaseEdgeOffset * 0.85f; // Slightly shorter than edge offset
+            float horizontalRaycastDistance = chaseEdgeOffset * wallDetectionMultiplier;
             Vector2 horizontalOrigin = transform.position;
             RaycastHit2D wallCheck = Physics2D.Raycast(horizontalOrigin, Vector2.right * direction, horizontalRaycastDistance, groundLayerOnly);
             bool wouldReachWallEdge = wallCheck.collider != null;
@@ -654,7 +668,7 @@ public class SimpleEnemy : MonoBehaviour, IEnemyBase
                 
                 // NEW: Horizontal raycast visualization for patrol wall detection
                 Gizmos.color = Color.magenta;
-                float horizontalRaycastDistance = currentEdgeOffset * 0.85f;
+                float horizontalRaycastDistance = currentEdgeOffset * wallDetectionMultiplier;
                 Vector2 horizontalOrigin = position;
                 Gizmos.DrawRay(horizontalOrigin, Vector2.right * moveDirection * horizontalRaycastDistance);
                 
@@ -668,7 +682,7 @@ public class SimpleEnemy : MonoBehaviour, IEnemyBase
                     
                     // NEW: Horizontal raycast visualization for chase wall detection
                     Gizmos.color = Color.yellow;
-                    float chaseHorizontalDistance = 0.3f * 0.85f; // chaseEdgeOffset * 0.85f
+                    float chaseHorizontalDistance = 0.3f * wallDetectionMultiplier; // chaseEdgeOffset * wallDetectionMultiplier
                     Gizmos.DrawRay(position, Vector2.right * moveDirection * chaseHorizontalDistance);
                 }
                 
