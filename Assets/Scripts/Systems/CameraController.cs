@@ -137,10 +137,20 @@ public class CameraController : MonoBehaviour
             return;
         }
         
-        // Check if we have a follow target
+        // Check if we have a follow target, and try to find player if missing
         if (cinemachineCamera.Target.TrackingTarget == null)
         {
-            Debug.LogWarning("[CameraController] No tracking target set on Cinemachine camera!");
+            // Try to find the persistent player
+            PlayerController player = FindFirstObjectByType<PlayerController>();
+            if (player != null)
+            {
+                cinemachineCamera.Target.TrackingTarget = player.transform;
+                Debug.Log("[CameraController] Automatically found and set persistent player as tracking target.");
+            }
+            else
+            {
+                Debug.LogWarning("[CameraController] No tracking target set on Cinemachine camera and no player found!");
+            }
         }
         
         // Validate reasonable values

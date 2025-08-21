@@ -10,7 +10,7 @@ public class RespawnManagerSetup : Editor
     public static void CreateRespawnManager()
     {
         // Check if SimpleRespawnManager already exists
-        SimpleRespawnManager existingManager = FindObjectOfType<SimpleRespawnManager>();
+        SimpleRespawnManager existingManager = FindFirstObjectByType<SimpleRespawnManager>();
         if (existingManager != null)
         {
             Debug.LogWarning("SimpleRespawnManager already exists in the scene!");
@@ -38,7 +38,7 @@ public class RespawnManagerSetup : Editor
     public static void SetupSavePointSystem()
     {
         // Ensure SimpleRespawnManager exists
-        SimpleRespawnManager manager = FindObjectOfType<SimpleRespawnManager>();
+        SimpleRespawnManager manager = FindFirstObjectByType<SimpleRespawnManager>();
         if (manager == null)
         {
             CreateRespawnManager();
@@ -50,7 +50,7 @@ public class RespawnManagerSetup : Editor
         }
         
         // Check for player
-        PlayerController player = FindObjectOfType<PlayerController>();
+        PlayerController player = FindFirstObjectByType<PlayerController>();
         if (player == null)
         {
             Debug.LogWarning("No PlayerController found in scene - make sure to add player!");
@@ -71,7 +71,7 @@ public class RespawnManagerSetup : Editor
         }
         
         // Find all save points
-        SavePoint[] savePoints = FindObjectsOfType<SavePoint>();
+        SavePoint[] savePoints = FindObjectsByType<SavePoint>(FindObjectsSortMode.None);
         if (savePoints.Length == 0)
         {
             Debug.LogWarning("No SavePoints found in scene");
@@ -111,7 +111,7 @@ public class RespawnManagerSetup : Editor
     {
         if (Application.isPlaying)
         {
-            SimpleRespawnManager manager = FindObjectOfType<SimpleRespawnManager>();
+            SimpleRespawnManager manager = FindFirstObjectByType<SimpleRespawnManager>();
             if (manager == null)
             {
                 Debug.LogError("SimpleRespawnManager is missing! Save points will not work. Use Tools > Setup Save Point System to fix.");

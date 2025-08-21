@@ -167,8 +167,23 @@ public class PlayerController : MonoBehaviour
     public float DashTime => dashTime;
     public int AirDashesRemaining => airDashesRemaining;
 
+    private static PlayerController instance;
+    
     void Awake()
     {
+        // Singleton pattern for persistent player
+        if (instance == null)
+        {
+            instance = this;
+            DontDestroyOnLoad(gameObject);
+        }
+        else
+        {
+            // Destroy duplicate player if one already exists
+            Destroy(gameObject);
+            return;
+        }
+        
         rb = GetComponent<Rigidbody2D>();
         animator = GetComponent<Animator>();
         combat = GetComponent<PlayerCombat>();
@@ -217,7 +232,6 @@ public class PlayerController : MonoBehaviour
         {
             Debug.LogWarning("[SavePoint System] SimpleRespawnManager not found! Save points will not work. Use Tools > Setup Save Point System to fix.");
         }
-        // Debug.Log($"[Death/Reset] Initial position stored: {initialPosition}");
     }
     
     private void CalculateOptimalRaycastPositions()
