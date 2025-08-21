@@ -207,6 +207,16 @@ public class PlayerController : MonoBehaviour
         // Store initial position for death/reset system
         initialPosition = transform.position;
         respawnPosition = initialPosition; // Default respawn is initial position
+        
+        // Initialize SimpleRespawnManager with player's actual starting position
+        if (SimpleRespawnManager.Instance != null)
+        {
+            SimpleRespawnManager.Instance.InitializeWithPlayerStartPosition(initialPosition);
+        }
+        else
+        {
+            Debug.LogWarning("[SavePoint System] SimpleRespawnManager not found! Save points will not work. Use Tools > Setup Save Point System to fix.");
+        }
         // Debug.Log($"[Death/Reset] Initial position stored: {initialPosition}");
     }
     
@@ -1931,8 +1941,8 @@ public class PlayerController : MonoBehaviour
     {
         Vector3 targetPosition;
         
-        // Use SimpleRespawnManager if available, otherwise fall back to existing system
-        if (SimpleRespawnManager.Instance != null)
+        // Use SimpleRespawnManager if available and properly initialized, otherwise fall back to existing system
+        if (SimpleRespawnManager.Instance != null && SimpleRespawnManager.Instance.IsInitialized())
         {
             targetPosition = SimpleRespawnManager.Instance.GetRespawnPosition();
         }
