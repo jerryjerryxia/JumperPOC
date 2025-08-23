@@ -17,12 +17,67 @@ public class OffsetTile : TileBase
     [Header("Collision")]
     public Tile.ColliderType colliderType = Tile.ColliderType.Sprite;
     
+    [Header("Custom Collision (Optional)")]
+    [SerializeField] private Vector2[] customCollisionPoints;
+    [Tooltip("Use custom collision shape instead of sprite bounds. Leave empty to use sprite collision.")]
+    
+    /// <summary>
+    /// Set custom collision points for precise L-shape collision boundaries
+    /// </summary>
+    public void SetCustomCollisionPoints(Vector2[] points)
+    {
+        customCollisionPoints = points;
+    }
+    
+    /// <summary>
+    /// Get the custom collision points if defined
+    /// </summary>
+    public Vector2[] GetCustomCollisionPoints()
+    {
+        return customCollisionPoints;
+    }
+    
+    /// <summary>
+    /// Check if this tile has custom collision defined
+    /// </summary>
+    public bool HasCustomCollision()
+    {
+        return customCollisionPoints != null && customCollisionPoints.Length > 2;
+    }
+    
     public override void GetTileData(Vector3Int position, ITilemap tilemap, ref TileData tileData)
     {
         tileData.sprite = sprite;
         tileData.transform = transform;
         tileData.flags = TileFlags.None;
-        tileData.colliderType = colliderType;
+        
+        // For L-shaped tiles, disable collision at tile level - we'll handle it via custom system
+        if (IsLShapeTile())
+        {
+            tileData.colliderType = Tile.ColliderType.None;
+        }
+        else
+        {
+            tileData.colliderType = colliderType;
+        }
+    }
+    
+    /// <summary>
+    /// Check if this tile represents an L-shape based on sprite name
+    /// </summary>
+    private bool IsLShapeTile()
+    {
+        if (sprite == null) return false;
+        
+        string spriteName = sprite.name.ToLower();
+        return spriteName.Contains("_l_missing_") || 
+               (spriteName.Contains("75_") && spriteName.Contains("missing"));
+    }
+    
+    public override bool GetTileAnimationData(Vector3Int position, ITilemap tilemap, ref TileAnimationData tileAnimationData)
+    {
+        // No animation for this tile
+        return false;
     }
     
     public override bool StartUp(Vector3Int position, ITilemap tilemap, GameObject go)
