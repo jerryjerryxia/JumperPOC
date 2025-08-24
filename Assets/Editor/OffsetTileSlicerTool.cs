@@ -196,19 +196,19 @@ public class OffsetTileSlicerTool : EditorWindow
         blSprite.Apply();
         brSprite.Apply();
         
-        // Save sprites
+        // Save sprites (using default SaveTextureBasic like working methods)
         string tlPath = SaveTextureBasic(tlSprite, $"{outputFolder}/{sourceTexture.name}_tl_corner.png");
         string trPath = SaveTextureBasic(trSprite, $"{outputFolder}/{sourceTexture.name}_tr_corner.png");
         string blPath = SaveTextureBasic(blSprite, $"{outputFolder}/{sourceTexture.name}_bl_corner.png");
         string brPath = SaveTextureBasic(brSprite, $"{outputFolder}/{sourceTexture.name}_br_corner.png");
         
-        // Create offset tile assets
+        // Create offset tile assets - fine-tuned for better grid alignment
         if (createTileAssets)
         {
-            CreateOffsetTileAsset(tlPath, "Top-Left Corner", new Vector3(-0.25f, 0.25f, 0f));
-            CreateOffsetTileAsset(trPath, "Top-Right Corner", new Vector3(0.25f, 0.25f, 0f));
-            CreateOffsetTileAsset(blPath, "Bottom-Left Corner", new Vector3(-0.25f, -0.25f, 0f));
-            CreateOffsetTileAsset(brPath, "Bottom-Right Corner", new Vector3(0.25f, -0.25f, 0f));
+            CreateOffsetTileAsset(tlPath, "Top-Left Corner", new Vector3(-0.24f, 0.24f, 0f));
+            CreateOffsetTileAsset(trPath, "Top-Right Corner", new Vector3(0.24f, 0.24f, 0f));
+            CreateOffsetTileAsset(blPath, "Bottom-Left Corner", new Vector3(-0.24f, -0.24f, 0f));
+            CreateOffsetTileAsset(brPath, "Bottom-Right Corner", new Vector3(0.24f, -0.24f, 0f));
         }
         
         RestoreTexture();
@@ -507,24 +507,90 @@ public class OffsetTileSlicerTool : EditorWindow
         return true;
     }
     
-    private string SaveTextureBasic(Texture2D texture, string path)
+    private string SaveTextureBasic(Texture2D texture, string path, int spriteSize = 64)
     {
         byte[] bytes = texture.EncodeToPNG();
         System.IO.File.WriteAllBytes(path, bytes);
         
-        // Import with sprite settings
+        // Import with sprite settings - SMART GRID ALIGNMENT
         AssetDatabase.ImportAsset(path);
         TextureImporter importer = AssetImporter.GetAtPath(path) as TextureImporter;
         if (importer != null)
         {
             importer.textureType = TextureImporterType.Sprite;
-            importer.spritePixelsToUnits = 64;
+            // CRITICAL FIX: Match pixels per unit to actual sprite content size for perfect grid alignment
+            importer.spritePixelsToUnits = spriteSize; // 32 for 32x32 sprites, 64 for 64x64 sprites
             importer.filterMode = FilterMode.Point;
             importer.textureCompression = TextureImporterCompression.Uncompressed;
             AssetDatabase.ImportAsset(path);
         }
         
         return path;
+    }
+    
+    /// <summary>
+    /// Generate precise L-shape collision points to prevent unwanted slopes in Composite Colliders
+    /// </summary>
+    private Vector2[] GenerateLShapeCollisionPoints(string spriteName)
+    {
+        string name = spriteName.ToLower();
+        
+        if (name.Contains("_l_missing_tl"))
+        {
+            // Missing top-left: ┐ shape
+            // Define exact outline to prevent diagonal fill
+            return new Vector2[]
+            {
+                new Vector2(0.5f, 0.5f),   // Top-right corner
+                new Vector2(0.5f, -0.5f),  // Bottom-right corner  
+                new Vector2(-0.5f, -0.5f), // Bottom-left corner
+                new Vector2(-0.5f, 0f),    // Left middle (where missing corner starts)
+                new Vector2(0f, 0f),       // Inner corner point
+                new Vector2(0f, 0.5f)      // Top middle (complete the L)
+            };
+        }
+        else if (name.Contains("_l_missing_tr"))
+        {
+            // Missing top-right: ┌ shape
+            return new Vector2[]
+            {
+                new Vector2(-0.5f, 0.5f),  // Top-left corner
+                new Vector2(0f, 0.5f),     // Top middle (where missing corner starts)
+                new Vector2(0f, 0f),       // Inner corner point
+                new Vector2(0.5f, 0f),     // Right middle
+                new Vector2(0.5f, -0.5f),  // Bottom-right corner
+                new Vector2(-0.5f, -0.5f)  // Bottom-left corner
+            };
+        }
+        else if (name.Contains("_l_missing_bl"))
+        {
+            // Missing bottom-left: ┘ shape
+            return new Vector2[]
+            {
+                new Vector2(-0.5f, 0.5f),  // Top-left corner
+                new Vector2(0.5f, 0.5f),   // Top-right corner
+                new Vector2(0.5f, -0.5f),  // Bottom-right corner
+                new Vector2(0f, -0.5f),    // Bottom middle (where missing corner starts)
+                new Vector2(0f, 0f),       // Inner corner point
+                new Vector2(-0.5f, 0f)     // Left middle (complete the L)
+            };
+        }
+        else if (name.Contains("_l_missing_br"))
+        {
+            // Missing bottom-right: └ shape
+            return new Vector2[]
+            {
+                new Vector2(-0.5f, 0.5f),  // Top-left corner
+                new Vector2(0.5f, 0.5f),   // Top-right corner
+                new Vector2(0.5f, 0f),     // Right middle (where missing corner starts)
+                new Vector2(0f, 0f),       // Inner corner point
+                new Vector2(0f, -0.5f),    // Bottom middle
+                new Vector2(-0.5f, -0.5f)  // Bottom-left corner
+            };
+        }
+        
+        // Return null for non-L-shapes (use sprite collision)
+        return null;
     }
     
     private void CreateOffsetTileAsset(string spritePath, string tileName, Vector3 offset)
@@ -541,6 +607,13 @@ public class OffsetTileSlicerTool : EditorWindow
         OffsetTile tile = ScriptableObject.CreateInstance<OffsetTile>();
         tile.sprite = sprite;
         tile.transform = Matrix4x4.Translate(offset);
+        
+        // Generate custom collision for L-shapes to prevent unwanted slopes
+        Vector2[] customCollision = GenerateLShapeCollisionPoints(sprite.name);
+        if (customCollision != null)
+        {
+            tile.SetCustomCollisionPoints(customCollision);
+        }
         
         // Save tile asset to Assets/Tiles folder
         string tileFolder = "Assets/Tiles";
