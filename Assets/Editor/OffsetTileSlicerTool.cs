@@ -202,13 +202,13 @@ public class OffsetTileSlicerTool : EditorWindow
         string blPath = SaveTextureBasic(blSprite, $"{outputFolder}/{sourceTexture.name}_bl_corner.png");
         string brPath = SaveTextureBasic(brSprite, $"{outputFolder}/{sourceTexture.name}_br_corner.png");
         
-        // Create offset tile assets - fine-tuned for better grid alignment
+        // Create offset tile assets - fine-tuned offsets for precise grid alignment
         if (createTileAssets)
         {
-            CreateOffsetTileAsset(tlPath, "Top-Left Corner", new Vector3(-0.24f, 0.24f, 0f));
-            CreateOffsetTileAsset(trPath, "Top-Right Corner", new Vector3(0.24f, 0.24f, 0f));
-            CreateOffsetTileAsset(blPath, "Bottom-Left Corner", new Vector3(-0.24f, -0.24f, 0f));
-            CreateOffsetTileAsset(brPath, "Bottom-Right Corner", new Vector3(0.24f, -0.24f, 0f));
+            CreateOffsetTileAsset(tlPath, "Top-Left Corner", new Vector3(-0.243f, 0.243f, 0f));
+            CreateOffsetTileAsset(trPath, "Top-Right Corner", new Vector3(0.243f, 0.243f, 0f));
+            CreateOffsetTileAsset(blPath, "Bottom-Left Corner", new Vector3(-0.243f, -0.243f, 0f));
+            CreateOffsetTileAsset(brPath, "Bottom-Right Corner", new Vector3(0.243f, -0.243f, 0f));
         }
         
         RestoreTexture();
@@ -522,6 +522,8 @@ public class OffsetTileSlicerTool : EditorWindow
             importer.spritePixelsToUnits = spriteSize; // 32 for 32x32 sprites, 64 for 64x64 sprites
             importer.filterMode = FilterMode.Point;
             importer.textureCompression = TextureImporterCompression.Uncompressed;
+            // CRITICAL FIX: Set extrude edges to 0 to prevent 33x33 tiles from 32x32 content
+            importer.spriteBorder = Vector4.zero;
             AssetDatabase.ImportAsset(path);
         }
         
