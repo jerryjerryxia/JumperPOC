@@ -265,11 +265,11 @@ public class OffsetTileSlicerTool : EditorWindow
         PrepareTexture();
         EnsureOutputDirectory();
         
-        // Create triangle tiles (50% coverage) - four diagonal cuts
-        Texture2D triangleTL = Create64x64Triangle("tl"); // Top-left triangle (diagonal from top-left to bottom-right)
-        Texture2D triangleTR = Create64x64Triangle("tr"); // Top-right triangle (diagonal from top-right to bottom-left)
-        Texture2D triangleBL = Create64x64Triangle("bl"); // Bottom-left triangle (diagonal from bottom-left to top-right)
-        Texture2D triangleBR = Create64x64Triangle("br"); // Bottom-right triangle (diagonal from bottom-right to top-left)
+        // Create triangle tiles (50% coverage) - CORRECTED vertex-based triangles
+        Texture2D triangleTL = Create64x64Triangle("tl"); // TL: top-left, top-right, bottom-left vertices
+        Texture2D triangleTR = Create64x64Triangle("tr"); // TR: top-right, top-left, bottom-right vertices
+        Texture2D triangleBL = Create64x64Triangle("bl"); // BL: bottom-left, bottom-right, top-left vertices
+        Texture2D triangleBR = Create64x64Triangle("br"); // BR: bottom-right, bottom-left, top-right vertices
         
         // Fill each triangle with the source content
         FillTriangleFromSource(triangleTL, "tl");
@@ -282,19 +282,19 @@ public class OffsetTileSlicerTool : EditorWindow
         triangleBL.Apply();
         triangleBR.Apply();
         
-        // Save sprites
-        string triangleTLPath = SaveTextureBasic(triangleTL, $"{outputFolder}/{sourceTexture.name}_triangle_tl.png");
-        string triangleTRPath = SaveTextureBasic(triangleTR, $"{outputFolder}/{sourceTexture.name}_triangle_tr.png");
-        string triangleBLPath = SaveTextureBasic(triangleBL, $"{outputFolder}/{sourceTexture.name}_triangle_bl.png");
-        string triangleBRPath = SaveTextureBasic(triangleBR, $"{outputFolder}/{sourceTexture.name}_triangle_br.png");
+        // Save sprites - FIXED MAPPING: each triangle saves with correct filename
+        string triangleTLPath = SaveTextureBasic(triangleTL, $"{outputFolder}/{sourceTexture.name}_triangle_tl.png");  // tl texture → tl filename
+        string triangleTRPath = SaveTextureBasic(triangleTR, $"{outputFolder}/{sourceTexture.name}_triangle_tr.png");  // tr texture → tr filename
+        string triangleBLPath = SaveTextureBasic(triangleBL, $"{outputFolder}/{sourceTexture.name}_triangle_bl.png");  // bl texture → bl filename
+        string triangleBRPath = SaveTextureBasic(triangleBR, $"{outputFolder}/{sourceTexture.name}_triangle_br.png");  // br texture → br filename
         
-        // Create offset tile assets (triangles don't need offsets)
+        // Create offset tile assets - LABELS match the correct filenames
         if (createTileAssets)
         {
-            CreateOffsetTileAsset(triangleTLPath, "Triangle Top-Left", Vector3.zero);
-            CreateOffsetTileAsset(triangleTRPath, "Triangle Top-Right", Vector3.zero);
-            CreateOffsetTileAsset(triangleBLPath, "Triangle Bottom-Left", Vector3.zero);
-            CreateOffsetTileAsset(triangleBRPath, "Triangle Bottom-Right", Vector3.zero);
+            CreateOffsetTileAsset(triangleTLPath, "Triangle Top-Left", Vector3.zero);     // tl texture → tl asset
+            CreateOffsetTileAsset(triangleTRPath, "Triangle Top-Right", Vector3.zero);    // tr texture → tr asset
+            CreateOffsetTileAsset(triangleBLPath, "Triangle Bottom-Left", Vector3.zero);  // bl texture → bl asset
+            CreateOffsetTileAsset(triangleBRPath, "Triangle Bottom-Right", Vector3.zero); // br texture → br asset
         }
         
         RestoreTexture();
@@ -321,7 +321,7 @@ public class OffsetTileSlicerTool : EditorWindow
         // Get all pixels from source
         Color[] sourcePixels = sourceTexture.GetPixels();
         
-        // Create triangle by copying source pixels based on diagonal cuts
+        // Create triangle by copying source pixels based on CORRECTED vertex requirements
         Color[] trianglePixels = new Color[64 * 64];
         
         for (int y = 0; y < 64; y++)
@@ -331,20 +331,24 @@ public class OffsetTileSlicerTool : EditorWindow
                 int index = y * 64 + x;
                 bool isInTriangle = false;
                 
-                // Determine if this pixel is in the triangle based on diagonal lines
+                // SLICE-BASED triangle logic - precise diagonal cuts:
+                // tl: slice from bottom-left to top-right, keep TOP half
+                // tr: slice from top-left to bottom-right, keep TOP half  
+                // bl: slice from top-left to bottom-right, keep BOTTOM half
+                // br: slice from bottom-left to top-right, keep BOTTOM half
                 switch (triangleType)
                 {
-                    case "tl": // Top-left triangle (above main diagonal)
-                        isInTriangle = (63 - y) >= x; // Above line from (0,63) to (63,0)
+                    case "tl": // Slice from bottom-left(0,0) to top-right(63,63), keep TOP half
+                        isInTriangle = y >= x; // Above/on diagonal from bottom-left to top-right
                         break;
-                    case "tr": // Top-right triangle (above anti-diagonal)
-                        isInTriangle = y >= x; // Above line from (0,0) to (63,63)
+                    case "tr": // Slice from top-left(0,63) to bottom-right(63,0), keep TOP half
+                        isInTriangle = y >= (63 - x); // Above/on diagonal from top-left to bottom-right
                         break;
-                    case "bl": // Bottom-left triangle (below anti-diagonal)
-                        isInTriangle = y <= x; // Below line from (0,0) to (63,63)
+                    case "bl": // Slice from top-left(0,63) to bottom-right(63,0), keep BOTTOM half
+                        isInTriangle = y <= (63 - x); // Below/on diagonal from top-left to bottom-right
                         break;
-                    case "br": // Bottom-right triangle (below main diagonal)
-                        isInTriangle = (63 - y) <= x; // Below line from (0,63) to (63,0)
+                    case "br": // Slice from bottom-left(0,0) to top-right(63,63), keep BOTTOM half
+                        isInTriangle = y <= x; // Below/on diagonal from bottom-left to top-right
                         break;
                 }
                 
@@ -637,6 +641,48 @@ public class OffsetTileSlicerTool : EditorWindow
             };
         }
         
+        // Handle triangular tiles - EXACT MATCH TO SPRITE VISUALS
+        else if (name.Contains("_triangle_tl"))  
+        {
+            // TL: Grey triangle in top-left corner (90° at top-left)
+            return new Vector2[]
+            {
+                new Vector2(-0.5f, 0.5f),   // Top-left corner (90° angle)
+                new Vector2(-0.5f, -0.5f),  // Bottom-left corner
+                new Vector2(0.5f, 0.5f)     // Top-right corner
+            };
+        }
+        else if (name.Contains("_triangle_tr"))
+        {
+            // TR: Grey triangle in top-right corner (90° at top-right)
+            return new Vector2[]
+            {
+                new Vector2(0.5f, 0.5f),    // Top-right corner (90° angle)
+                new Vector2(-0.5f, 0.5f),   // Top-left corner
+                new Vector2(0.5f, -0.5f)    // Bottom-right corner
+            };
+        }
+        else if (name.Contains("_triangle_bl"))
+        {
+            // BL: Grey triangle in bottom-left corner (90° at bottom-left)
+            return new Vector2[]
+            {
+                new Vector2(-0.5f, -0.5f),  // Bottom-left corner (90° angle)
+                new Vector2(-0.5f, 0.5f),   // Top-left corner
+                new Vector2(0.5f, -0.5f)    // Bottom-right corner
+            };
+        }
+        else if (name.Contains("_triangle_br"))
+        {
+            // BR: Grey triangle in bottom-right corner (90° at bottom-right)
+            return new Vector2[]
+            {
+                new Vector2(0.5f, -0.5f),   // Bottom-right corner (90° angle)
+                new Vector2(-0.5f, -0.5f),  // Bottom-left corner
+                new Vector2(0.5f, 0.5f)     // Top-right corner
+            };
+        }
+        
         // Return null for unknown tile types (use sprite collision)
         return null;
     }
@@ -656,11 +702,16 @@ public class OffsetTileSlicerTool : EditorWindow
         tile.sprite = sprite;
         tile.transform = Matrix4x4.Translate(offset);
         
-        // Generate custom collision for L-shapes and corners to prevent unwanted physics
+        // Generate custom collision for L-shapes, corners, and triangles to prevent unwanted physics
         Vector2[] customCollision = GenerateCustomCollisionPoints(sprite.name);
         if (customCollision != null)
         {
             tile.SetCustomCollisionPoints(customCollision);
+            Debug.Log($"✓ Set custom collision for {sprite.name}: {customCollision.Length} points");
+        }
+        else
+        {
+            Debug.Log($"⚠ No custom collision set for {sprite.name} - will use sprite collision");
         }
         
         // Save tile asset to Assets/Tiles folder

@@ -3,8 +3,9 @@ using UnityEngine.Tilemaps;
 using System.Collections.Generic;
 
 /// <summary>
-/// Creates custom PolygonCollider2D shapes for special tiles (L-shapes and corners) that integrate seamlessly with CompositeCollider2D.
+/// Creates custom PolygonCollider2D shapes for special tiles (L-shapes, corners, and triangular slopes) that integrate seamlessly with CompositeCollider2D.
 /// Custom tiles are excluded from auto-generation and replaced with precise collision shapes matching their visual content.
+/// Triangular tiles create smooth slopes perfect for platformer movement.
 /// </summary>
 [RequireComponent(typeof(TilemapCollider2D))]
 public class CustomCompositeColliderGenerator : MonoBehaviour
@@ -37,7 +38,7 @@ public class CustomCompositeColliderGenerator : MonoBehaviour
     }
     
     /// <summary>
-    /// Create custom collision shapes for special tiles (L-shapes and corners)
+    /// Create custom collision shapes for special tiles (L-shapes, corners, and triangular slopes)
     /// </summary>
     [ContextMenu("Create Custom Colliders")]
     public void CreateCustomColliders()
@@ -64,7 +65,7 @@ public class CustomCompositeColliderGenerator : MonoBehaviour
     }
     
     /// <summary>
-    /// Find all custom tile positions (L-shapes and corners)
+    /// Find all custom tile positions (L-shapes, corners, and triangular slopes)
     /// </summary>
     private Dictionary<Vector3Int, OffsetTile> FindCustomTilePositions()
     {
@@ -89,7 +90,7 @@ public class CustomCompositeColliderGenerator : MonoBehaviour
     }
     
     /// <summary>
-    /// Check if tile needs custom collision (L-shapes and corners)
+    /// Check if tile needs custom collision (L-shapes, corners, and triangular slopes)
     /// </summary>
     private bool IsCustomTile(OffsetTile offsetTile)
     {
@@ -98,7 +99,8 @@ public class CustomCompositeColliderGenerator : MonoBehaviour
         string spriteName = offsetTile.sprite.name.ToLower();
         return spriteName.Contains("_l_missing_") || 
                (spriteName.Contains("75_") && spriteName.Contains("missing")) ||
-               spriteName.Contains("_corner");
+               spriteName.Contains("_corner") ||
+               spriteName.Contains("_triangle_"); // Triangular tiles need custom PolygonCollider2D
     }
     
     /// <summary>
@@ -119,7 +121,7 @@ public class CustomCompositeColliderGenerator : MonoBehaviour
         polygonCollider.sharedMaterial = physicsMaterial;
         
         // Set to be used by composite collider
-        polygonCollider.usedByComposite = true;
+        polygonCollider.compositeOperation = Collider2D.CompositeOperation.Merge;
         
         // Generate precise custom collision points
         Vector2[] collisionPoints = GenerateCustomCollisionPoints(offsetTile.sprite.name);
@@ -127,7 +129,7 @@ public class CustomCompositeColliderGenerator : MonoBehaviour
     }
     
     /// <summary>
-    /// Generate precise collision points for L-shapes and corners
+    /// Generate precise collision points for L-shapes, corners, and triangular slopes
     /// </summary>
     private Vector2[] GenerateCustomCollisionPoints(string spriteName)
     {
@@ -232,6 +234,52 @@ public class CustomCompositeColliderGenerator : MonoBehaviour
             };
         }
         
+        // Handle triangular slope tiles - SLICE-BASED LOGIC
+        else if (name.Contains("_triangle_tl"))  
+        {
+            // TL triangle: slice bottom-left to top-right, keep top half
+            // Vertices: top-left, top-right, bottom-left
+            return new Vector2[]
+            {
+                new Vector2(-0.5f, 0.5f),   // Top-left vertex
+                new Vector2(0.5f, 0.5f),    // Top-right vertex  
+                new Vector2(-0.5f, -0.5f)   // Bottom-left vertex
+            };
+        }
+        else if (name.Contains("_triangle_tr"))
+        {
+            // TR triangle: slice top-left to bottom-right, keep top half
+            // Vertices: top-right, top-left, bottom-right
+            return new Vector2[]
+            {
+                new Vector2(0.5f, 0.5f),    // Top-right vertex
+                new Vector2(-0.5f, 0.5f),   // Top-left vertex
+                new Vector2(0.5f, -0.5f)    // Bottom-right vertex
+            };
+        }
+        else if (name.Contains("_triangle_bl"))
+        {
+            // BL triangle: slice top-left to bottom-right, keep bottom half
+            // Vertices: bottom-left, bottom-right, top-left
+            return new Vector2[]
+            {
+                new Vector2(-0.5f, -0.5f),  // Bottom-left vertex
+                new Vector2(0.5f, -0.5f),   // Bottom-right vertex
+                new Vector2(-0.5f, 0.5f)    // Top-left vertex
+            };
+        }
+        else if (name.Contains("_triangle_br"))
+        {
+            // BR triangle: slice bottom-left to top-right, keep bottom half
+            // Vertices: bottom-right, bottom-left, top-right
+            return new Vector2[]
+            {
+                new Vector2(0.5f, -0.5f),   // Bottom-right vertex
+                new Vector2(-0.5f, -0.5f),  // Bottom-left vertex
+                new Vector2(0.5f, 0.5f)     // Top-right vertex
+            };
+        }
+        
         // Fallback - should not happen
         return new Vector2[]
         {
@@ -261,5 +309,18 @@ public class CustomCompositeColliderGenerator : MonoBehaviour
         }
         
         Debug.Log("CustomCompositeColliderGenerator: Removed all custom colliders");
+    }
+    
+    /// <summary>
+    /// Get descriptive name for triangle orientation (for debugging)
+    /// </summary>
+    private string GetTriangleDescription(string spriteName)
+    {
+        string name = spriteName.ToLower();
+        if (name.Contains("_triangle_tl")) return "Slope Up-Right ↗"; // TL: slice bottom-left to top-right, keep top
+        if (name.Contains("_triangle_tr")) return "Slope Down-Right ↘"; // TR: slice top-left to bottom-right, keep top
+        if (name.Contains("_triangle_bl")) return "Slope Up-Left ↖"; // BL: slice top-left to bottom-right, keep bottom
+        if (name.Contains("_triangle_br")) return "Slope Down-Left ↙"; // BR: slice bottom-left to top-right, keep bottom
+        return "Unknown Triangle";
     }
 }
