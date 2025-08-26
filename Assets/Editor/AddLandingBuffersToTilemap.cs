@@ -39,7 +39,7 @@ public class AddLandingBuffersToTilemap : EditorWindow
         }
         
         EditorGUILayout.Space();
-        EditorGUILayout.HelpBox("\n✨ SMART SLICED TILE SUPPORT:\n• Automatically detects OffsetTile sliced tiles\n• Places buffers at actual visual edges (not grid edges)\n• Multi-segment support for L-shaped tiles (75% coverage)\n• Works with quarters (25%), halves (50%), L-shapes (75%)\n• Triangle tiles supported as single segments\n• Backward compatible with regular tiles\n\nL-SHAPED TILES: Each L-shape gets 3 precise buffers:\n• Top horizontal segment: left + right edges\n• Bottom vertical segment: appropriate side edge\n\nTo make the buffers work, your player ground check should look like:\n\nint groundMask = (1 << LayerMask.NameToLayer(\"Ground\")) | (1 << LayerMask.NameToLayer(\"LandingBuffer\"));\nisGrounded = Physics2D.OverlapCircle(feetPos, 0.02f, groundMask);\n\nReplace 'Ground' with your actual ground layer name if different.", MessageType.Info);
+        EditorGUILayout.HelpBox("\n✨ SMART SLICED TILE SUPPORT:\n• Automatically detects OffsetTile sliced tiles\n• Places buffers at actual visual edges (not grid edges)\n• Multi-segment support for L-shaped tiles (75% coverage)\n• Works with quarters (25%), halves (50%), L-shapes (75%)\n• Smart triangle detection: Only flat-bottom triangles get buffers\n• Backward compatible with regular tiles\n\nL-SHAPED TILES: Each L-shape gets 3 precise buffers:\n• Top horizontal segment: left + right edges\n• Bottom vertical segment: appropriate side edge\n\nTRIANGLE TILES: Slope detection ensures proper behavior:\n• triangle_tl & triangle_tr: Landing buffers (flat bottom edges)\n• triangle_bl & triangle_br: No buffers (sloped tops)\n\nTo make the buffers work, your player ground check should look like:\n\nint groundMask = (1 << LayerMask.NameToLayer(\"Ground\")) | (1 << LayerMask.NameToLayer(\"LandingBuffer\"));\nisGrounded = Physics2D.OverlapCircle(feetPos, 0.02f, groundMask);\n\nReplace 'Ground' with your actual ground layer name if different.", MessageType.Info);
     }
 
     private static void AddBuffers(GameObject targetObject, float bufferWidth, float bufferHeight)
@@ -180,6 +180,25 @@ public class AddLandingBuffersToTilemap : EditorWindow
     
     private static void CreateBuffersForOffsetTile(Tilemap tilemap, Vector3Int pos, OffsetTile offsetTile, int bufferLayer, float bufferWidth, float bufferHeight, ref int count)
     {
+        // EARLY TRIANGLE DETECTION - Handle all triangles before complex processing
+        if (offsetTile.sprite != null && offsetTile.sprite.name.ToLower().Contains("_triangle_"))
+        {
+            string spriteName = offsetTile.sprite.name.ToLower();
+            
+            // Top triangles (tl/tr) have flat bottom edge - need landing buffers
+            if (spriteName.Contains("_triangle_tl") || spriteName.Contains("_triangle_tr"))
+            {
+                CreateBuffersForRegularTile(tilemap, pos, bufferLayer, bufferWidth, bufferHeight, ref count);
+                return; // Use regular logic for flat-bottom triangles
+            }
+            
+            // Bottom triangles (bl/br) have sloped top - no landing buffers needed
+            if (spriteName.Contains("_triangle_bl") || spriteName.Contains("_triangle_br"))
+            {
+                return; // No buffers for slope-top triangles
+            }
+        }
+        
         // Check if this is a complex shape that needs multi-segment handling
         if (IsComplexShape(offsetTile))
         {
@@ -349,7 +368,7 @@ public class AddLandingBuffersToTilemap : EditorWindow
         if (offsetTile.sprite == null) return false;
         
         string spriteName = offsetTile.sprite.name.ToLower();
-        return spriteName.Contains("_l_missing_") || spriteName.Contains("_triangle_");
+        return spriteName.Contains("_l_missing_"); // Triangles are now handled early
     }
     
     private static void CreateBuffersForComplexShape(Tilemap tilemap, Vector3Int pos, OffsetTile offsetTile, int bufferLayer, float bufferWidth, float bufferHeight, ref int count)
@@ -358,7 +377,7 @@ public class AddLandingBuffersToTilemap : EditorWindow
         
         if (segments == null || segments.Length == 0)
         {
-            // Fallback to simple logic
+            // Fallback to simple logic for L-shapes that couldn't be segmented
             CreateBuffersForRegularTile(tilemap, pos, bufferLayer, bufferWidth, bufferHeight, ref count);
             return;
         }
@@ -421,15 +440,10 @@ public class AddLandingBuffersToTilemap : EditorWindow
                 new TileSegment(new Rect(0, 0, 32, 32))     // Bottom-left segment (NOT landable - wall)
             };
         }
-        // Triangle tiles (50% coverage) - treat as single segment for now
-        else if (spriteName.Contains("_triangle_"))
-        {
-            // Triangles are complex but can be handled as single segments with the existing logic
-            return null; // Fall back to single-segment logic
-        }
         
         return null; // Unknown shape, use fallback
     }
+    
     
     private static void CreateBuffersForSegment(Tilemap tilemap, Vector3Int pos, TileSegment segment, OffsetTile offsetTile, int bufferLayer, float bufferWidth, float bufferHeight, ref int count, int segmentIndex)
     {
