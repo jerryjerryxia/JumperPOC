@@ -626,7 +626,7 @@ public class PlayerController : MonoBehaviour
                 Vector2 hitNormal = slopeHit.normal;
                 float hitAngle = Vector2.Angle(hitNormal, Vector2.up);
                 
-                Debug.Log($"[SLOPE MULTI] Direction: {direction}, Hit: {slopeHit.point}, Angle: {hitAngle:F1}°, Normal: {hitNormal}");
+                // Debug.Log($"[SLOPE MULTI] Direction: {direction}, Hit: {slopeHit.point}, Angle: {hitAngle:F1}°, Normal: {hitNormal}");
                 
                 // Use the hit with the most significant slope angle
                 if (hitAngle > bestAngle)
@@ -649,12 +649,12 @@ public class PlayerController : MonoBehaviour
             if (currentSlopeAngle > 1f && currentSlopeAngle <= maxSlopeAngle)
             {
                 isOnSlope = true;
-                Debug.Log($"[SLOPE] Detected slope! Angle: {currentSlopeAngle:F1}°, Normal: {slopeNormal}");
+                // Debug.Log($"[SLOPE] Detected slope! Angle: {currentSlopeAngle:F1}°, Normal: {slopeNormal}");
                 return true; // Player is grounded on a slope
             }
             else if (currentSlopeAngle > 0.1f)
             {
-                Debug.Log($"[SLOPE DEBUG] Surface angle: {currentSlopeAngle:F1}° (not a slope), Normal: {slopeNormal}");
+                // Debug.Log($"[SLOPE DEBUG] Surface angle: {currentSlopeAngle:F1}° (not a slope), Normal: {slopeNormal}");
             }
         }
         
@@ -870,7 +870,7 @@ public class PlayerController : MonoBehaviour
         // Debug animation changes on slopes - ALWAYS LOG WHEN ON SLOPES
         if (isOnSlope && isGrounded)
         {
-            Debug.Log($"[SLOPE ANIMATION] On slope: isRunning={isRunning}, onWall={onWall}, moveInput={moveInput.x:F2}, allowRunningOnSlope={allowRunningOnSlope}");
+            // Debug.Log($"[SLOPE ANIMATION] On slope: isRunning={isRunning}, onWall={onWall}, moveInput={moveInput.x:F2}, allowRunningOnSlope={allowRunningOnSlope}");
         }
         
         isJumping = !isGrounded && !isWallSliding && !isWallSticking && !isClimbing && !isLedgeGrabbing && !isDashing && !IsDashAttacking && !IsAirAttacking && rb.linearVelocity.y > 0;
@@ -1009,7 +1009,28 @@ public class PlayerController : MonoBehaviour
                 }
             }
             
-            rb.linearVelocity = new Vector2(horizontalVelocity, rb.linearVelocity.y);
+            // SLOPE-AWARE MOVEMENT: When on slopes, move along the slope surface
+            if (isOnSlope && isGrounded && Mathf.Abs(moveInput.x) > 0.1f)
+            {
+                // Calculate movement along slope surface
+                Vector2 slopeDirection = new Vector2(slopeNormal.y, -slopeNormal.x).normalized;
+                
+                // Ensure we're moving in the right direction (down or up slope based on input)
+                if ((moveInput.x > 0 && slopeDirection.x < 0) || (moveInput.x < 0 && slopeDirection.x > 0))
+                {
+                    slopeDirection *= -1; // Flip direction if needed
+                }
+                
+                Vector2 slopeMovement = slopeDirection * Mathf.Abs(moveInput.x) * runSpeed;
+                rb.linearVelocity = new Vector2(slopeMovement.x, slopeMovement.y);
+                
+                // Debug.Log($"[SLOPE MOVEMENT] Moving along slope: angle={currentSlopeAngle:F1}°, velocity=({slopeMovement.x:F2}, {slopeMovement.y:F2})");
+            }
+            else
+            {
+                // Normal flat movement
+                rb.linearVelocity = new Vector2(horizontalVelocity, rb.linearVelocity.y);
+            }
         }
 
         // Wall slide slow-down - only if actually wall sliding (not just near wall)
@@ -1123,34 +1144,32 @@ public class PlayerController : MonoBehaviour
             rb.linearVelocity = new Vector2(combatHorizontalVelocity, combatMovement.y != 0 ? combatMovement.y : rb.linearVelocity.y);
         }
         
-        // SLOPE MOVEMENT: Handle slopes like flat platforms
+        // SLOPE MOVEMENT: Prevent sliding down slopes + prevent upward drift
         if (isOnSlope && isGrounded && !isJumping && !isDashing && !IsDashAttacking && !IsAirAttacking)
         {
-            Debug.Log($"[SLOPE PHYSICS] Running slope physics! Angle: {currentSlopeAngle:F1}°, moveInput: {moveInput.x:F2}");
-            
-            Vector2 currentVelocity = rb.linearVelocity;
-            
-            // Phase 1: Prevent gravity sliding on slopes
-            // Calculate the component of gravity that would cause sliding
-            Vector3 gravity = Physics2D.gravity * rb.gravityScale;
-            Vector2 slopeDirection = new Vector2(slopeNormal.y, -slopeNormal.x).normalized;
-            float gravityAlongSlope = Vector2.Dot(gravity, slopeDirection);
-            
-            // Counter gravity's sliding effect
-            Vector2 gravityCounterforce = -slopeDirection * gravityAlongSlope * Time.fixedDeltaTime;
-            
-            // Phase 3: Idle state management - force zero horizontal movement when not inputting
             if (Mathf.Abs(moveInput.x) < 0.1f)
             {
-                Debug.Log("[SLOPE PHYSICS] IDLE - Zeroing horizontal velocity");
-                // When idle on slope, stay perfectly still like on flat ground
-                rb.linearVelocity = new Vector2(0f, currentVelocity.y + gravityCounterforce.y);
+                // Calculate anti-sliding force (original math was correct, application was wrong)
+                Vector2 gravity = Physics2D.gravity * rb.gravityScale;
+                Vector2 slopeDirection = new Vector2(slopeNormal.y, -slopeNormal.x).normalized;
+                float gravityAlongSlope = Vector2.Dot(gravity, slopeDirection);
+                
+                // Apply counterforce as actual force (not velocity!) to prevent sliding
+                Vector2 counterForce = -slopeDirection * gravityAlongSlope * rb.mass;
+                rb.AddForce(counterForce, ForceMode2D.Force);
+                
+                // Safety clamp to prevent upward drift (keeps our fix)
+                if (rb.linearVelocity.y > 0.1f)
+                {
+                    rb.linearVelocity = new Vector2(rb.linearVelocity.x, 0.1f);
+                }
+                
+                // Debug.Log($"[SLOPE PHYSICS] IDLE - Anti-slide force: {counterForce.magnitude:F3}, Y velocity: {rb.linearVelocity.y:F3}");
             }
             else
             {
-                Debug.Log("[SLOPE PHYSICS] MOVING - Countering gravity");
-                // When moving on slope, just counter gravity but allow movement
-                rb.linearVelocity = new Vector2(currentVelocity.x, currentVelocity.y + gravityCounterforce.y);
+                // Debug.Log($"[SLOPE PHYSICS] MOVING on {currentSlopeAngle:F1}° slope - Normal movement");
+                // When moving, let normal movement physics handle everything
             }
         }
     }
