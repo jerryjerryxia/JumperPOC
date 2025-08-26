@@ -49,6 +49,18 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private float wallJumpCompensation = 1.2f; // Multiplier to counteract friction
     [SerializeField] private bool enableJumpCompensation = true;
     
+    [Header("Slope Movement")]
+    [SerializeField] private float maxSlopeAngle = 60f; // Maximum walkable slope angle
+    [SerializeField] private float slopeDetectionDistance = 1.0f; // Raycast distance for slope detection
+    
+    [Header("Slope Raycast Parameters")]
+    [SerializeField] private bool enableSlopeVisualization = true; // Show raycast debug lines
+    [SerializeField] private float slopeRaycastDistance = 1.0f; // Distance for slope detection raycasts
+    [SerializeField] private Vector2 raycastDirection1 = Vector2.down; // Direction 1: Straight down
+    [SerializeField] private Vector2 raycastDirection2 = new Vector2(0.707f, -0.707f); // Direction 2: Down-right 45°
+    [SerializeField] private Vector2 raycastDirection3 = new Vector2(-0.707f, -0.707f); // Direction 3: Down-left 45°
+    [SerializeField] private float debugLineDuration = 0.1f; // How long debug lines stay visible
+    
     [Header("Animation")]
     public float animationTransitionSpeed = 0.1f;
     private HashSet<string> missingAnimatorParams = new HashSet<string>();
@@ -144,6 +156,11 @@ public class PlayerController : MonoBehaviour
     // Jump compensation state (removed - was unused)
     // private bool isCompensatingJump = false;
     
+    // Slope detection state
+    private bool isOnSlope = false;
+    private Vector2 slopeNormal = Vector2.up;
+    private float currentSlopeAngle = 0f;
+    
     // Public properties for external access
     public bool IsGrounded => isGrounded;
     public bool IsRunning => isRunning;
@@ -166,6 +183,8 @@ public class PlayerController : MonoBehaviour
     public float DashTimer => dashTimer;
     public float DashTime => dashTime;
     public int AirDashesRemaining => airDashesRemaining;
+    public bool IsOnSlope => isOnSlope;
+    public float CurrentSlopeAngle => currentSlopeAngle;
 
     private static PlayerController instance;
     
@@ -543,13 +562,108 @@ public class PlayerController : MonoBehaviour
             //     // This fix is disabled as the root cause is likely fixed in wall friction prevention
             // }
             
-            // Normal grounding logic
-            isGrounded = groundedByPlatform || groundedByBuffer;
+            // ENHANCED GROUNDING LOGIC: Include slope detection in ground check
+            bool groundedBySlope = CheckSlopeGrounding(feetPos, platformMask, col);
+            
+            isGrounded = groundedByPlatform || groundedByBuffer || groundedBySlope;
             isGroundedByPlatform = groundedByPlatform;
             isGroundedByBuffer = groundedByBuffer && !groundedByPlatform;
         }
         
+        // Slope detection is now part of ground detection (moved to CheckSlopeGrounding)
         
+        // Complete the grounding logic
+        FinishCheckGrounding(wasGrounded);
+    }
+    
+    /// <summary>
+    /// Check if player is grounded on slopes (extracted from CheckGrounding to avoid circular dependency)
+    /// </summary>
+    private bool CheckSlopeGrounding(Vector2 feetPos, int platformMask, Collider2D col)
+    {
+        // Reset slope detection
+        isOnSlope = false;
+        slopeNormal = Vector2.up;
+        currentSlopeAngle = 0f;
+        
+        // MULTI-DIRECTIONAL RAYCAST: Use editor-configurable directions
+        Vector2[] raycastDirections = {
+            raycastDirection1.normalized,    // Direction 1 (configurable)
+            raycastDirection2.normalized,    // Direction 2 (configurable) 
+            raycastDirection3.normalized     // Direction 3 (configurable)
+        };
+        
+        RaycastHit2D bestSlopeHit = new RaycastHit2D();
+        float bestAngle = 0f;
+        Vector2 bestNormal = Vector2.up;
+        
+        // Try each raycast direction to find the best slope hit
+        foreach (Vector2 direction in raycastDirections)
+        {
+            RaycastHit2D slopeHit = Physics2D.Raycast(feetPos, direction, slopeRaycastDistance, platformMask);
+            
+            // VISUAL DEBUG: Draw each raycast line (only if enabled)
+            if (enableSlopeVisualization)
+            {
+                if (slopeHit.collider != null)
+                {
+                    // Hit something - draw green line to hit point, red line for remaining distance
+                    Debug.DrawLine(feetPos, slopeHit.point, Color.green, debugLineDuration);
+                    Debug.DrawLine(slopeHit.point, feetPos + direction * slopeRaycastDistance, Color.red, debugLineDuration);
+                    // Draw surface normal at hit point
+                    Debug.DrawLine(slopeHit.point, slopeHit.point + slopeHit.normal * 0.5f, Color.yellow, debugLineDuration);
+                }
+                else
+                {
+                    // No hit - draw full red line
+                    Debug.DrawLine(feetPos, feetPos + direction * slopeRaycastDistance, Color.red, debugLineDuration);
+                }
+            }
+            
+            // Make sure we don't hit the player's own collider
+            if (slopeHit.collider != null && slopeHit.collider != col)
+            {
+                Vector2 hitNormal = slopeHit.normal;
+                float hitAngle = Vector2.Angle(hitNormal, Vector2.up);
+                
+                Debug.Log($"[SLOPE MULTI] Direction: {direction}, Hit: {slopeHit.point}, Angle: {hitAngle:F1}°, Normal: {hitNormal}");
+                
+                // Use the hit with the most significant slope angle
+                if (hitAngle > bestAngle)
+                {
+                    bestSlopeHit = slopeHit;
+                    bestAngle = hitAngle;
+                    bestNormal = hitNormal;
+                }
+            }
+            // Skip logging for no hits and own collider hits to reduce console spam
+        }
+        
+        // Process the best slope hit found
+        if (bestSlopeHit.collider != null)
+        {
+            slopeNormal = bestNormal;
+            currentSlopeAngle = bestAngle;
+            
+            // Consider it a slope if angle is significant but walkable
+            if (currentSlopeAngle > 1f && currentSlopeAngle <= maxSlopeAngle)
+            {
+                isOnSlope = true;
+                Debug.Log($"[SLOPE] Detected slope! Angle: {currentSlopeAngle:F1}°, Normal: {slopeNormal}");
+                return true; // Player is grounded on a slope
+            }
+            else if (currentSlopeAngle > 0.1f)
+            {
+                Debug.Log($"[SLOPE DEBUG] Surface angle: {currentSlopeAngle:F1}° (not a slope), Normal: {slopeNormal}");
+            }
+        }
+        
+        return false; // No slope grounding found
+    }
+        
+    // This should be back in CheckGrounding method - let me fix the structure
+    private void FinishCheckGrounding(bool wasGrounded)
+    {
         // Handle landing
         if (!wasGrounded && isGrounded)
         {
@@ -747,7 +861,17 @@ public class PlayerController : MonoBehaviour
         }
         
         // Then calculate running state (which depends on wall states)
-        isRunning = Mathf.Abs(moveInput.x) > 0.1f && !isDashing && !IsDashAttacking && !IsAirAttacking && !onWall && !isWallSticking;
+        // SLOPE FIX: Allow running on slopes even if wall detection is confused
+        bool allowRunningOnSlope = isOnSlope && isGrounded && Mathf.Abs(moveInput.x) > 0.1f;
+        bool wasRunning = isRunning;
+        isRunning = Mathf.Abs(moveInput.x) > 0.1f && !isDashing && !IsDashAttacking && !IsAirAttacking && 
+                   (!onWall || allowRunningOnSlope) && !isWallSticking;
+        
+        // Debug animation changes on slopes - ALWAYS LOG WHEN ON SLOPES
+        if (isOnSlope && isGrounded)
+        {
+            Debug.Log($"[SLOPE ANIMATION] On slope: isRunning={isRunning}, onWall={onWall}, moveInput={moveInput.x:F2}, allowRunningOnSlope={allowRunningOnSlope}");
+        }
         
         isJumping = !isGrounded && !isWallSliding && !isWallSticking && !isClimbing && !isLedgeGrabbing && !isDashing && !IsDashAttacking && !IsAirAttacking && rb.linearVelocity.y > 0;
         
@@ -761,6 +885,7 @@ public class PlayerController : MonoBehaviour
         // Store previous wall sticking state for next frame
         wasWallSticking = isWallSticking;
     }
+    
     
     private void HandleMovement()
     {
@@ -996,6 +1121,37 @@ public class PlayerController : MonoBehaviour
             }
             
             rb.linearVelocity = new Vector2(combatHorizontalVelocity, combatMovement.y != 0 ? combatMovement.y : rb.linearVelocity.y);
+        }
+        
+        // SLOPE MOVEMENT: Handle slopes like flat platforms
+        if (isOnSlope && isGrounded && !isJumping && !isDashing && !IsDashAttacking && !IsAirAttacking)
+        {
+            Debug.Log($"[SLOPE PHYSICS] Running slope physics! Angle: {currentSlopeAngle:F1}°, moveInput: {moveInput.x:F2}");
+            
+            Vector2 currentVelocity = rb.linearVelocity;
+            
+            // Phase 1: Prevent gravity sliding on slopes
+            // Calculate the component of gravity that would cause sliding
+            Vector3 gravity = Physics2D.gravity * rb.gravityScale;
+            Vector2 slopeDirection = new Vector2(slopeNormal.y, -slopeNormal.x).normalized;
+            float gravityAlongSlope = Vector2.Dot(gravity, slopeDirection);
+            
+            // Counter gravity's sliding effect
+            Vector2 gravityCounterforce = -slopeDirection * gravityAlongSlope * Time.fixedDeltaTime;
+            
+            // Phase 3: Idle state management - force zero horizontal movement when not inputting
+            if (Mathf.Abs(moveInput.x) < 0.1f)
+            {
+                Debug.Log("[SLOPE PHYSICS] IDLE - Zeroing horizontal velocity");
+                // When idle on slope, stay perfectly still like on flat ground
+                rb.linearVelocity = new Vector2(0f, currentVelocity.y + gravityCounterforce.y);
+            }
+            else
+            {
+                Debug.Log("[SLOPE PHYSICS] MOVING - Countering gravity");
+                // When moving on slope, just counter gravity but allow movement
+                rb.linearVelocity = new Vector2(currentVelocity.x, currentVelocity.y + gravityCounterforce.y);
+            }
         }
     }
     

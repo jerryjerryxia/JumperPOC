@@ -22,7 +22,7 @@ public class OffsetTile : TileBase
     [Tooltip("Use custom collision shape instead of sprite bounds. Leave empty to use sprite collision.")]
     
     /// <summary>
-    /// Set custom collision points for precise L-shape collision boundaries
+    /// Set custom collision points for precise collision boundaries (L-shapes, corners, triangles)
     /// </summary>
     public void SetCustomCollisionPoints(Vector2[] points)
     {
@@ -51,7 +51,7 @@ public class OffsetTile : TileBase
         tileData.transform = transform;
         tileData.flags = TileFlags.None;
         
-        // For custom tiles (L-shapes and corners), disable collision at tile level - we'll handle it via custom system
+        // For custom tiles (L-shapes, corners, and triangles), disable collision at tile level - we use custom collision points
         if (IsCustomTile())
         {
             tileData.colliderType = Tile.ColliderType.None;
@@ -63,7 +63,7 @@ public class OffsetTile : TileBase
     }
     
     /// <summary>
-    /// Check if this tile needs custom collision handling (L-shapes and corners)
+    /// Check if this tile needs custom collision handling (L-shapes, corners, and triangles)
     /// </summary>
     private bool IsCustomTile()
     {
@@ -72,7 +72,8 @@ public class OffsetTile : TileBase
         string spriteName = sprite.name.ToLower();
         return spriteName.Contains("_l_missing_") || 
                (spriteName.Contains("75_") && spriteName.Contains("missing")) ||
-               spriteName.Contains("_corner");
+               spriteName.Contains("_corner") ||
+               spriteName.Contains("_triangle_"); // Add triangular tile support
     }
     
     public override bool GetTileAnimationData(Vector3Int position, ITilemap tilemap, ref TileAnimationData tileAnimationData)

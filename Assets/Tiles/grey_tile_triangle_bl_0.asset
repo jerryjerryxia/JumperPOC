@@ -31,3 +31,7 @@ MonoBehaviour:
     e32: 0
     e33: 1
   colliderType: 1
+  customCollisionPoints:
+  - {x: -0.5, y: -0.5}
+  - {x: -0.5, y: 0.5}
+  - {x: 0.5, y: -0.5}
