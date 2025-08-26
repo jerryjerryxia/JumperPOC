@@ -51,8 +51,8 @@ public class OffsetTile : TileBase
         tileData.transform = transform;
         tileData.flags = TileFlags.None;
         
-        // For L-shaped tiles, disable collision at tile level - we'll handle it via custom system
-        if (IsLShapeTile())
+        // For custom tiles (L-shapes and corners), disable collision at tile level - we'll handle it via custom system
+        if (IsCustomTile())
         {
             tileData.colliderType = Tile.ColliderType.None;
         }
@@ -63,15 +63,16 @@ public class OffsetTile : TileBase
     }
     
     /// <summary>
-    /// Check if this tile represents an L-shape based on sprite name
+    /// Check if this tile needs custom collision handling (L-shapes and corners)
     /// </summary>
-    private bool IsLShapeTile()
+    private bool IsCustomTile()
     {
         if (sprite == null) return false;
         
         string spriteName = sprite.name.ToLower();
         return spriteName.Contains("_l_missing_") || 
-               (spriteName.Contains("75_") && spriteName.Contains("missing"));
+               (spriteName.Contains("75_") && spriteName.Contains("missing")) ||
+               spriteName.Contains("_corner");
     }
     
     public override bool GetTileAnimationData(Vector3Int position, ITilemap tilemap, ref TileAnimationData tileAnimationData)

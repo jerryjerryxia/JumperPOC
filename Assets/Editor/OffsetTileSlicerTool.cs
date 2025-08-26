@@ -531,9 +531,9 @@ public class OffsetTileSlicerTool : EditorWindow
     }
     
     /// <summary>
-    /// Generate precise L-shape collision points to prevent unwanted slopes in Composite Colliders
+    /// Generate precise collision points for custom tiles (L-shapes and corners) to prevent unwanted physics
     /// </summary>
-    private Vector2[] GenerateLShapeCollisionPoints(string spriteName)
+    private Vector2[] GenerateCustomCollisionPoints(string spriteName)
     {
         string name = spriteName.ToLower();
         
@@ -591,7 +591,53 @@ public class OffsetTileSlicerTool : EditorWindow
             };
         }
         
-        // Return null for non-L-shapes (use sprite collision)
+        // Handle corner tiles - precise 32x32 collision bounds within 64x64 sprite
+        else if (name.Contains("_tl_corner"))
+        {
+            // Top-left corner: 32x32 area in top-left quadrant
+            return new Vector2[]
+            {
+                new Vector2(-0.5f, 0f),    // Bottom-left of visible area
+                new Vector2(-0.5f, 0.5f),  // Top-left corner
+                new Vector2(0f, 0.5f),     // Top-right of visible area
+                new Vector2(0f, 0f)        // Bottom-right of visible area
+            };
+        }
+        else if (name.Contains("_tr_corner"))
+        {
+            // Top-right corner: 32x32 area in top-right quadrant
+            return new Vector2[]
+            {
+                new Vector2(0f, 0f),       // Bottom-left of visible area
+                new Vector2(0f, 0.5f),     // Top-left of visible area
+                new Vector2(0.5f, 0.5f),   // Top-right corner
+                new Vector2(0.5f, 0f)      // Bottom-right of visible area
+            };
+        }
+        else if (name.Contains("_bl_corner"))
+        {
+            // Bottom-left corner: 32x32 area in bottom-left quadrant
+            return new Vector2[]
+            {
+                new Vector2(-0.5f, -0.5f), // Bottom-left corner
+                new Vector2(-0.5f, 0f),    // Top-left of visible area
+                new Vector2(0f, 0f),       // Top-right of visible area
+                new Vector2(0f, -0.5f)     // Bottom-right of visible area
+            };
+        }
+        else if (name.Contains("_br_corner"))
+        {
+            // Bottom-right corner: 32x32 area in bottom-right quadrant
+            return new Vector2[]
+            {
+                new Vector2(0f, -0.5f),    // Bottom-left of visible area
+                new Vector2(0f, 0f),       // Top-left of visible area
+                new Vector2(0.5f, 0f),     // Top-right of visible area
+                new Vector2(0.5f, -0.5f)   // Bottom-right corner
+            };
+        }
+        
+        // Return null for unknown tile types (use sprite collision)
         return null;
     }
     
@@ -610,8 +656,8 @@ public class OffsetTileSlicerTool : EditorWindow
         tile.sprite = sprite;
         tile.transform = Matrix4x4.Translate(offset);
         
-        // Generate custom collision for L-shapes to prevent unwanted slopes
-        Vector2[] customCollision = GenerateLShapeCollisionPoints(sprite.name);
+        // Generate custom collision for L-shapes and corners to prevent unwanted physics
+        Vector2[] customCollision = GenerateCustomCollisionPoints(sprite.name);
         if (customCollision != null)
         {
             tile.SetCustomCollisionPoints(customCollision);
