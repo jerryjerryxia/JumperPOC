@@ -155,62 +155,73 @@ namespace Environment
             // Check if this GameObject already has a composite collider
             compositeCollider = GetComponent<CompositeCollider2D>();
             
-            // If not, check if it's part of a tilemap with composite collider
-            if (compositeCollider == null)
-            {
-                Tilemap tilemap = GetComponent<Tilemap>();
-                if (tilemap == null)
-                    tilemap = GetComponentInParent<Tilemap>();
-                    
-                if (tilemap != null)
-                {
-                    TilemapCollider2D tilemapCollider = tilemap.GetComponent<TilemapCollider2D>();
-                    compositeCollider = tilemap.GetComponent<CompositeCollider2D>();
-                    
-                    if (compositeCollider != null && tilemapCollider != null && tilemapCollider.usedByComposite)
-                    {
-                        isCompositeColliderSetup = true;
-                    }
-                }
-            }
-            else
+            if (compositeCollider != null)
             {
                 // This GameObject itself has a composite collider
                 isCompositeColliderSetup = true;
+                Debug.Log($"[BreakableTerrain] Composite collider detected directly on {name}");
+                return;
             }
+            
+            // Check if it's part of a tilemap with composite collider
+            Tilemap tilemap = GetComponent<Tilemap>();
+            if (tilemap == null)
+                tilemap = GetComponentInParent<Tilemap>();
+                
+            if (tilemap != null)
+            {
+                TilemapCollider2D tilemapCollider = tilemap.GetComponent<TilemapCollider2D>();
+                compositeCollider = tilemap.GetComponent<CompositeCollider2D>();
+                
+                if (compositeCollider != null && tilemapCollider != null && tilemapCollider.usedByComposite)
+                {
+                    isCompositeColliderSetup = true;
+                    Debug.Log($"[BreakableTerrain] Composite collider detected on parent tilemap for {name}");
+                }
+            }
+            
+            Debug.Log($"[BreakableTerrain] Composite collider setup: {isCompositeColliderSetup} for {name}");
         }
         
         private void InitializeColliders()
         {
-            // First, try to use any existing collider on this GameObject
-            terrainCollider = GetComponent<Collider2D>();
+            Debug.Log($"[BreakableTerrain] InitializeColliders for {name} - isCompositeColliderSetup: {isCompositeColliderSetup}");
             
-            if (terrainCollider != null && terrainCollider != compositeCollider)
+            if (isCompositeColliderSetup)
             {
-                // Use existing collider, make sure it's a trigger
-                terrainCollider.isTrigger = true;
-                Debug.Log($"[BreakableTerrain] Using existing collider on {name}");
-            }
-            else if (isCompositeColliderSetup)
-            {
-                // For composite collider setups, we need a separate trigger collider
+                // For composite collider setups, ALWAYS create a separate trigger collider
+                // NEVER modify existing physics colliders
+                Debug.Log($"[BreakableTerrain] Composite setup detected - creating dedicated trigger for {name}");
                 SetupCompositeColliderIntegration();
             }
             else
             {
-                // Standard setup - create a new trigger collider
-                terrainCollider = gameObject.AddComponent<BoxCollider2D>();
-                terrainCollider.isTrigger = true;
+                // First, try to use any existing NON-COMPOSITE collider on this GameObject
+                terrainCollider = GetComponent<Collider2D>();
+                
+                if (terrainCollider != null && terrainCollider != compositeCollider)
+                {
+                    // Use existing collider, make sure it's a trigger
+                    terrainCollider.isTrigger = true;
+                    Debug.Log($"[BreakableTerrain] Using existing collider on {name}");
+                }
+                else
+                {
+                    // Standard setup - create a new trigger collider
+                    terrainCollider = gameObject.AddComponent<BoxCollider2D>();
+                    terrainCollider.isTrigger = true;
+                    Debug.Log($"[BreakableTerrain] Created new trigger collider on {name}");
+                }
             }
         }
         
         private void SetupCompositeColliderIntegration()
         {
-            // Look for existing trigger collider on this GameObject (excluding composite)
+            // Look for existing trigger collider on this GameObject (excluding composite and physics colliders)
             Collider2D[] allColliders = GetComponents<Collider2D>();
             foreach (Collider2D col in allColliders)
             {
-                if (col != compositeCollider && col.isTrigger)
+                if (col != compositeCollider && !(col is TilemapCollider2D) && col.isTrigger)
                 {
                     terrainCollider = col;
                     Debug.Log($"[BreakableTerrain] Using existing trigger collider on {name}");
@@ -218,15 +229,9 @@ namespace Environment
                 }
             }
             
-            if (autoCreateTriggerChild)
-            {
-                // Create a simple trigger collider on this GameObject
-                CreateTriggerCollider();
-            }
-            else
-            {
-                Debug.LogWarning($"[BreakableTerrain] Composite collider detected on {name} but no trigger found. Break detection may not work.");
-            }
+            // Always create a dedicated trigger collider for composite setups
+            Debug.Log($"[BreakableTerrain] Creating dedicated trigger collider for composite setup on {name}");
+            CreateTriggerCollider();
         }
         
         private void CreateTriggerCollider()
@@ -249,37 +254,13 @@ namespace Environment
             BoxCollider2D triggerBox = gameObject.AddComponent<BoxCollider2D>();
             triggerBox.isTrigger = true;
             
-            if (autoCalculateFromBounds)
-            {
-                // Auto-calculate from composite collider bounds
-                Bounds compositeBounds = compositeCollider.bounds;
-                
-                // Size and position based on composite collider bounds
-                triggerBox.size = compositeBounds.size;
-                
-                // Calculate offset from GameObject position to composite bounds center
-                Vector3 boundsCenter = compositeBounds.center;
-                Vector3 gameObjectPosition = transform.position;
-                Vector2 offset = boundsCenter - gameObjectPosition;
-                triggerBox.offset = offset;
-                
-                // Update inspector values to match calculated values
-                triggerPosition = offset;
-                triggerSize = compositeBounds.size;
-                
-                Debug.Log($"[BreakableTerrain] Auto-calculated trigger for composite collider on {name}");
-                Debug.Log($"  Composite bounds: center={compositeBounds.center}, size={compositeBounds.size}");
-                Debug.Log($"  Trigger: offset={offset}, size={triggerBox.size}");
-            }
-            else
-            {
-                // Use manual values from inspector
-                triggerBox.size = triggerSize;
-                triggerBox.offset = triggerPosition;
-                
-                Debug.Log($"[BreakableTerrain] Created manual trigger for composite collider on {name}");
-                Debug.Log($"  Trigger: offset={triggerPosition}, size={triggerSize}");
-            }
+            // ALWAYS use the manual values from inspector - they're already set correctly!
+            triggerBox.size = triggerSize;
+            triggerBox.offset = triggerPosition;
+            
+            Debug.Log($"[BreakableTerrain] Created trigger for {name} using inspector values:");
+            Debug.Log($"  Trigger position: {triggerPosition}");
+            Debug.Log($"  Trigger size: {triggerSize}");
             
             terrainCollider = triggerBox;
         }
@@ -332,34 +313,76 @@ namespace Environment
         
         private void ConfigurePlayerLayers()
         {
-            // Try to find player layer
-            int playerLayer = LayerMask.NameToLayer("Player");
-            if (playerLayer == -1)
-                playerLayer = LayerMask.NameToLayer("PlayerHitbox");
-            if (playerLayer == -1)
-                playerLayer = 0; // Default layer fallback
+            // Find the actual Player GameObject and use whatever layer it's on
+            PlayerController playerController = FindFirstObjectByType<PlayerController>();
+            int playerLayer = 0; // Default fallback
+            
+            if (playerController != null)
+            {
+                playerLayer = playerController.gameObject.layer;
+                Debug.Log($"[BreakableTerrain] Found Player GameObject on layer: {playerLayer} ({LayerMask.LayerToName(playerLayer)})");
+            }
+            else
+            {
+                // Fallback to layer detection
+                playerLayer = LayerMask.NameToLayer("Player");
+                if (playerLayer == -1)
+                    playerLayer = LayerMask.NameToLayer("PlayerHitbox");
+                if (playerLayer == -1)
+                    playerLayer = 0; // Default layer
+                Debug.Log($"[BreakableTerrain] Player GameObject not found, using layer: {playerLayer} ({LayerMask.LayerToName(playerLayer)})");
+            }
                 
             playerLayers = 1 << playerLayer;
             
-            Debug.Log($"[BreakableTerrain] Configured to detect player on layer: {LayerMask.LayerToName(playerLayer)} (mask: {playerLayers})");
+            Debug.Log($"[BreakableTerrain] Configured to detect player on layer: {playerLayer} ({LayerMask.LayerToName(playerLayer)}) with mask: {playerLayers.value}");
         }
 
         private void OnTriggerEnter2D(Collider2D other)
         {
-            if (isBroken) return;
-            if (oneTimeOnly && hasBeenBroken) return;
+            Debug.Log($"[BreakableTerrain] Trigger entered by: {other.name} on layer {other.gameObject.layer} (tag: {other.tag})");
+            
+            if (isBroken)
+            {
+                Debug.Log($"[BreakableTerrain] Already broken, ignoring trigger from {other.name}");
+                return;
+            }
+            
+            if (oneTimeOnly && hasBeenBroken)
+            {
+                Debug.Log($"[BreakableTerrain] One-time only and already broken, ignoring trigger from {other.name}");
+                return;
+            }
 
             // Check if it's a player
-            if (((1 << other.gameObject.layer) & playerLayers) == 0) return;
+            int playerLayerCheck = (1 << other.gameObject.layer) & playerLayers.value;
+            Debug.Log($"[BreakableTerrain] Layer check: (1 << {other.gameObject.layer}) & {playerLayers.value} = {playerLayerCheck}");
+            
+            if (playerLayerCheck == 0)
+            {
+                Debug.Log($"[BreakableTerrain] Layer check failed for {other.name}");
+                return;
+            }
 
             // Get player components for state checking
             PlayerController playerController = other.GetComponent<PlayerController>();
-            if (playerController == null) return;
+            if (playerController == null)
+            {
+                Debug.Log($"[BreakableTerrain] No PlayerController found on {other.name}");
+                return;
+            }
+            
+            Debug.Log($"[BreakableTerrain] All checks passed, evaluating break conditions for {other.name}");
 
             // Check break conditions
             if (ShouldBreak(other, playerController))
             {
+                Debug.Log($"[BreakableTerrain] Breaking terrain due to contact with {other.name}!");
                 BreakTerrain(other, playerController);
+            }
+            else
+            {
+                Debug.Log($"[BreakableTerrain] Break conditions not met for {other.name}");
             }
         }
 
@@ -440,51 +463,32 @@ namespace Environment
         {
             if (isBroken) return;
 
+            Debug.Log($"[BreakableTerrain] BreakTerrain called for {name}");
+            
             isBroken = true;
             hasBeenBroken = true;
 
-            // Disable the trigger collider (but keep composite collider active)
-            if (terrainCollider != null && terrainCollider != compositeCollider)
-            {
-                terrainCollider.enabled = false;
-            }
+            // Since broken state is permanent, just disable the entire GameObject
+            Debug.Log($"[BreakableTerrain] Permanently disabling {name} - no restoration needed");
             
-            // Simplified - sprite already handled above
-
-            // Handle tilemap integration
-            if (parentTilemap != null && tilemapPosition.HasValue)
-            {
-                // Remove tile from tilemap
-                parentTilemap.SetTile(tilemapPosition.Value, null);
-                
-                // For composite colliders, regenerate the composite shape
-                if (isCompositeColliderSetup && compositeCollider != null)
-                {
-                    StartCoroutine(RegenerateCompositeColliderDelayed());
-                }
-                
-            }
-
-            // Hide sprite if present
-            if (spriteRenderer != null)
-            {
-                spriteRenderer.enabled = false;
-            }
-
-            // Trigger effects
+            // Play effects first before disabling
             PlayBreakEffects();
-
+            
             // Trigger camera shake
             if (addCameraShake)
             {
                 TriggerCameraShake();
             }
-
-            // Notify listeners
+            
+            // Notify listeners before disabling
             OnTerrainBroken?.Invoke(this);
-
-            // Handle restoration
-            if (canRestore && restoreTime > 0)
+            
+            // Disable the entire GameObject - this removes all physics, rendering, and collision
+            gameObject.SetActive(false);
+            
+            // Early return since GameObject is now disabled
+            return;
+            // Note: Everything after gameObject.SetActive(false) won't execute, which is perfect!
             {
                 if (restoreCoroutine != null)
                 {
