@@ -121,8 +121,8 @@ public class OffsetTileSlicerTool : EditorWindow
         // Create offset tile assets
         if (createTileAssets)
         {
-            CreateOffsetTileAsset(leftPath, "Left Edge", new Vector3(-0.25f, 0f, 0f));
-            CreateOffsetTileAsset(rightPath, "Right Edge", new Vector3(0.25f, 0f, 0f));
+            CreateOffsetTileAsset(leftPath, "Left Edge", new Vector3(-0.243f, 0f, 0f));
+            CreateOffsetTileAsset(rightPath, "Right Edge", new Vector3(0.243f, 0f, 0f));
         }
         
         RestoreTexture();
@@ -158,8 +158,8 @@ public class OffsetTileSlicerTool : EditorWindow
         // Create offset tile assets
         if (createTileAssets)
         {
-            CreateOffsetTileAsset(topPath, "Top Edge", new Vector3(0f, 0.25f, 0f));
-            CreateOffsetTileAsset(bottomPath, "Bottom Edge", new Vector3(0f, -0.25f, 0f));
+            CreateOffsetTileAsset(topPath, "Top Edge", new Vector3(0f, 0.243f, 0f));
+            CreateOffsetTileAsset(bottomPath, "Bottom Edge", new Vector3(0f, -0.243f, 0f));
         }
         
         RestoreTexture();

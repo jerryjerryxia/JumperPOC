@@ -39,7 +39,7 @@ public class AddLandingBuffersToTilemap : EditorWindow
         }
         
         EditorGUILayout.Space();
-        EditorGUILayout.HelpBox("\n✨ SMART SLICED TILE SUPPORT:\n• Automatically detects OffsetTile sliced tiles\n• Places buffers at actual visual edges (not grid edges)\n• Multi-segment support for L-shaped tiles (75% coverage)\n• Works with quarters (25%), halves (50%), L-shapes (75%)\n• Smart triangle detection: Only flat-bottom triangles get buffers\n• Backward compatible with regular tiles\n\nL-SHAPED TILES: Each L-shape gets 3 precise buffers:\n• Top horizontal segment: left + right edges\n• Bottom vertical segment: appropriate side edge\n\nTRIANGLE TILES: Slope detection ensures proper behavior:\n• triangle_tl & triangle_tr: Landing buffers (flat bottom edges)\n• triangle_bl & triangle_br: No buffers (sloped tops)\n\nTo make the buffers work, your player ground check should look like:\n\nint groundMask = (1 << LayerMask.NameToLayer(\"Ground\")) | (1 << LayerMask.NameToLayer(\"LandingBuffer\"));\nisGrounded = Physics2D.OverlapCircle(feetPos, 0.02f, groundMask);\n\nReplace 'Ground' with your actual ground layer name if different.", MessageType.Info);
+        EditorGUILayout.HelpBox("\n✨ SMART SLICED TILE SUPPORT:\n• Automatically detects OffsetTile sliced tiles\n• Places buffers at actual visual edges (not grid edges)\n• Multi-segment support for L-shaped tiles (75% coverage)\n• Works with quarters (25%), halves (50%), L-shapes (75%)\n• Smart triangle detection: Only flat-bottom triangles get buffers\n• Backward compatible with regular tiles\n\n📍 TILEMAP NAMING:\nThe tool processes tilemaps with these keywords in their names:\n• 'platform', 'wall', 'floor' (original)\n• 'tilemap', 'level', 'lv1', 'lv2' (added for flexibility)\n• If your tilemap isn't processed, check the Console for warnings\n\nL-SHAPED TILES: Each L-shape gets 3 precise buffers:\n• Top horizontal segment: left + right edges\n• Bottom vertical segment: appropriate side edge\n\nTRIANGLE TILES: Slope detection ensures proper behavior:\n• triangle_tl & triangle_tr: Landing buffers (flat bottom edges)\n• triangle_bl & triangle_br: No buffers (sloped tops)\n\nTo make the buffers work, your player ground check should look like:\n\nint groundMask = (1 << LayerMask.NameToLayer(\"Ground\")) | (1 << LayerMask.NameToLayer(\"LandingBuffer\"));\nisGrounded = Physics2D.OverlapCircle(feetPos, 0.02f, groundMask);\n\nReplace 'Ground' with your actual ground layer name if different.", MessageType.Info);
     }
 
     private static void AddBuffers(GameObject targetObject, float bufferWidth, float bufferHeight)
@@ -66,10 +66,17 @@ public class AddLandingBuffersToTilemap : EditorWindow
         foreach (var tilemap in tilemaps)
         {
             string name = tilemap.name.ToLower();
-            // Check if this tilemap should have buffers (platforms, walls, or floors)
-            bool shouldAddBuffers = name.Contains("platform") || name.Contains("wall") || name.Contains("floor");
+            // Check if this tilemap should have buffers (platforms, walls, floors, or level tilemaps)
+            bool shouldAddBuffers = name.Contains("platform") || name.Contains("wall") || name.Contains("floor") || 
+                                  name.Contains("tilemap") || name.Contains("lv1") || name.Contains("lv2") || 
+                                  name.Contains("level");
             if (!shouldAddBuffers)
+            {
+                Debug.LogWarning($"Skipping tilemap '{tilemap.name}' - name doesn't match expected patterns (platform/wall/floor/tilemap/level)");
                 continue;
+            }
+            
+            Debug.Log($"Processing tilemap: {tilemap.name}");
 
             BoundsInt bounds = tilemap.cellBounds;
             for (int x = bounds.xMin; x < bounds.xMax; x++)
@@ -102,7 +109,9 @@ public class AddLandingBuffersToTilemap : EditorWindow
         foreach (var tilemap in tilemaps)
         {
             string name = tilemap.name.ToLower();
-            if (!(name.Contains("platform") || name.Contains("wall") || name.Contains("floor")))
+            if (!(name.Contains("platform") || name.Contains("wall") || name.Contains("floor") || 
+                  name.Contains("tilemap") || name.Contains("lv1") || name.Contains("lv2") || 
+                  name.Contains("level")))
                 continue;
                 
             Transform t = tilemap.transform;

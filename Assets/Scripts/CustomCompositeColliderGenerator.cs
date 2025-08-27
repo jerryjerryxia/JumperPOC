@@ -3,9 +3,10 @@ using UnityEngine.Tilemaps;
 using System.Collections.Generic;
 
 /// <summary>
-/// Creates custom PolygonCollider2D shapes for special tiles (L-shapes, corners, and triangular slopes) that integrate seamlessly with CompositeCollider2D.
+/// Creates custom PolygonCollider2D shapes for special tiles (L-shapes, corners, triangular slopes, and edge tiles) that integrate seamlessly with CompositeCollider2D.
 /// Custom tiles are excluded from auto-generation and replaced with precise collision shapes matching their visual content.
 /// Triangular tiles create smooth slopes perfect for platformer movement.
+/// Edge tiles (50% coverage) provide precise collision for left/right/top/bottom positioned content.
 /// </summary>
 [RequireComponent(typeof(TilemapCollider2D))]
 public class CustomCompositeColliderGenerator : MonoBehaviour
@@ -38,7 +39,7 @@ public class CustomCompositeColliderGenerator : MonoBehaviour
     }
     
     /// <summary>
-    /// Create custom collision shapes for special tiles (L-shapes, corners, and triangular slopes)
+    /// Create custom collision shapes for special tiles (L-shapes, corners, triangular slopes, and edge tiles)
     /// </summary>
     [ContextMenu("Create Custom Colliders")]
     public void CreateCustomColliders()
@@ -65,7 +66,7 @@ public class CustomCompositeColliderGenerator : MonoBehaviour
     }
     
     /// <summary>
-    /// Find all custom tile positions (L-shapes, corners, and triangular slopes)
+    /// Find all custom tile positions (L-shapes, corners, triangular slopes, and edge tiles)
     /// </summary>
     private Dictionary<Vector3Int, OffsetTile> FindCustomTilePositions()
     {
@@ -90,7 +91,7 @@ public class CustomCompositeColliderGenerator : MonoBehaviour
     }
     
     /// <summary>
-    /// Check if tile needs custom collision (L-shapes, corners, and triangular slopes)
+    /// Check if tile needs custom collision (L-shapes, corners, triangular slopes, and edge tiles)
     /// </summary>
     private bool IsCustomTile(OffsetTile offsetTile)
     {
@@ -100,7 +101,12 @@ public class CustomCompositeColliderGenerator : MonoBehaviour
         return spriteName.Contains("_l_missing_") || 
                (spriteName.Contains("75_") && spriteName.Contains("missing")) ||
                spriteName.Contains("_corner") ||
-               spriteName.Contains("_triangle_"); // Triangular tiles need custom PolygonCollider2D
+               spriteName.Contains("_triangle_") || // Triangular tiles need custom PolygonCollider2D
+               spriteName.Contains("_edge") || // Edge tiles (left/right/top/bottom)
+               spriteName.Contains("_left_edge") ||
+               spriteName.Contains("_right_edge") ||
+               spriteName.Contains("_top_edge") ||
+               spriteName.Contains("_bottom_edge");
     }
     
     /// <summary>
@@ -129,7 +135,7 @@ public class CustomCompositeColliderGenerator : MonoBehaviour
     }
     
     /// <summary>
-    /// Generate precise collision points for L-shapes, corners, and triangular slopes
+    /// Generate precise collision points for L-shapes, corners, triangular slopes, and edge tiles
     /// </summary>
     private Vector2[] GenerateCustomCollisionPoints(string spriteName)
     {
@@ -280,6 +286,52 @@ public class CustomCompositeColliderGenerator : MonoBehaviour
             };
         }
         
+        // Handle edge tiles - 50% coverage tiles positioned at edges
+        else if (name.Contains("_left_edge"))
+        {
+            // Left edge: 32x64 content positioned at left side
+            return new Vector2[]
+            {
+                new Vector2(-0.5f, -0.5f),   // Bottom-left corner
+                new Vector2(-0.5f, 0.5f),    // Top-left corner
+                new Vector2(0f, 0.5f),       // Top-right of visible area
+                new Vector2(0f, -0.5f)       // Bottom-right of visible area
+            };
+        }
+        else if (name.Contains("_right_edge"))
+        {
+            // Right edge: 32x64 content positioned at right side
+            return new Vector2[]
+            {
+                new Vector2(0f, -0.5f),      // Bottom-left of visible area
+                new Vector2(0f, 0.5f),       // Top-left of visible area
+                new Vector2(0.5f, 0.5f),     // Top-right corner
+                new Vector2(0.5f, -0.5f)     // Bottom-right corner
+            };
+        }
+        else if (name.Contains("_top_edge"))
+        {
+            // Top edge: 64x32 content positioned at top side
+            return new Vector2[]
+            {
+                new Vector2(-0.5f, 0f),      // Bottom-left of visible area
+                new Vector2(-0.5f, 0.5f),    // Top-left corner
+                new Vector2(0.5f, 0.5f),     // Top-right corner
+                new Vector2(0.5f, 0f)        // Bottom-right of visible area
+            };
+        }
+        else if (name.Contains("_bottom_edge"))
+        {
+            // Bottom edge: 64x32 content positioned at bottom side
+            return new Vector2[]
+            {
+                new Vector2(-0.5f, -0.5f),   // Bottom-left corner
+                new Vector2(-0.5f, 0f),      // Top-left of visible area
+                new Vector2(0.5f, 0f),       // Top-right of visible area
+                new Vector2(0.5f, -0.5f)     // Bottom-right corner
+            };
+        }
+        
         // Fallback - should not happen
         return new Vector2[]
         {
@@ -299,7 +351,7 @@ public class CustomCompositeColliderGenerator : MonoBehaviour
         for (int i = transform.childCount - 1; i >= 0; i--)
         {
             Transform child = transform.GetChild(i);
-            if (child.name.StartsWith("CustomTile_") || child.name.StartsWith("LShape_"))
+            if (child.name.StartsWith("CustomTile_") || child.name.StartsWith("LShape_") || child.name.StartsWith("EdgeTile_"))
             {
                 if (Application.isPlaying)
                     Destroy(child.gameObject);

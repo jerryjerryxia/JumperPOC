@@ -63,7 +63,7 @@ public class OffsetTile : TileBase
     }
     
     /// <summary>
-    /// Check if this tile needs custom collision handling (L-shapes, corners, and triangles)
+    /// Check if this tile needs custom collision handling (L-shapes, corners, triangles, and edge tiles)
     /// </summary>
     private bool IsCustomTile()
     {
@@ -73,7 +73,12 @@ public class OffsetTile : TileBase
         return spriteName.Contains("_l_missing_") || 
                (spriteName.Contains("75_") && spriteName.Contains("missing")) ||
                spriteName.Contains("_corner") ||
-               spriteName.Contains("_triangle_"); // Add triangular tile support
+               spriteName.Contains("_triangle_") || // Add triangular tile support
+               spriteName.Contains("_edge") || // Edge tiles (left/right/top/bottom)
+               spriteName.Contains("_left_edge") ||
+               spriteName.Contains("_right_edge") ||
+               spriteName.Contains("_top_edge") ||
+               spriteName.Contains("_bottom_edge");
     }
     
     public override bool GetTileAnimationData(Vector3Int position, ITilemap tilemap, ref TileAnimationData tileAnimationData)
