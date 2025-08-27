@@ -49,16 +49,11 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private float wallJumpCompensation = 1.2f; // Multiplier to counteract friction
     [SerializeField] private bool enableJumpCompensation = true;
     
-    [Header("Slope Movement")]
-    [SerializeField] private float maxSlopeAngle = 60f; // Maximum walkable slope angle
-    [SerializeField] private float slopeDetectionDistance = 1.0f; // Raycast distance for slope detection
-    
-    [Header("Slope Raycast Parameters")]
-    [SerializeField] private bool enableSlopeVisualization = true; // Show raycast debug lines
-    [SerializeField] private float slopeRaycastDistance = 1.0f; // Distance for slope detection raycasts
-    [SerializeField] private Vector2 raycastDirection1 = Vector2.down; // Direction 1: Straight down
-    [SerializeField] private Vector2 raycastDirection2 = new Vector2(0.707f, -0.707f); // Direction 2: Down-right 45°
-    [SerializeField] private Vector2 raycastDirection3 = new Vector2(-0.707f, -0.707f); // Direction 3: Down-left 45°
+    [Header("Slope Detection - Revolutionary System")]
+    [SerializeField] private bool enableSlopeVisualization = true; // Show straight-down raycast debug line
+    [SerializeField] private float slopeRaycastDistance = 0.3f; // Distance for straight-down slope detection
+    [SerializeField] private float minSlopeAngle = 15f; // Minimum angle to be considered a slope (not flat ground)
+    [SerializeField] private float maxSlopeAngle = 45.1f; // Maximum walkable slope angle (with floating point tolerance)
     [SerializeField] private float debugLineDuration = 0.1f; // How long debug lines stay visible
     
     [Header("Animation")]
@@ -578,87 +573,66 @@ public class PlayerController : MonoBehaviour
     
     /// <summary>
     /// Check if player is grounded on slopes (extracted from CheckGrounding to avoid circular dependency)
+    /// IMPROVED: Prioritizes straight-down raycast to prevent false slope detection on flat platforms
+    /// </summary>
+    /// <summary>
+    /// REVOLUTIONARY SLOPE DETECTION: Single straight-down raycast only
+    /// Eliminates diagonal raycast issues and provides clean slope detection
+    /// Only detects slopes directly under player feet
     /// </summary>
     private bool CheckSlopeGrounding(Vector2 feetPos, int platformMask, Collider2D col)
     {
-        // Reset slope detection
+        // Reset slope state
         isOnSlope = false;
         slopeNormal = Vector2.up;
         currentSlopeAngle = 0f;
         
-        // MULTI-DIRECTIONAL RAYCAST: Use editor-configurable directions
-        Vector2[] raycastDirections = {
-            raycastDirection1.normalized,    // Direction 1 (configurable)
-            raycastDirection2.normalized,    // Direction 2 (configurable) 
-            raycastDirection3.normalized     // Direction 3 (configurable)
-        };
+        // SINGLE STRAIGHT-DOWN RAYCAST - no more diagonal chaos
+        RaycastHit2D hit = Physics2D.Raycast(feetPos, Vector2.down, slopeRaycastDistance, platformMask);
         
-        RaycastHit2D bestSlopeHit = new RaycastHit2D();
-        float bestAngle = 0f;
-        Vector2 bestNormal = Vector2.up;
-        
-        // Try each raycast direction to find the best slope hit
-        foreach (Vector2 direction in raycastDirections)
+        // Visual debug for straight-down raycast only
+        if (enableSlopeVisualization)
         {
-            RaycastHit2D slopeHit = Physics2D.Raycast(feetPos, direction, slopeRaycastDistance, platformMask);
-            
-            // VISUAL DEBUG: Draw each raycast line (only if enabled)
-            if (enableSlopeVisualization)
+            if (hit.collider != null)
             {
-                if (slopeHit.collider != null)
-                {
-                    // Hit something - draw green line to hit point, red line for remaining distance
-                    Debug.DrawLine(feetPos, slopeHit.point, Color.green, debugLineDuration);
-                    Debug.DrawLine(slopeHit.point, feetPos + direction * slopeRaycastDistance, Color.red, debugLineDuration);
-                    // Draw surface normal at hit point
-                    Debug.DrawLine(slopeHit.point, slopeHit.point + slopeHit.normal * 0.5f, Color.yellow, debugLineDuration);
-                }
-                else
-                {
-                    // No hit - draw full red line
-                    Debug.DrawLine(feetPos, feetPos + direction * slopeRaycastDistance, Color.red, debugLineDuration);
-                }
+                Debug.DrawLine(feetPos, hit.point, Color.cyan, debugLineDuration);
+                Debug.DrawLine(hit.point, hit.point + hit.normal * 0.5f, Color.white, debugLineDuration);
             }
-            
-            // Make sure we don't hit the player's own collider
-            if (slopeHit.collider != null && slopeHit.collider != col)
+            else
             {
-                Vector2 hitNormal = slopeHit.normal;
-                float hitAngle = Vector2.Angle(hitNormal, Vector2.up);
-                
-                // Debug.Log($"[SLOPE MULTI] Direction: {direction}, Hit: {slopeHit.point}, Angle: {hitAngle:F1}°, Normal: {hitNormal}");
-                
-                // Use the hit with the most significant slope angle
-                if (hitAngle > bestAngle)
-                {
-                    bestSlopeHit = slopeHit;
-                    bestAngle = hitAngle;
-                    bestNormal = hitNormal;
-                }
+                Debug.DrawLine(feetPos, feetPos + Vector2.down * slopeRaycastDistance, Color.red, debugLineDuration);
             }
-            // Skip logging for no hits and own collider hits to reduce console spam
         }
         
-        // Process the best slope hit found
-        if (bestSlopeHit.collider != null)
+        // Process the hit
+        if (hit.collider != null && hit.collider != col)
         {
-            slopeNormal = bestNormal;
-            currentSlopeAngle = bestAngle;
+            Vector2 normal = hit.normal;
+            float angle = Vector2.Angle(normal, Vector2.up);
             
-            // Consider it a slope if angle is significant but walkable
-            if (currentSlopeAngle > 1f && currentSlopeAngle <= maxSlopeAngle)
+            // Use tunable parameters from inspector
+            bool isWalkableSlope = (
+                angle >= minSlopeAngle &&     // Must be angled (not flat ground)
+                angle <= maxSlopeAngle &&    // Not too steep to walk on
+                normal.y > 0.1f              // Basic upward-pointing requirement
+            );
+            
+            if (isWalkableSlope)
             {
                 isOnSlope = true;
-                // Debug.Log($"[SLOPE] Detected slope! Angle: {currentSlopeAngle:F1}°, Normal: {slopeNormal}");
-                return true; // Player is grounded on a slope
+                slopeNormal = normal;
+                currentSlopeAngle = angle;
+                
+                Debug.Log($"[SLOPE DETECTED] Valid slope: {angle:F1}°, normal=({normal.x:F2}, {normal.y:F2})");
+                return true; // Player is grounded on a walkable slope
             }
-            else if (currentSlopeAngle > 0.1f)
+            else if (angle > 0.1f)
             {
-                // Debug.Log($"[SLOPE DEBUG] Surface angle: {currentSlopeAngle:F1}° (not a slope), Normal: {slopeNormal}");
+                Debug.Log($"[SLOPE REJECTED] Surface: {angle:F1}°, normal=({normal.x:F2}, {normal.y:F2}) - not walkable");
             }
         }
         
-        return false; // No slope grounding found
+        return false; // No walkable slope found directly below
     }
         
     // This should be back in CheckGrounding method - let me fix the structure
@@ -1009,7 +983,7 @@ public class PlayerController : MonoBehaviour
                 }
             }
             
-            // SLOPE-AWARE MOVEMENT: When on slopes, move along the slope surface
+            // SLOPE-AWARE MOVEMENT: Prevent floating when walking down slopes
             if (isOnSlope && isGrounded && Mathf.Abs(moveInput.x) > 0.1f)
             {
                 // Calculate movement along slope surface
@@ -1024,7 +998,7 @@ public class PlayerController : MonoBehaviour
                 Vector2 slopeMovement = slopeDirection * Mathf.Abs(moveInput.x) * runSpeed;
                 rb.linearVelocity = new Vector2(slopeMovement.x, slopeMovement.y);
                 
-                // Debug.Log($"[SLOPE MOVEMENT] Moving along slope: angle={currentSlopeAngle:F1}°, velocity=({slopeMovement.x:F2}, {slopeMovement.y:F2})");
+                Debug.Log($"[SLOPE MOVEMENT] Moving along slope: angle={currentSlopeAngle:F1}°, velocity=({slopeMovement.x:F2}, {slopeMovement.y:F2})");
             }
             else
             {
@@ -1164,12 +1138,11 @@ public class PlayerController : MonoBehaviour
                     rb.linearVelocity = new Vector2(rb.linearVelocity.x, 0.1f);
                 }
                 
-                // Debug.Log($"[SLOPE PHYSICS] IDLE - Anti-slide force: {counterForce.magnitude:F3}, Y velocity: {rb.linearVelocity.y:F3}");
+                Debug.Log($"[ANTI-SLIDE] Applied counter-force on {currentSlopeAngle:F1}° slope: {counterForce.magnitude:F2}");
             }
             else
             {
-                // Debug.Log($"[SLOPE PHYSICS] MOVING on {currentSlopeAngle:F1}° slope - Normal movement");
-                // When moving, let normal movement physics handle everything
+                // When moving on slopes, use normal flat-ground physics (no special handling)
             }
         }
     }
