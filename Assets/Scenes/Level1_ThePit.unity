@@ -855,7 +855,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::LevelTransition
   targetSceneName: Level2_CommercialArea
-  spawnPointId: Level2Entry
+  spawnPointId: LevelEntry1-2
   requireMovementDirection: 1
   requiredDirection: {x: 1, y: 0}
   directionThreshold: 0.1
@@ -26830,6 +26830,56 @@ BoxCollider2D:
   m_AutoTiling: 0
   m_Size: {x: 0.28, y: 0.05}
   m_EdgeRadius: 0
+--- !u!1 &1565343203
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1565343205}
+  - component: {fileID: 1565343204}
+  m_Layer: 0
+  m_Name: SpawnPoint_LevelEntry2-1
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1565343204
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1565343203}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c48936a790698a94f89f0ac8da71d621, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::LevelSpawnPoint
+  spawnPointId: LevelEntry2-1
+  spawnOffset: {x: 0, y: 0, z: 0}
+  setAsRespawnPoint: 1
+  activateOnTransition: 1
+  showGizmos: 1
+  gizmoColor: {r: 0, g: 1, b: 0, a: 1}
+--- !u!4 &1565343205
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1565343203}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 69.5, y: 12, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1566056032
 GameObject:
   m_ObjectHideFlags: 0
@@ -31625,3 +31675,4 @@ SceneRoots:
   - {fileID: 1053607548}
   - {fileID: 117717710}
   - {fileID: 2001960947}
+  - {fileID: 1565343205}
