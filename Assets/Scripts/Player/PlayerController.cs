@@ -175,7 +175,7 @@ public class PlayerController : MonoBehaviour
     public bool IsLedgeGrabbing => isLedgeGrabbing;
     public bool IsFalling => isFalling;
     public bool IsLedgeClimbing => isLedgeClimbing;
-    public bool CanHeadStomp => canHeadStomp;
+    public bool CanHeadStomp => true; // DISABLED: canHeadStomp; // Disabled requirement to land before head stomping again
     public Vector2 MoveInput => moveInput;
     public bool FacingRight => facingRight;
     public bool OnWall => onWall;
@@ -1466,6 +1466,7 @@ public class PlayerController : MonoBehaviour
     public void ConsumeHeadStomp()
     {
         canHeadStomp = false;
+        airDashesUsed = 0; // Reset air dash count on successful head stomp
     }
     
     private IEnumerator BasicAttack()
