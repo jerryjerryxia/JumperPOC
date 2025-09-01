@@ -28,7 +28,7 @@ public class SavePoint : MonoBehaviour
     
     private void OnTriggerEnter2D(Collider2D other)
     {
-        if (!activateOnTrigger || isActivated) return;
+        if (!activateOnTrigger) return;
         
         if (other.CompareTag("Player"))
         {
@@ -38,15 +38,13 @@ public class SavePoint : MonoBehaviour
     
     public void ActivateSavePoint()
     {
-        if (isActivated) return;
-        
         isActivated = true;
         
         // Set this as the current respawn point with offset applied
         Vector3 respawnPosition = transform.position + respawnOffset;
         if (SimpleRespawnManager.Instance != null)
         {
-            SimpleRespawnManager.Instance.SetRespawnPoint(respawnPosition, savePointId);
+            SimpleRespawnManager.Instance.SetRespawnPoint(respawnPosition, savePointId, this);
         }
         else
         {
@@ -61,6 +59,15 @@ public class SavePoint : MonoBehaviour
             activationEffect.Play();
             
         Debug.Log($"Save Point Activated: {savePointId} | SavePoint Position: {transform.position} | Respawn Position: {respawnPosition} | Offset Applied: {respawnOffset}");
+    }
+    
+    public void SetInactive()
+    {
+        isActivated = false;
+        
+        // Visual feedback for deactivation
+        if (activatedVisual != null)
+            activatedVisual.SetActive(false);
     }
     
     /// <summary>

@@ -13,6 +13,7 @@ public class SimpleRespawnManager : MonoBehaviour
     private Vector3 currentRespawnPosition;
     private string currentSavePointId = "Default";
     private bool hasInitializedPosition = false;
+    private SavePoint currentActiveSavePoint;
     
     private void Awake()
     {
@@ -28,12 +29,32 @@ public class SimpleRespawnManager : MonoBehaviour
         }
     }
     
-    public void SetRespawnPoint(Vector3 position, string savePointId)
+    public void SetRespawnPoint(Vector3 position, string savePointId, SavePoint savePoint)
     {
+        // Skip if this save point is already active
+        if (currentActiveSavePoint == savePoint)
+        {
+            return;
+        }
+        
+        // Deactivate previous save point
+        if (currentActiveSavePoint != null)
+        {
+            currentActiveSavePoint.SetInactive();
+        }
+        
+        // Set new active save point
+        currentActiveSavePoint = savePoint;
         currentRespawnPosition = position;
         currentSavePointId = savePointId;
         hasInitializedPosition = true; // Mark as initialized when a save point is set
         Debug.Log($"Respawn point set to: {savePointId} at {position}");
+    }
+    
+    // Overload for backward compatibility (if needed)
+    public void SetRespawnPoint(Vector3 position, string savePointId)
+    {
+        SetRespawnPoint(position, savePointId, null);
     }
     
     public Vector3 GetRespawnPosition()
