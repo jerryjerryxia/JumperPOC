@@ -13,7 +13,6 @@ public class LevelSpawnPoint : MonoBehaviour
     
     [Header("Save System Integration")]
     [SerializeField] private bool setAsRespawnPoint = true;
-    [SerializeField] private bool activateOnTransition = true;
     
     [Header("Debug")]
     [SerializeField] private bool showGizmos = true;

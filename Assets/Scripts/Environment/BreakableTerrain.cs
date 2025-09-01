@@ -173,7 +173,7 @@ namespace Environment
                 TilemapCollider2D tilemapCollider = tilemap.GetComponent<TilemapCollider2D>();
                 compositeCollider = tilemap.GetComponent<CompositeCollider2D>();
                 
-                if (compositeCollider != null && tilemapCollider != null && tilemapCollider.usedByComposite)
+                if (compositeCollider != null && tilemapCollider != null && tilemapCollider.compositeOperation != Collider2D.CompositeOperation.None)
                 {
                     isCompositeColliderSetup = true;
                     // Debug.Log($"[BreakableTerrain] Composite collider detected on parent tilemap for {name}");
@@ -483,18 +483,28 @@ namespace Environment
             // Notify listeners before disabling
             OnTerrainBroken?.Invoke(this);
             
-            // Disable the entire GameObject - this removes all physics, rendering, and collision
-            gameObject.SetActive(false);
-            
-            // Early return since GameObject is now disabled
-            return;
-            // Note: Everything after gameObject.SetActive(false) won't execute, which is perfect!
+            // Check if restoration is enabled
+            if (canRestore)
             {
+                // Hide visual elements but keep GameObject active for restoration
+                if (spriteRenderer != null)
+                    spriteRenderer.enabled = false;
+                
+                // Disable trigger collider
+                if (terrainCollider != null && terrainCollider != compositeCollider)
+                    terrainCollider.enabled = false;
+                
+                // Start restoration timer
                 if (restoreCoroutine != null)
                 {
                     StopCoroutine(restoreCoroutine);
                 }
                 restoreCoroutine = StartCoroutine(RestoreAfterDelay());
+            }
+            else
+            {
+                // Disable the entire GameObject permanently
+                gameObject.SetActive(false);
             }
         }
 

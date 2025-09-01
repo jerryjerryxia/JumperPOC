@@ -105,7 +105,7 @@ namespace Environment
         /// </summary>
         public void RegisterAllTerrainInScene()
         {
-            BreakableTerrain[] allTerrain = FindObjectsOfType<BreakableTerrain>();
+            BreakableTerrain[] allTerrain = FindObjectsByType<BreakableTerrain>(FindObjectsSortMode.None);
             
             foreach (BreakableTerrain terrain in allTerrain)
             {

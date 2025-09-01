@@ -42,7 +42,6 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private bool enableCoyoteTime = true; // Enable coyote time feature
     [SerializeField] private float coyoteTimeDuration = 0.12f; // Grace period after leaving ground
     [SerializeField] private bool coyoteTimeDuringDashWindow = false; // Allow coyote time during dash jump window
-    [SerializeField] private bool showCoyoteTimeDebug = false; // Show debug info for coyote time
     [SerializeField] private bool showClimbingGizmos = true;
     
     [Header("Jump Compensation")]
@@ -51,7 +50,6 @@ public class PlayerController : MonoBehaviour
     
     [Header("Slope Movement")]
     [SerializeField] private float maxSlopeAngle = 60f; // Maximum walkable slope angle
-    [SerializeField] private float slopeDetectionDistance = 1.0f; // Raycast distance for slope detection
     
     [Header("Slope Raycast Parameters")]
     [SerializeField] private bool enableSlopeVisualization = true; // Show raycast debug lines
@@ -122,8 +120,7 @@ public class PlayerController : MonoBehaviour
     private float coyoteTimeCounter = 0f;
     private bool leftGroundByJumping = false;
     
-    // Head stomp permission system
-    private bool canHeadStomp = true;
+    // Head stomp permission system (always enabled - see CanHeadStomp property)
     
     // Animation state tracking
     private bool isGrounded;
@@ -669,7 +666,7 @@ public class PlayerController : MonoBehaviour
         {
             combat?.OnLanding();
             airDashesRemaining = maxAirDashes;
-            canHeadStomp = true; // Reset head stomp on landing
+            // Head stomp is always enabled (see CanHeadStomp property)
             airDashesUsed = 0;
             dashesRemaining = maxDashes;
             lastLandTime = Time.time; // Track landing time for wall detection
@@ -825,7 +822,7 @@ public class PlayerController : MonoBehaviour
         // Track wall stick history for sequential logic
         if (!wasWallSticking && isWallSticking)
         {
-            canHeadStomp = true; // Reset head stomp when starting to wall stick
+            // Head stomp is always enabled (see CanHeadStomp property)
             
             // Clear coyote time when starting to wall stick
             if (enableCoyoteTime)
@@ -1465,7 +1462,7 @@ public class PlayerController : MonoBehaviour
     
     public void ConsumeHeadStomp()
     {
-        canHeadStomp = false;
+        // Head stomp is always enabled (see CanHeadStomp property)
         airDashesUsed = 0; // Reset air dash count on successful head stomp
     }
     
@@ -1612,7 +1609,7 @@ public class PlayerController : MonoBehaviour
         GUILayout.Label($"PressingTowardWall: {pressingTowardWallAnim}");
         
         // Coyote time debug (only show when enabled)
-        if (showCoyoteTimeDebug && enableCoyoteTime)
+        if (enableCoyoteTime)
         {
             GUILayout.Label("\n--- COYOTE TIME ---");
             GUI.contentColor = coyoteTimeCounter > 0f ? Color.yellow : Color.gray;

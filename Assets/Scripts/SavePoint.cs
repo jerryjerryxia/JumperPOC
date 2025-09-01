@@ -17,8 +17,6 @@ public class SavePoint : MonoBehaviour
     [SerializeField] private GameObject activatedVisual;
     [SerializeField] private ParticleSystem activationEffect;
     
-    private bool isActivated = false;
-    
     private void Start()
     {
         // Set initial visual state
@@ -38,7 +36,6 @@ public class SavePoint : MonoBehaviour
     
     public void ActivateSavePoint()
     {
-        isActivated = true;
         
         // Set this as the current respawn point with offset applied
         Vector3 respawnPosition = transform.position + respawnOffset;
@@ -63,8 +60,6 @@ public class SavePoint : MonoBehaviour
     
     public void SetInactive()
     {
-        isActivated = false;
-        
         // Visual feedback for deactivation
         if (activatedVisual != null)
             activatedVisual.SetActive(false);
