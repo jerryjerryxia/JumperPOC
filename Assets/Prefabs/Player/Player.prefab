@@ -200,7 +200,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a2d695e52cc1e894e97451d54564781d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerController
-  runSpeed: 5
+  runSpeed: 4
   jumpForce: 9
   extraJumps: 1
   wallSlideSpeed: 2
@@ -225,6 +225,14 @@ MonoBehaviour:
   showClimbingGizmos: 1
   wallJumpCompensation: 1.2
   enableJumpCompensation: 1
+  maxSlopeAngle: 60
+  slopeDetectionDistance: 1
+  enableSlopeVisualization: 1
+  slopeRaycastDistance: 1
+  raycastDirection1: {x: 0, y: -1}
+  raycastDirection2: {x: 0.707, y: -0.707}
+  raycastDirection3: {x: -0.707, y: -0.707}
+  debugLineDuration: 0.1
   animationTransitionSpeed: 0.1
   groundCheckOffsetY: -0.02
   groundCheckRadius: 0.03

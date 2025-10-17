@@ -12,10 +12,18 @@ public class PlayerController : MonoBehaviour
 {
     [Header("Movement")]
     public float runSpeed = 5f;
-    public float jumpForce = 9f;
     public int extraJumps = 1;
     public float wallSlideSpeed = 2f;
     public Vector2 wallJump = new(7f, 10f);
+    
+    [Header("Variable Jump (Hollow Knight Style)")]
+    [SerializeField] private bool enableVariableJump = true;
+    [SerializeField] private float minJumpVelocity = 8f; // Velocity for tap jump (lower = shorter)
+    [SerializeField] private float maxJumpVelocity = 18f; // Velocity for full hold jump (higher = taller)
+    [SerializeField] private float jumpHoldDuration = 0.4f; // Max time to hold for variable height
+    [SerializeField] private float jumpGravityReduction = 0.7f; // Gravity multiplier while holding (lower = floatier)
+    [SerializeField] private bool useVelocityClamping = true; // Use velocity clamping method
+    [SerializeField] private bool showJumpDebug = false; // Debug visualization
 
     [Header("Dash")]
     public float dashSpeed = 8f;
@@ -98,6 +106,12 @@ public class PlayerController : MonoBehaviour
     private float dashTimer, dashCDTimer;
     private float lastDashInputTime = 0f;
     private float lastDashEndTime = 0f;
+    
+    // Variable jump state
+    private bool isJumpHeld = false;
+    private bool isVariableJumpActive = false;
+    private float jumpHoldTimer = 0f;
+    private float originalGravityScaleForJump = 1f;
     private float lastLandTime = 0f;
     private float lastJumpTime = 0f;
     private bool wasGroundedBeforeDash = false;
@@ -182,6 +196,13 @@ public class PlayerController : MonoBehaviour
     public int AirDashesRemaining => airDashesRemaining;
     public bool IsOnSlope => isOnSlope;
     public float CurrentSlopeAngle => currentSlopeAngle;
+    
+    // Variable jump properties
+    public float JumpForce => maxJumpVelocity; // For compatibility with external systems
+    public float MinJumpVelocity => minJumpVelocity;
+    public float MaxJumpVelocity => maxJumpVelocity;
+    public bool IsVariableJumpActive => isVariableJumpActive;
+    public bool EnableVariableJump => enableVariableJump;
 
     private static PlayerController instance;
     
@@ -426,6 +447,9 @@ public class PlayerController : MonoBehaviour
         {
             Debug.LogError("[PlayerController] InputManager is NULL!");
         }
+        
+        // Handle variable jump mechanics
+        HandleVariableJump();
         
         // Removed complex horizontal movement tracking
         
@@ -1171,6 +1195,91 @@ public class PlayerController : MonoBehaviour
         }
     }
     
+    /// <summary>
+    /// Handles variable jump height mechanics (Hollow Knight style)
+    /// </summary>
+    private void HandleVariableJump()
+    {
+        if (!enableVariableJump) return;
+        
+        // Update jump hold state from InputManager
+        bool jumpCurrentlyHeld = inputManager != null && inputManager.JumpHeld;
+        
+        // Check if jump was released
+        if (isJumpHeld && !jumpCurrentlyHeld)
+        {
+            isJumpHeld = false;
+            // End variable jump immediately when released
+            if (isVariableJumpActive)
+            {
+                EndVariableJump();
+            }
+        }
+        
+        // Handle active variable jump
+        if (isVariableJumpActive)
+        {
+            // Check if still moving upward
+            bool movingUpward = rb.linearVelocity.y > 0.1f;
+            
+            // Update timer
+            jumpHoldTimer += Time.fixedDeltaTime;
+            
+            // Check end conditions
+            if (!jumpCurrentlyHeld || !movingUpward || jumpHoldTimer >= jumpHoldDuration)
+            {
+                EndVariableJump();
+            }
+            else
+            {
+                if (useVelocityClamping)
+                {
+                    // VELOCITY CLAMPING METHOD: Gradually increase max allowed velocity
+                    float progress = jumpHoldTimer / jumpHoldDuration;
+                    float targetMaxVelocity = Mathf.Lerp(minJumpVelocity, maxJumpVelocity, progress);
+                    
+                    // Clamp velocity to current target max (allows natural deceleration but prevents going too high)
+                    if (rb.linearVelocity.y > targetMaxVelocity)
+                    {
+                        rb.linearVelocity = new Vector2(rb.linearVelocity.x, targetMaxVelocity);
+                    }
+                    else
+                    {
+                        // Allow slight upward boost to reach target velocity
+                        float velocityDeficit = targetMaxVelocity - rb.linearVelocity.y;
+                        if (velocityDeficit > 0.1f)
+                        {
+                            float boostForce = velocityDeficit * 8f; // Gentle boost
+                            rb.AddForce(Vector2.up * boostForce, ForceMode2D.Force);
+                        }
+                    }
+                    
+                    if (showJumpDebug)
+                    {
+                        Debug.Log($"[Variable Jump] Progress: {progress:F2}, Target Max Vel: {targetMaxVelocity:F1}, Current Vel: {rb.linearVelocity.y:F2}, Timer: {jumpHoldTimer:F2}/{jumpHoldDuration:F2}");
+                    }
+                }
+                
+                // Reduce gravity for floatier feel
+                rb.gravityScale = originalGravityScaleForJump * jumpGravityReduction;
+            }
+        }
+    }
+    
+    /// <summary>
+    /// Ends the variable jump and restores normal gravity
+    /// </summary>
+    private void EndVariableJump()
+    {
+        isVariableJumpActive = false;
+        rb.gravityScale = originalGravityScaleForJump;
+        
+        if (showJumpDebug)
+        {
+            Debug.Log($"[Variable Jump] Ended - Final height achieved, Timer: {jumpHoldTimer:F2}");
+        }
+    }
+    
     private void HandleJumping()
     {
         if (!jumpQueued) return;
@@ -1197,7 +1306,7 @@ public class PlayerController : MonoBehaviour
         bool canGroundJump = isGrounded || (allowCoyoteTime && coyoteTimeCounter > 0f && !leftGroundByJumping);
         if (canGroundJump)
         {
-            Jump(jumpForce);
+            Jump(maxJumpVelocity); // Will use velocity directly if variable jump is enabled
             jumpsRemaining = extraJumps;
             airDashesRemaining = maxAirDashes;
             airDashesUsed = 0;
@@ -1228,7 +1337,17 @@ public class PlayerController : MonoBehaviour
         }
         else if (jumpsRemaining > 0 && PlayerAbilities.Instance != null && PlayerAbilities.Instance.HasDoubleJump)
         {
-            Jump(jumpForce * 0.9f);
+            // Double jumps use fixed velocity (no variable mechanics)
+            if (enableVariableJump)
+            {
+                // For variable jump system, use minJumpVelocity for consistent air jump
+                rb.linearVelocity = new Vector2(rb.linearVelocity.x, minJumpVelocity * 0.9f);
+                lastJumpTime = Time.time;
+            }
+            else
+            {
+                Jump(maxJumpVelocity * 0.9f);
+            }
             jumpsRemaining--;
             airDashesUsed = 0;
             if (animator != null) SafeSetTrigger("DoubleJump");
@@ -1425,6 +1544,21 @@ public class PlayerController : MonoBehaviour
 
     private void Jump(float yForce, float xForce = 0)
     {
+        // For variable jump, set initial velocity directly instead of using force
+        if (enableVariableJump && xForce == 0) // Only apply to regular jumps, not wall jumps
+        {
+            // Set velocity directly to min jump velocity
+            rb.linearVelocity = new Vector2(rb.linearVelocity.x, minJumpVelocity);
+            
+            // Start variable jump tracking
+            isVariableJumpActive = true;
+            jumpHoldTimer = 0f;
+            originalGravityScaleForJump = rb.gravityScale;
+            
+            // Skip the normal force application since we set velocity directly
+            return;
+        }
+        
         // Use compensation method if the separate file exists, otherwise fallback to original
         if (enableJumpCompensation)
         {
@@ -1503,6 +1637,12 @@ public class PlayerController : MonoBehaviour
     private void OnJumpInput()
     {
         jumpQueued = true;
+        
+        // Track jump hold state for variable jump
+        if (enableVariableJump)
+        {
+            isJumpHeld = true;
+        }
     }
     
     private void OnDashInput()
@@ -1634,6 +1774,69 @@ public class PlayerController : MonoBehaviour
         
         GUILayout.EndArea();
         */
+        
+        // Variable Jump Debug Panel (Active when showJumpDebug is enabled)
+        if (showJumpDebug)
+        {
+            GUILayout.BeginArea(new Rect(Screen.width - 320, 10, 310, 300));
+            GUILayout.Label("=== VARIABLE JUMP DEBUG ===", GUI.skin.label);
+            
+            // Variable jump settings
+            GUI.contentColor = enableVariableJump ? Color.green : Color.red;
+            GUILayout.Label($"Variable Jump: {(enableVariableJump ? "ENABLED" : "DISABLED")}");
+            GUI.contentColor = Color.white;
+            
+            if (enableVariableJump)
+            {
+                GUILayout.Label($"Min Velocity: {minJumpVelocity:F1}");
+                GUILayout.Label($"Max Velocity: {maxJumpVelocity:F1}");
+                GUILayout.Label($"Hold Duration: {jumpHoldDuration:F2}s");
+                GUILayout.Label($"Velocity Clamping: {useVelocityClamping}");
+                GUILayout.Label($"Gravity Reduction: {jumpGravityReduction:F2}");
+                
+                // Show calculated values
+                if (isVariableJumpActive)
+                {
+                    float progress = jumpHoldTimer / jumpHoldDuration;
+                    float targetMaxVelocity = Mathf.Lerp(minJumpVelocity, maxJumpVelocity, progress);
+                    GUILayout.Label($"Progress: {progress:F2}");
+                    GUILayout.Label($"Target Max Vel: {targetMaxVelocity:F1}");
+                }
+                
+                GUILayout.Space(10);
+                
+                // Current state
+                GUI.contentColor = isJumpHeld ? Color.green : Color.gray;
+                GUILayout.Label($"Jump Held: {isJumpHeld}");
+                GUI.contentColor = isVariableJumpActive ? Color.green : Color.gray;
+                GUILayout.Label($"Variable Jump Active: {isVariableJumpActive}");
+                GUI.contentColor = Color.white;
+                
+                if (isVariableJumpActive)
+                {
+                    GUILayout.Label($"Hold Timer: {jumpHoldTimer:F2}/{jumpHoldDuration:F2}");
+                    GUILayout.Label($"Current Gravity: {rb.gravityScale:F2}");
+                    GUILayout.Label($"Y Velocity: {rb.linearVelocity.y:F2}");
+                    
+                    // Progress bar for hold timer
+                    float progress = jumpHoldTimer / jumpHoldDuration;
+                    GUI.backgroundColor = Color.Lerp(Color.green, Color.red, progress);
+                    GUILayout.Box("", GUILayout.Height(10), GUILayout.Width(280 * progress));
+                    GUI.backgroundColor = Color.white;
+                }
+                
+                // Input state from InputManager
+                if (inputManager != null)
+                {
+                    GUILayout.Space(5);
+                    GUI.contentColor = inputManager.JumpHeld ? Color.green : Color.gray;
+                    GUILayout.Label($"Input Jump Held: {inputManager.JumpHeld}");
+                    GUI.contentColor = Color.white;
+                }
+            }
+            
+            GUILayout.EndArea();
+        }
     }
 
     private bool CheckClimbingAssistanceZone()
@@ -1670,6 +1873,29 @@ public class PlayerController : MonoBehaviour
     /// </summary>
     private void JumpWithCompensation(float yForce, float xForce = 0)
     {
+        // For variable jump with compensation, set velocity directly
+        if (enableVariableJump && xForce == 0)
+        {
+            // Set velocity directly to min jump velocity  
+            rb.linearVelocity = new Vector2(rb.linearVelocity.x, minJumpVelocity);
+            
+            // Start variable jump tracking
+            isVariableJumpActive = true;
+            jumpHoldTimer = 0f;
+            originalGravityScaleForJump = rb.gravityScale;
+            
+            // Apply compensation if needed
+            bool requiresCompensation = CheckIfNeedsJumpCompensation();
+            if (requiresCompensation)
+            {
+                float compensationVelocity = minJumpVelocity * (wallJumpCompensation - 1f);
+                rb.linearVelocity = new Vector2(rb.linearVelocity.x, minJumpVelocity + compensationVelocity);
+            }
+            
+            lastJumpTime = Time.time;
+            return;
+        }
+        
         // Check if we need compensation
         bool needsCompensation = CheckIfNeedsJumpCompensation();
         
@@ -1754,7 +1980,7 @@ public class PlayerController : MonoBehaviour
             bool likelyDashJump = isDashJumpActive || (Time.time - lastJumpTime < 0.15f && hasHighHorizontalVelocity);
             
             // Use appropriate base force for compensation depending on jump type
-            float baseForce = likelyDashJump ? dashJump.y : jumpForce;
+            float baseForce = likelyDashJump ? dashJump.y : maxJumpVelocity;
             float compensationForce = baseForce * (wallJumpCompensation - 1f);
             
             // Apply compensation force
