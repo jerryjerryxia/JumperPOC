@@ -863,6 +863,34 @@ public class PlayerController : MonoBehaviour
         // Track wall stick history for sequential logic
         if (!wasWallSticking && isWallSticking)
         {
+            // IMMEDIATELY and AGGRESSIVELY cancel ALL upward velocity when entering wall stick
+            // This is critical for high-velocity dash jumps that would otherwise cause falling
+            if (rb.linearVelocity.y > 0f)
+            {
+                // Store original velocity for debugging
+                float originalVelocity = rb.linearVelocity.y;
+                
+                // ZERO out vertical velocity immediately - no gradual transition
+                rb.linearVelocity = new Vector2(rb.linearVelocity.x, 0f);
+                
+                // End any active variable jump
+                if (isVariableJumpActive)
+                {
+                    EndVariableJump();
+                }
+                
+                // Clear any dash jump momentum that might interfere
+                if (dashJumpTime > 0f)
+                {
+                    dashJumpTime = 0f; // Stop dash jump momentum preservation
+                }
+                
+                if (showJumpDebug)
+                {
+                    Debug.Log($"[Wall Stick] EMERGENCY STOP - cancelled velocity {originalVelocity:F2} → 0, dash momentum cleared");
+                }
+            }
+            
             // Head stomp is always enabled (see CanHeadStomp property)
             
             // Clear coyote time when starting to wall stick
@@ -1464,12 +1492,15 @@ public class PlayerController : MonoBehaviour
             return;
         }
         
-        // Ground jump (including coyote time with dash window separation)
+        // PRIORITY 1: Ground jump ALWAYS takes priority over wall jumps
+        // This ensures jumping near walls works regardless of wall stick state
         bool inDashJumpWindow = lastDashEndTime > 0 && Time.time - lastDashEndTime <= dashJumpWindow;
         bool allowCoyoteTime = enableCoyoteTime && (!inDashJumpWindow || coyoteTimeDuringDashWindow);
         bool canGroundJump = isGrounded || (allowCoyoteTime && coyoteTimeCounter > 0f && !leftGroundByJumping);
+        
         if (canGroundJump)
         {
+            // Ground jump - works regardless of wall proximity or wall stick state
             Jump(maxJumpVelocity); // Will use velocity directly if variable jump is enabled
             jumpsRemaining = extraJumps;
             airDashesRemaining = maxAirDashes;
@@ -1483,9 +1514,16 @@ public class PlayerController : MonoBehaviour
                 coyoteTimeCounter = 0f;
                 leftGroundByJumping = true; // Prevent further coyote jumps
             }
+            
+            if (showJumpDebug)
+            {
+                Debug.Log($"[Jump Priority] Ground jump executed - isGrounded: {isGrounded}, onWall: {onWall}, wallStick: {PlayerAbilities.Instance?.HasWallStick}");
+            }
         }
-        else if (onWall && PlayerAbilities.Instance != null && PlayerAbilities.Instance.HasWallStick)
+        // PRIORITY 2: Wall jump (only when airborne and wall stick enabled)
+        else if (!isGrounded && onWall && PlayerAbilities.Instance != null && PlayerAbilities.Instance.HasWallStick)
         {
+            // Wall jump - only when airborne and wall stick is enabled
             facingRight = !facingRight;
             Jump(wallJump.y, wallJump.x * (facingRight ? 1 : -1));
             jumpsRemaining = extraJumps;
@@ -1493,11 +1531,20 @@ public class PlayerController : MonoBehaviour
             airDashesUsed = 0;
             dashesRemaining = maxDashes;
             if (animator != null) SafeSetTrigger("Jump");
+            
+            if (showJumpDebug)
+            {
+                Debug.Log($"[Jump Priority] Wall jump executed - airborne wall stick");
+            }
         }
-        else if (onWall && PlayerAbilities.Instance != null && !PlayerAbilities.Instance.HasWallStick)
+        // PRIORITY 3: Debug case for wall stick disabled but onWall detected
+        else if (!isGrounded && onWall && PlayerAbilities.Instance != null && !PlayerAbilities.Instance.HasWallStick)
         {
-            // DEBUG: Player tried to wall jump but ability is disabled
-            // Debug.LogError($"[WallStick] WALL JUMP BLOCKED! Ability disabled but onWall={onWall}. This suggests onWall is incorrectly true!");
+            // This should not happen with proper wall detection, but kept for debugging
+            if (showJumpDebug)
+            {
+                Debug.LogWarning($"[Jump Priority] Wall detected but wall stick disabled - onWall: {onWall}, airborne: {!isGrounded}");
+            }
         }
         else if (jumpsRemaining > 0 && PlayerAbilities.Instance != null && PlayerAbilities.Instance.HasDoubleJump && CanPerformDoubleJump())
         {
@@ -2115,9 +2162,8 @@ public class PlayerController : MonoBehaviour
     /// </summary>
     private bool CheckIfNeedsJumpCompensation()
     {
-        // Only compensate if wall stick is disabled
-        if (PlayerAbilities.Instance != null && PlayerAbilities.Instance.HasWallStick)
-            return false;
+        // ALWAYS compensate ground jumps near walls, regardless of wall stick state
+        // Wall stick state only affects wall jump behavior, not ground jump compensation
         
         // Check if we're against a wall
         if (!CheckIfAgainstWall())
@@ -2127,7 +2173,17 @@ public class PlayerController : MonoBehaviour
         bool pressingIntoWall = (facingRight && moveInput.x > 0.1f) || 
                                 (!facingRight && moveInput.x < -0.1f);
         
-        return pressingIntoWall;
+        // Apply compensation when pressing into wall (for ground jumps)
+        if (pressingIntoWall)
+        {
+            if (showJumpDebug)
+            {
+                Debug.Log($"[Jump Compensation] Wall friction detected - wallStick: {PlayerAbilities.Instance?.HasWallStick}, pressingIntoWall: {pressingIntoWall}");
+            }
+            return true;
+        }
+        
+        return false;
     }
     
     /// <summary>
@@ -2135,8 +2191,9 @@ public class PlayerController : MonoBehaviour
     /// </summary>
     private void HandleMidJumpWallCompensation()
     {
-        // Only compensate if wall stick is disabled
-        if (PlayerAbilities.Instance == null || PlayerAbilities.Instance.HasWallStick)
+        // ALWAYS compensate ground jumps that contact walls mid-flight
+        // Wall stick state only affects wall jump behavior, not ground jump compensation
+        if (PlayerAbilities.Instance == null)
         {
             wasAgainstWall = CheckIfAgainstWall();
             return;
