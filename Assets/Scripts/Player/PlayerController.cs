@@ -623,11 +623,22 @@ public class PlayerController : MonoBehaviour
         isOnSlope = false;
         slopeNormal = Vector2.up;
         currentSlopeAngle = 0f;
-        
+
+        // JUMP GRACE PERIOD: Prevent slope grounding briefly after jump starts
+        // This allows isGrounded to become false, enabling jump animation
+        float timeSinceJump = Time.time - lastJumpTime;
+        float slopeJumpGracePeriod = 0.15f; // Prevent slope grounding for 0.15s after jump
+
+        if (timeSinceJump < slopeJumpGracePeriod && rb.linearVelocity.y > 0.5f)
+        {
+            // Debug.Log($"[SLOPE JUMP GRACE] Skipping slope detection - time since jump: {timeSinceJump:F3}s");
+            return false; // Don't detect slope grounding during jump grace period
+        }
+
         // MULTI-DIRECTIONAL RAYCAST: Use editor-configurable directions
         Vector2[] raycastDirections = {
             raycastDirection1.normalized,    // Direction 1 (configurable)
-            raycastDirection2.normalized,    // Direction 2 (configurable) 
+            raycastDirection2.normalized,    // Direction 2 (configurable)
             raycastDirection3.normalized     // Direction 3 (configurable)
         };
         
@@ -680,14 +691,25 @@ public class PlayerController : MonoBehaviour
         // Process the best slope hit found
         if (bestSlopeHit.collider != null)
         {
+            // GHOST GROUNDING FIX: Check VERTICAL distance to slope, not raycast distance
+            // Diagonal raycasts can have short distance while player is still airborne
+            float verticalDistance = Mathf.Abs(feetPos.y - bestSlopeHit.point.y);
+            float maxVerticalGroundingDistance = 0.2f; // Only ground if vertically within 0.2 units
+
+            if (verticalDistance > maxVerticalGroundingDistance)
+            {
+                // Debug.Log($"[SLOPE ANTI-GHOST] Slope hit too far vertically: {verticalDistance:F2} units (max: {maxVerticalGroundingDistance:F2})");
+                return false; // Too far above slope surface to be grounded
+            }
+
             slopeNormal = bestNormal;
             currentSlopeAngle = bestAngle;
-            
+
             // Consider it a slope if angle is significant but walkable
             if (currentSlopeAngle > 1f && currentSlopeAngle <= maxSlopeAngle)
             {
                 isOnSlope = true;
-                // Debug.Log($"[SLOPE] Detected slope! Angle: {currentSlopeAngle:F1}°, Normal: {slopeNormal}");
+                // Debug.Log($"[SLOPE] Detected slope! Angle: {currentSlopeAngle:F1}°, Vertical Distance: {verticalDistance:F2}, Normal: {slopeNormal}");
                 return true; // Player is grounded on a slope
             }
             else if (currentSlopeAngle > 0.1f)
@@ -695,7 +717,7 @@ public class PlayerController : MonoBehaviour
                 // Debug.Log($"[SLOPE DEBUG] Surface angle: {currentSlopeAngle:F1}° (not a slope), Normal: {slopeNormal}");
             }
         }
-        
+
         return false; // No slope grounding found
     }
         
@@ -1225,7 +1247,8 @@ public class PlayerController : MonoBehaviour
                 rb.AddForce(counterForce, ForceMode2D.Force);
                 
                 // Safety clamp to prevent upward drift (keeps our fix)
-                if (rb.linearVelocity.y > 0.1f)
+                // Don't clamp during variable jump - it would kill the jump on slopes
+                if (rb.linearVelocity.y > 0.1f && !isVariableJumpActive)
                 {
                     rb.linearVelocity = new Vector2(rb.linearVelocity.x, 0.1f);
                 }
@@ -1475,11 +1498,22 @@ public class PlayerController : MonoBehaviour
     private void HandleJumping()
     {
         if (!jumpQueued) return;
-        
+
+        // DEBUG: Log when jump is blocked while moving on slopes
+        if (isOnSlope && Mathf.Abs(moveInput.x) > 0.1f)
+        {
+            Debug.Log($"[SLOPE JUMP DEBUG] Attempting jump while moving on slope - isGrounded: {isGrounded}, on Wall: {onWall}");
+        }
+
         // CRITICAL: Block jumping during active air attacks to prevent infinite elevation exploit
         // Allow normal jumps when airborne after dashing off platform
         if (combat != null && (combat.IsAirAttacking || (combat.IsDashAttacking && isGrounded)))
         {
+            // DEBUG: Log if this blocks the jump
+            if (isOnSlope && Mathf.Abs(moveInput.x) > 0.1f)
+            {
+                Debug.Log($"[SLOPE JUMP DEBUG] BLOCKED by combat check - IsAirAttacking: {combat.IsAirAttacking}, IsDashAttacking: {combat.IsDashAttacking}");
+            }
             jumpQueued = false;
             return;
         }
@@ -1487,9 +1521,20 @@ public class PlayerController : MonoBehaviour
         // Dash Jump: Jump during active dash or shortly after dash ends
         if (CanPerformDashJump())
         {
+            // DEBUG: Log if dash jump blocks normal jump
+            if (isOnSlope && Mathf.Abs(moveInput.x) > 0.1f)
+            {
+                Debug.Log($"[SLOPE JUMP DEBUG] BLOCKED by dash jump - performing dash jump instead");
+            }
             PerformDashJump();
             jumpQueued = false;
             return;
+        }
+
+        // DEBUG: Log that we passed all blocking checks
+        if (isOnSlope && Mathf.Abs(moveInput.x) > 0.1f)
+        {
+            Debug.Log($"[SLOPE JUMP DEBUG] Passed all blocking checks, calculating canGroundJump...");
         }
         
         // PRIORITY 1: Ground jump ALWAYS takes priority over wall jumps
@@ -1500,6 +1545,12 @@ public class PlayerController : MonoBehaviour
         
         if (canGroundJump)
         {
+            // DEBUG: Log when ground jump executes
+            if (isOnSlope && Mathf.Abs(moveInput.x) > 0.1f)
+            {
+                Debug.Log($"[SLOPE JUMP DEBUG] Ground jump executing! canGroundJump: {canGroundJump}, isGrounded: {isGrounded}, velocity before: {rb.linearVelocity.y:F2}");
+            }
+
             // Ground jump - works regardless of wall proximity or wall stick state
             Jump(maxJumpVelocity); // Will use velocity directly if variable jump is enabled
             jumpsRemaining = extraJumps;
@@ -1507,6 +1558,12 @@ public class PlayerController : MonoBehaviour
             airDashesUsed = 0;
             dashesRemaining = maxDashes;
             if (animator != null) SafeSetTrigger("Jump");
+
+            // DEBUG: Log velocity after jump
+            if (isOnSlope && Mathf.Abs(moveInput.x) > 0.1f)
+            {
+                Debug.Log($"[SLOPE JUMP DEBUG] After Jump() call, velocity: {rb.linearVelocity.y:F2}, isVariableJumpActive: {isVariableJumpActive}");
+            }
             
             // Consume coyote time if it was used
             if (!isGrounded && enableCoyoteTime && coyoteTimeCounter > 0f)
@@ -1760,9 +1817,34 @@ public class PlayerController : MonoBehaviour
                 }
             }
             
-            // Set velocity directly to compensated min jump velocity
-            rb.linearVelocity = new Vector2(rb.linearVelocity.x, actualMinVelocity);
-            
+            // SLOPE JUMP COMPENSATION: Add extra upward velocity when jumping up slopes
+            float slopeCompensation = 0f;
+            if (isOnSlope && Mathf.Abs(moveInput.x) > 0.1f)
+            {
+                // Check if running upward on slope (moveInput direction matches upward slope direction)
+                Vector2 slopeUpDirection = new Vector2(slopeNormal.y, -slopeNormal.x).normalized;
+                bool runningUpSlope = Vector2.Dot(new Vector2(moveInput.x, 0), slopeUpDirection) > 0;
+
+                if (runningUpSlope)
+                {
+                    // Add compensation based on slope angle (0° = no compensation, 45° = max compensation)
+                    // Use a multiplier that scales with slope steepness
+                    float slopeAngleRatio = currentSlopeAngle / 45f; // Normalize to 45° as reference
+                    slopeCompensation = actualMinVelocity * 0.5f * slopeAngleRatio; // Up to 50% extra velocity on 45° slopes
+
+                    // Debug.Log($"[SLOPE JUMP] Running up {currentSlopeAngle:F1}° slope - adding {slopeCompensation:F2} compensation");
+                }
+            }
+
+            // Set velocity directly to compensated min jump velocity + slope compensation
+            rb.linearVelocity = new Vector2(rb.linearVelocity.x, actualMinVelocity + slopeCompensation);
+
+            // DEBUG: Log velocity set
+            if (isOnSlope && Mathf.Abs(moveInput.x) > 0.1f)
+            {
+                Debug.Log($"[SLOPE JUMP DEBUG] Jump() method set velocity to: {actualMinVelocity + slopeCompensation:F2} (base: {actualMinVelocity:F2}, slope compensation: {slopeCompensation:F2})");
+            }
+
             // Start variable jump tracking with compensated values
             isVariableJumpActive = true;
             jumpHoldTimer = 0f;
