@@ -228,7 +228,7 @@ MonoBehaviour:
   maxSlopeAngle: 60
   slopeDetectionDistance: 1
   enableSlopeVisualization: 1
-  slopeRaycastDistance: 1
+  slopeRaycastDistance: 0.2
   raycastDirection1: {x: 0, y: -1}
   raycastDirection2: {x: 0.707, y: -0.707}
   raycastDirection3: {x: -0.707, y: -0.707}
