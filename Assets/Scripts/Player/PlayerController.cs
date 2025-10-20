@@ -124,9 +124,6 @@ public class PlayerController : MonoBehaviour
     private float lastDashEndTime = 0f;
     
     // Variable jump state (synced from jumpSystem)
-    private bool isJumpHeld = false;
-    private bool isVariableJumpActive = false;
-    private float lastLandTime = 0f;
     private float lastJumpTime = 0f;
 
     // Dash jump momentum preservation
@@ -160,9 +157,7 @@ public class PlayerController : MonoBehaviour
     private float facingDirection;
     private float horizontalInput;
     private float verticalInput;
-    private bool isGroundedByPlatform;
-    private bool isGroundedByBuffer;
-    
+
     // Basic attack state for compatibility (when no PlayerCombat)
     private bool isAttacking = false;
     
@@ -203,7 +198,7 @@ public class PlayerController : MonoBehaviour
     public float JumpForce => maxJumpVelocity; // For compatibility with external systems
     public float MinJumpVelocity => minJumpVelocity;
     public float MaxJumpVelocity => maxJumpVelocity;
-    public bool IsVariableJumpActive => isVariableJumpActive;
+    public bool IsVariableJumpActive => jumpSystem?.IsVariableJumpActive ?? false;
     public bool EnableVariableJump => enableVariableJump;
 
     private static PlayerController instance;
@@ -387,8 +382,7 @@ public class PlayerController : MonoBehaviour
             // Track jump hold state for variable jump
             if (enableVariableJump)
             {
-                isJumpHeld = true;
-                jumpSystem.IsJumpHeld = true; // Set jumpSystem's jump hold state
+                jumpSystem.IsJumpHeld = true;
             }
         };
 
@@ -398,7 +392,6 @@ public class PlayerController : MonoBehaviour
             // Clear jump hold state when button is released
             if (enableVariableJump)
             {
-                isJumpHeld = false;
                 jumpSystem.IsJumpHeld = false;
             }
         };
@@ -504,11 +497,9 @@ public class PlayerController : MonoBehaviour
         jumpSystem.UpdateForcedFall();
 
         // Sync jump state from jumpSystem
-        isVariableJumpActive = jumpSystem.IsVariableJumpActive;
         jumpsRemaining = jumpSystem.JumpsRemaining;
         lastJumpTime = jumpSystem.LastJumpTime;
         dashJumpTime = jumpSystem.DashJumpTime;
-        isJumpHeld = jumpSystem.IsJumpHeld;
         
         // Removed complex horizontal movement tracking
         
@@ -534,8 +525,6 @@ public class PlayerController : MonoBehaviour
         isOnSlope = groundDetection.IsOnSlope;
         currentSlopeAngle = groundDetection.CurrentSlopeAngle;
         slopeNormal = groundDetection.SlopeNormal;
-        isGroundedByPlatform = groundDetection.IsGroundedByPlatform;
-        isGroundedByBuffer = groundDetection.IsGroundedByBuffer;
         isBufferClimbing = groundDetection.IsBufferClimbing;
         coyoteTimeCounter = groundDetection.CoyoteTimeCounter;
         leftGroundByJumping = groundDetection.LeftGroundByJumping;
@@ -544,7 +533,6 @@ public class PlayerController : MonoBehaviour
         airDashesRemaining = groundDetection.AirDashesRemaining;
         airDashesUsed = groundDetection.AirDashesUsed;
         dashesRemaining = groundDetection.DashesRemaining;
-        lastLandTime = groundDetection.LastLandTime;
 
         // Handle landing-specific logic that's not in groundDetection
         if (!wasGroundedBeforeCheck && isGrounded)
