@@ -164,9 +164,7 @@ public class PlayerController : MonoBehaviour
     private bool isRunning;
     private bool wallContact; // Simple wall contact detection
     
-    // Ground detection state (shared between CheckGrounding and CheckWallDetection)
-    private bool groundedByBuffer;
-    private bool pressingHorizontally;
+    // Ground detection state (synced from PlayerGroundDetection)
     private bool isBufferClimbing;
     private bool isJumping;
     private bool isDashingAnim;
@@ -361,6 +359,13 @@ public class PlayerController : MonoBehaviour
         animationController.Initialize(animator);
         respawnSystem.Initialize(transform, rb);
         stateTracker.Initialize(rb, groundDetection, wallDetection, movement, jumpSystem, combat);
+
+        // Configure ground detection with all necessary values
+        groundDetection.SetConfiguration(groundCheckOffsetY, groundCheckRadius, maxSlopeAngle,
+                                        enableSlopeVisualization, slopeRaycastDistance,
+                                        raycastDirection1, raycastDirection2, raycastDirection3,
+                                        debugLineDuration, enableCoyoteTime, coyoteTimeDuration,
+                                        climbingAssistanceOffset, maxAirDashes, maxDashes, combat);
     }
 
     private void VerifyComponentSetup()
@@ -541,9 +546,37 @@ public class PlayerController : MonoBehaviour
         }
         
         // Ground and wall detection
-        CheckGrounding();
+        groundDetection.UpdateExternalState(moveInput, facingRight, lastJumpTime, dashJumpTime);
+
+        bool wasGroundedBeforeCheck = isGrounded;
+        groundDetection.CheckGrounding();
+
+        // Sync ground state from detection component
+        isGrounded = groundDetection.IsGrounded;
+        isOnSlope = groundDetection.IsOnSlope;
+        currentSlopeAngle = groundDetection.CurrentSlopeAngle;
+        slopeNormal = groundDetection.SlopeNormal;
+        isGroundedByPlatform = groundDetection.IsGroundedByPlatform;
+        isGroundedByBuffer = groundDetection.IsGroundedByBuffer;
+        isBufferClimbing = groundDetection.IsBufferClimbing;
+        coyoteTimeCounter = groundDetection.CoyoteTimeCounter;
+        leftGroundByJumping = groundDetection.LeftGroundByJumping;
+
+        // Sync dash state from detection component (updated on landing)
+        airDashesRemaining = groundDetection.AirDashesRemaining;
+        airDashesUsed = groundDetection.AirDashesUsed;
+        dashesRemaining = groundDetection.DashesRemaining;
+        lastLandTime = groundDetection.LastLandTime;
+
+        // Handle landing-specific logic that's not in groundDetection
+        if (!wasGroundedBeforeCheck && isGrounded)
+        {
+            // Clear dash jump momentum preservation on landing
+            dashJumpTime = 0f;
+        }
+
         CheckWallDetection();
-        
+
         // Update movement states
         UpdateMovementStates();
         
@@ -595,259 +628,6 @@ public class PlayerController : MonoBehaviour
         UpdateSpriteFacing();
         UpdateAnimatorParameters();
         
-    }
-    
-    
-    private void CheckGrounding()
-    {
-        Collider2D col = GetComponent<Collider2D>();
-        float feetY = col.bounds.min.y;
-        Vector2 feetPos = new Vector2(transform.position.x, feetY + groundCheckOffsetY);
-        int groundLayer = LayerMask.NameToLayer("Ground");
-        int bufferLayer = LayerMask.NameToLayer("LandingBuffer");
-        int platformMask = (1 << groundLayer);
-        int bufferMask = (1 << bufferLayer);
-
-        bool groundedByPlatform = Physics2D.OverlapCircle(feetPos, groundCheckRadius, platformMask);
-        groundedByBuffer = Physics2D.OverlapCircle(feetPos, groundCheckRadius, bufferMask);
-        
-        // DEBUG: Log when ground detection might be causing corner sticking (disabled - root cause identified)
-        // if (PlayerAbilities.Instance != null && !PlayerAbilities.Instance.HasWallStick && 
-        //     groundedByPlatform && Mathf.Abs(rb.linearVelocity.x) < 0.1f && Mathf.Abs(rb.linearVelocity.y) < 0.1f)
-        // {
-        //     Debug.Log($"[CORNER STICK DEBUG] Grounded detected at corner - feetPos: {feetPos}, velocity: {rb.linearVelocity}");
-        // }
-        
-        
-
-        // Only allow buffer grounding when moving downward or horizontally (prevent ghost jumps when jumping upward)
-        if (groundedByBuffer && rb.linearVelocity.y > 0.1f)
-        {
-            groundedByBuffer = false;
-        }
-
-
-        bool wasGrounded = isGrounded;
-        
-        // Special case: If player is pressing horizontally and buffer is detected,
-        // allow "climbing" onto platform even if wall is detected (platform edge climbing)
-        pressingHorizontally = Mathf.Abs(moveInput.x) > 0.1f;
-        
-        // Check if player is within climbing assistance range of a platform edge
-        bool nearPlatformEdge = CheckClimbingAssistanceZone();
-        
-        isBufferClimbing = groundedByBuffer && pressingHorizontally && nearPlatformEdge &&
-                           Mathf.Abs(rb.linearVelocity.y) < 1.0f; // Not falling too fast
-        
-        
-        // Standard grounding logic with platform edge climbing exception
-        if (isBufferClimbing)
-        {
-            // Buffer climbing takes priority - disable wall state to prevent animation conflict
-            isGrounded = true;
-            isGroundedByPlatform = false;
-            isGroundedByBuffer = true;
-            // Force wall state off during buffer climbing
-            onWall = false;
-        }
-        else
-        {
-            // OLD FIX: False grounding override (likely not needed with wall friction fix)
-            // bool potentiallyStuckAtCorner = false;
-            // if (PlayerAbilities.Instance != null && !PlayerAbilities.Instance.HasWallStick)
-            // {
-            //     // This fix is disabled as the root cause is likely fixed in wall friction prevention
-            // }
-            
-            // ENHANCED GROUNDING LOGIC: Include slope detection in ground check
-            bool groundedBySlope = CheckSlopeGrounding(feetPos, platformMask, col);
-            
-            isGrounded = groundedByPlatform || groundedByBuffer || groundedBySlope;
-            isGroundedByPlatform = groundedByPlatform;
-            isGroundedByBuffer = groundedByBuffer && !groundedByPlatform;
-        }
-        
-        // Slope detection is now part of ground detection (moved to CheckSlopeGrounding)
-        
-        // Complete the grounding logic
-        FinishCheckGrounding(wasGrounded);
-    }
-    
-    /// <summary>
-    /// Check if player is grounded on slopes (extracted from CheckGrounding to avoid circular dependency)
-    /// </summary>
-    private bool CheckSlopeGrounding(Vector2 feetPos, int platformMask, Collider2D col)
-    {
-        // Reset slope detection
-        isOnSlope = false;
-        slopeNormal = Vector2.up;
-        currentSlopeAngle = 0f;
-
-        // JUMP GRACE PERIOD: Prevent slope grounding briefly after jump starts
-        // This allows isGrounded to become false, enabling jump animation
-        float timeSinceJump = Time.time - lastJumpTime;
-        float slopeJumpGracePeriod = 0.15f; // Prevent slope grounding for 0.15s after jump
-
-        if (timeSinceJump < slopeJumpGracePeriod && rb.linearVelocity.y > 0.5f)
-        {
-            // Debug.Log($"[SLOPE JUMP GRACE] Skipping slope detection - time since jump: {timeSinceJump:F3}s");
-            return false; // Don't detect slope grounding during jump grace period
-        }
-
-        // MULTI-DIRECTIONAL RAYCAST: Use editor-configurable directions
-        Vector2[] raycastDirections = {
-            raycastDirection1.normalized,    // Direction 1 (configurable)
-            raycastDirection2.normalized,    // Direction 2 (configurable)
-            raycastDirection3.normalized     // Direction 3 (configurable)
-        };
-        
-        RaycastHit2D bestSlopeHit = new RaycastHit2D();
-        float bestAngle = 0f;
-        Vector2 bestNormal = Vector2.up;
-        
-        // Try each raycast direction to find the best slope hit
-        foreach (Vector2 direction in raycastDirections)
-        {
-            RaycastHit2D slopeHit = Physics2D.Raycast(feetPos, direction, slopeRaycastDistance, platformMask);
-            
-            // VISUAL DEBUG: Draw each raycast line (only if enabled)
-            if (enableSlopeVisualization)
-            {
-                if (slopeHit.collider != null)
-                {
-                    // Hit something - draw green line to hit point, red line for remaining distance
-                    Debug.DrawLine(feetPos, slopeHit.point, Color.green, debugLineDuration);
-                    Debug.DrawLine(slopeHit.point, feetPos + direction * slopeRaycastDistance, Color.red, debugLineDuration);
-                    // Draw surface normal at hit point
-                    Debug.DrawLine(slopeHit.point, slopeHit.point + slopeHit.normal * 0.5f, Color.yellow, debugLineDuration);
-                }
-                else
-                {
-                    // No hit - draw full red line
-                    Debug.DrawLine(feetPos, feetPos + direction * slopeRaycastDistance, Color.red, debugLineDuration);
-                }
-            }
-            
-            // Make sure we don't hit the player's own collider
-            if (slopeHit.collider != null && slopeHit.collider != col)
-            {
-                Vector2 hitNormal = slopeHit.normal;
-                float hitAngle = Vector2.Angle(hitNormal, Vector2.up);
-                
-                // Debug.Log($"[SLOPE MULTI] Direction: {direction}, Hit: {slopeHit.point}, Angle: {hitAngle:F1}°, Normal: {hitNormal}");
-                
-                // Use the hit with the most significant slope angle
-                if (hitAngle > bestAngle)
-                {
-                    bestSlopeHit = slopeHit;
-                    bestAngle = hitAngle;
-                    bestNormal = hitNormal;
-                }
-            }
-            // Skip logging for no hits and own collider hits to reduce console spam
-        }
-        
-        // Process the best slope hit found
-        if (bestSlopeHit.collider != null)
-        {
-            // GHOST GROUNDING FIX: Check VERTICAL distance to slope, not raycast distance
-            // Diagonal raycasts can have short distance while player is still airborne
-            float verticalDistance = Mathf.Abs(feetPos.y - bestSlopeHit.point.y);
-            float maxVerticalGroundingDistance = 0.2f; // Only ground if vertically within 0.2 units
-
-            if (verticalDistance > maxVerticalGroundingDistance)
-            {
-                // Debug.Log($"[SLOPE ANTI-GHOST] Slope hit too far vertically: {verticalDistance:F2} units (max: {maxVerticalGroundingDistance:F2})");
-                return false; // Too far above slope surface to be grounded
-            }
-
-            slopeNormal = bestNormal;
-            currentSlopeAngle = bestAngle;
-
-            // Consider it a slope if angle is significant but walkable
-            if (currentSlopeAngle > 1f && currentSlopeAngle <= maxSlopeAngle)
-            {
-                isOnSlope = true;
-                // Debug.Log($"[SLOPE] Detected slope! Angle: {currentSlopeAngle:F1}°, Vertical Distance: {verticalDistance:F2}, Normal: {slopeNormal}");
-                return true; // Player is grounded on a slope
-            }
-            else if (currentSlopeAngle > 0.1f)
-            {
-                // Debug.Log($"[SLOPE DEBUG] Surface angle: {currentSlopeAngle:F1}° (not a slope), Normal: {slopeNormal}");
-            }
-        }
-
-        return false; // No slope grounding found
-    }
-        
-    // This should be back in CheckGrounding method - let me fix the structure
-    private void FinishCheckGrounding(bool wasGrounded)
-    {
-        // Handle landing
-        if (!wasGrounded && isGrounded)
-        {
-            combat?.OnLanding();
-            airDashesRemaining = maxAirDashes;
-            // Head stomp is always enabled (see CanHeadStomp property)
-            airDashesUsed = 0;
-            dashesRemaining = maxDashes;
-            lastLandTime = Time.time; // Track landing time for wall detection
-            
-            // Clear dash jump momentum preservation on landing
-            dashJumpTime = 0f;
-        }
-
-        // Coyote time tracking
-        if (enableCoyoteTime)
-        {
-            if (isGrounded)
-            {
-                // Reset coyote time when grounded
-                coyoteTimeCounter = coyoteTimeDuration;
-                leftGroundByJumping = false;
-            }
-            else if (wasGrounded && !isGrounded)
-            {
-                // Just left ground - check if it was from jumping
-                if (rb.linearVelocity.y > 0.5f) // Positive Y velocity suggests jumping
-                {
-                    // Left ground by jumping - disable coyote time
-                    leftGroundByJumping = true;
-                    coyoteTimeCounter = 0f;
-                }
-                else
-                {
-                    // Left ground by walking/falling off - preserve coyote time
-                    leftGroundByJumping = false;
-                    // Keep existing counter value
-                }
-            }
-            else if (!isGrounded && coyoteTimeCounter > 0f)
-            {
-                // Decrement coyote time while airborne
-                coyoteTimeCounter -= Time.fixedDeltaTime;
-                if (coyoteTimeCounter < 0f)
-                {
-                    coyoteTimeCounter = 0f;
-                }
-            }
-        }
-        else
-        {
-            // Coyote time disabled - always reset
-            coyoteTimeCounter = 0f;
-            leftGroundByJumping = false;
-        }
-
-        // Buffer logic for edge platforms
-        if (isGroundedByBuffer)
-        {
-            bool hasHorizontalInput = Mathf.Abs(moveInput.x) > 0.05f;
-            if (!hasHorizontalInput)
-            {
-                isGrounded = false;
-            }
-        }
     }
     
     private void CheckWallDetection()
@@ -2215,34 +1995,6 @@ public class PlayerController : MonoBehaviour
         }
     }
 
-    private bool CheckClimbingAssistanceZone()
-    {
-        // Get player position
-        Vector3 playerPos = transform.position;
-        float checkDirection = facingRight ? 1f : -1f;
-        
-        int groundLayer = LayerMask.NameToLayer("Ground");
-        int groundMask = 1 << groundLayer;
-        
-        // Check if there's a platform edge slightly above and in front of the player
-        // This detects when player is positioned below a platform edge (where wall-stick happens)
-        Vector2 platformCheckOrigin = playerPos + Vector3.up * climbingAssistanceOffset + Vector3.right * checkDirection * 0.1f;
-        Vector2 checkDown = Vector2.down;
-        float checkDistance = climbingAssistanceOffset + 0.3f; // Check down from above player
-        
-        RaycastHit2D platformHit = Physics2D.Raycast(platformCheckOrigin, checkDown, checkDistance, groundMask);
-        
-        // Also check if player is near a wall (platform edge) horizontally
-        Vector2 wallCheckOrigin = playerPos;
-        Vector2 checkHorizontal = checkDirection > 0 ? Vector2.right : Vector2.left;
-        RaycastHit2D wallHit = Physics2D.Raycast(wallCheckOrigin, checkHorizontal, 0.3f, groundMask);
-        
-        // Return true if we're below a platform edge AND near a wall
-        bool belowPlatformEdge = platformHit.collider != null;
-        bool nearWallEdge = wallHit.collider != null;
-        
-        return belowPlatformEdge && nearWallEdge;
-    }
     
     /// <summary>
     /// Enhanced jump method with wall friction compensation
@@ -2590,38 +2342,22 @@ public class PlayerController : MonoBehaviour
                 
                 
                 // Climbing assistance zone visualization
+                // NOTE: CheckClimbingAssistanceZone is now internal to PlayerGroundDetection
+                // Force recompile
                 if (showClimbingGizmos)
                 {
-                    bool nearPlatformEdge = CheckClimbingAssistanceZone();
                     float checkDirection = facingRight ? 1f : -1f;
-                    
-                    // Show vertical detection zone above player
-                    Vector3 platformCheckOrigin = playerPos + Vector3.up * climbingAssistanceOffset + Vector3.right * checkDirection * 0.1f;
-                    float checkDistance = climbingAssistanceOffset + 0.3f;
-                    
-                    // Draw platform detection raycast
-                    Gizmos.color = nearPlatformEdge ? Color.orange : Color.gray;
-                    Gizmos.DrawRay(platformCheckOrigin, Vector3.down * checkDistance);
-                    Gizmos.DrawWireSphere(platformCheckOrigin, 0.05f);
-                    
-                    // Draw horizontal wall detection
-                    Gizmos.color = Color.cyan;
-                    Gizmos.DrawRay(playerPos, Vector3.right * checkDirection * 0.3f);
-                    
-                    // Draw offset zone indicator
-                    Gizmos.color = Color.white;
-                    Gizmos.DrawLine(playerPos, playerPos + Vector3.up * climbingAssistanceOffset);
-                    
+
                     // Show activation status
                     Gizmos.color = isBufferClimbing ? Color.green : Color.red;
                     Gizmos.DrawWireSphere(playerPos + Vector3.up * 0.5f, 0.1f);
-                    
+
                     // Draw climbing force visualization when active
                     if (isBufferClimbing)
                     {
                         Gizmos.color = Color.red;
                         Gizmos.DrawRay(playerPos, Vector3.up * climbForce * 0.2f); // Scale for visibility
-                        
+
                         Gizmos.color = Color.blue;
                         Gizmos.DrawRay(playerPos, direction * forwardBoost);
                     }
