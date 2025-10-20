@@ -6,16 +6,16 @@ using System.Collections;
 public class PlayerCombat : MonoBehaviour
 {
     [Header("Attack")]
-    public float airAttackDuration = 0.8f;
+    public float airAttackDuration = 0.25f;
     public float attackDuration = 0.3f;
     public float attackMovementSpeed = 0.05f;
     public float comboWindowTime = 0.5f;
     public float inputBufferTime = 0.2f;
-    
+
     [Header("Dash Attack")]
-    public float dashAttackDuration = 0.75f;
-    public float dashAttackSpeed = 0.05f;
-    public float dashAttackInputWindow = 1.0f;
+    public float dashAttackDuration = 0.25f;
+    public float dashAttackSpeed = 2f;
+    public float dashAttackInputWindow = 0.2f;
     public float dashAttackPreWindow = 0.1f;
     
     [Header("References")]
@@ -96,29 +96,22 @@ public class PlayerCombat : MonoBehaviour
     
     void UpdateCombatTimers()
     {
+        // DESIGN: Attacks end when their timer expires - quick, snappy feel
+        // Timer is set by airAttackDuration or dashAttackDuration parameters
+
         // Update attack timers
         if (attackTimer > 0)
         {
             attackTimer -= Time.deltaTime;
-            if (isDashAttacking && attackTimer % 0.1f < 0.02f)
-            {
-                // Debug.Log($"Dash attack timer: {attackTimer:F2}s remaining");
-            }
+
+            // End attacks when timer expires
             if (attackTimer <= 0)
             {
-                // Debug.Log($"Attack timer expired - isAttacking: {isAttacking}, isDashAttacking: {isDashAttacking}, isAirAttacking: {isAirAttacking}");
-                
-                if (isDashAttacking)
+                if (isAirAttacking || isDashAttacking)
                 {
-                    // Debug.Log("TIMER FALLBACK: Dash attack timer expired - forcing reset");
                     ResetAttackSystem();
+                    return;
                 }
-                else if (isAirAttacking)
-                {
-                    // Debug.Log("TIMER FALLBACK: Air attack timer expired - forcing reset");
-                    ResetAttackSystem();
-                }
-                // Remove the general isAttacking fallback as it interferes with normal gameplay
             }
         }
         
@@ -165,8 +158,10 @@ public class PlayerCombat : MonoBehaviour
             }
         }
         
-        // Check for dash attack in grace period after dash - prevent when on wall
-        if (!playerController.OnWall && !isDuringDash && !isAttacking && dashEndTime > 0 && Time.time - dashEndTime <= dashAttackInputWindow && !dashAttackConsumed &&
+        // Check for dash attack in grace period after dash - prevent when actively wall sticking/sliding
+        // Allow dash attack when jumping from wall (OnWall may still be true but not in wall state)
+        bool actuallyOnWall = playerController.OnWall && (playerController.IsWallSticking || playerController.IsWallSliding);
+        if (!actuallyOnWall && !isDuringDash && !isAttacking && dashEndTime > 0 && Time.time - dashEndTime <= dashAttackInputWindow && !dashAttackConsumed &&
             PlayerAbilities.Instance != null && PlayerAbilities.Instance.HasDashAttack)
         {
             if (allowDashAttack)
@@ -183,8 +178,10 @@ public class PlayerCombat : MonoBehaviour
             }
         }
         
-        // Check for air attack - prevent attack when on wall
-        if (!playerController.OnWall && !playerController.IsGrounded && !isAttacking && !isDashAttacking && !playerController.IsDashing && !HasUsedAirAttack &&
+        // Check for air attack - prevent attack when actively wall sticking/sliding
+        // Allow air attack when jumping from wall (OnWall may still be true but not in wall state)
+        actuallyOnWall = playerController.OnWall && (playerController.IsWallSticking || playerController.IsWallSliding);
+        if (!actuallyOnWall && !playerController.IsGrounded && !isAttacking && !isDashAttacking && !playerController.IsDashing && !HasUsedAirAttack &&
             PlayerAbilities.Instance != null && PlayerAbilities.Instance.HasAirAttack)
         {
             StartAirAttack();
@@ -301,11 +298,16 @@ public class PlayerCombat : MonoBehaviour
     
     public void OnLanding()
     {
-        // Always reset attack system on landing unless actively mid-attack
-        if (!isDashAttacking || (isDashAttacking && attackTimer <= 0))
+        // DESIGN CHANGE: All attacks (air and dash) now fall naturally
+        // Reset all attacks on landing unless timer is still active
+        bool attackStillActive = (isAirAttacking || isDashAttacking) && attackTimer > 0;
+
+        if (!attackStillActive)
         {
             ResetAttackSystem();
         }
+
+        // Always reset air attack counters on actual landing
         airAttacksUsed = 0;
         canUseSecondAirAttack = false;
     }
@@ -319,19 +321,8 @@ public class PlayerCombat : MonoBehaviour
     
     public Vector2 GetAttackMovement()
     {
-        // Handle dash attack - slight forward movement during attack (like original)
-        if (isDashAttacking)
-        {
-            float forwardSpeed = playerController.FacingRight ? dashAttackSpeed : -dashAttackSpeed;
-            return new Vector2(forwardSpeed, 0f);
-        }
-        // Handle air attack - minimal movement control (like original)
-        else if (isAirAttacking)
-        {
-            float airDriftFactor = 0.1f;
-            return new Vector2(playerController.MoveInput.x * playerController.RunSpeed * airDriftFactor, 0f);
-        }
-        
+        // DESIGN CHANGE: No movement interruption for any attacks
+        // Let normal movement system handle everything - attacks don't override player control
         return Vector2.zero;
     }
     
@@ -390,17 +381,14 @@ public class PlayerCombat : MonoBehaviour
         inputBufferTimer = 0f;
         comboWindowTimer = 0f;
         lastAttackTime = Time.time;
-        
+
         dashAttackDirection = playerController.FacingRight ? Vector2.right : Vector2.left;
         dashEndTime = 0f;
-        
-        if (rb.gravityScale != 0f)
-        {
-            originalGravityScale = rb.gravityScale;
-        }
-        rb.gravityScale = 0f;
-        rb.linearVelocity = new Vector2(rb.linearVelocity.x, 0f);
-        
+
+        // DESIGN CHANGE: No movement interruption for dash attacks
+        // Preserve all velocity - player continues their current movement
+        // No gravity modification, no velocity changes
+
         if (animator != null)
         {
             animator.SetBool("IsDashAttacking", true);
@@ -434,27 +422,19 @@ public class PlayerCombat : MonoBehaviour
         attackInputBuffered = false;
         waitingForNextAttack = false;
         lastAttackTime = Time.time;
-        
-        if (rb.gravityScale != 0f)
-        {
-            originalGravityScale = rb.gravityScale;
-        }
-        rb.gravityScale = 0f;
-        
-        // Use consistent movement speed with ground attacks
-        float airAttackForwardSpeed = playerController.RunSpeed * attackMovementSpeed;
-        rb.linearVelocity = new Vector2(
-            playerController.FacingRight ? airAttackForwardSpeed : -airAttackForwardSpeed,
-            0f
-        );
-        
+
+        // DESIGN: Quick, snappy air attack with fixed minimum duration
+        // NO movement interruption - preserve existing horizontal velocity
+        // Gravity stays enabled - player falls naturally
+        // Don't modify velocity at all - player continues their current movement
+
         if (animator != null)
         {
             animator.SetBool("IsAirAttacking", true);
             animator.SetBool("IsAttacking", true);
             animator.CrossFade("PlayerAirSwordSwing", 0.05f, 0);
         }
-        
+
         if (AttackHitbox != null)
         {
             AttackHitbox.SetAttackType(AttackHitbox.AttackType.AirAttack);
@@ -531,7 +511,6 @@ public class PlayerCombat : MonoBehaviour
     
     public void ResetAttackSystem()
     {
-        // Debug.Log($"ResetAttackSystem called - was isDashAttacking: {isDashAttacking}");
         isAttacking = false;
         isDashAttacking = false;
         isAirAttacking = false;
@@ -547,10 +526,11 @@ public class PlayerCombat : MonoBehaviour
         inputBufferTimer = 0f;
         isDuringDash = false; // Reset dash state tracking
         
-        if (rb != null)
-        {
-            rb.gravityScale = originalGravityScale;
-        }
+        // No gravity restoration needed since we don't modify it anymore
+        // if (rb != null)
+        // {
+        //     rb.gravityScale = originalGravityScale;
+        // }
         
         CancelInvoke(nameof(EnableComboWindow));
         CancelInvoke(nameof(RestartComboLoop));
@@ -568,7 +548,8 @@ public class PlayerCombat : MonoBehaviour
             if (currentState.IsName("PlayerSwordStab") ||
                 currentState.IsName("PlayerSwordChop") ||
                 currentState.IsName("PlayerSwordSwing3") ||
-                currentState.IsName("DashAttack"))
+                currentState.IsName("DashAttack") ||
+                currentState.IsName("PlayerAirSwordSwing"))
             {
                 animator.CrossFade("DaggerIdle", 0f, 0);
             }
@@ -629,9 +610,9 @@ public class PlayerCombat : MonoBehaviour
     {
         if (isDashAttacking)
         {
-            attackTimer = dashAttackDuration;
-            lastAttackTime = Time.time;
-            
+            // Don't reset timer - it's already set in StartDashAttack()
+            // Resetting here would delay the timer expiration and break short attack durations
+
             if (AttackHitbox != null)
             {
                 AttackHitbox.SetAttackType(AttackHitbox.AttackType.DashAttack);
@@ -645,10 +626,11 @@ public class PlayerCombat : MonoBehaviour
         if (isDashAttacking)
         {
             // Debug.Log($"Dash attack animation ended - isAirDashAttacking={isAirDashAttacking}");
-            
-            rb.gravityScale = originalGravityScale;
-            rb.linearVelocity = new Vector2(rb.linearVelocity.x, -2f);
-            
+
+            // DESIGN CHANGE: No physics modifications - let attacks fall naturally
+            // Attack ending is handled by UpdateCombatTimers() based on falling + minimum duration
+            // This callback is just for animation event compatibility
+
             attackTimer = 0;
             ResetAttackSystem();
         }
@@ -658,12 +640,12 @@ public class PlayerCombat : MonoBehaviour
     {
         if (isAirAttacking)
         {
-            attackTimer = airAttackDuration;
-            lastAttackTime = Time.time;
-            
+            // Don't reset timer - it's already set in StartAirAttack()
+            // Resetting here would delay the timer expiration and break short attack durations
+
             if (AttackHitbox != null)
             {
-                AttackHitbox.SetAttackType(AttackHitbox.AttackType.DashAttack);
+                AttackHitbox.SetAttackType(AttackHitbox.AttackType.AirAttack);
                 AttackHitbox.SetActive(true);
             }
         }
@@ -673,9 +655,10 @@ public class PlayerCombat : MonoBehaviour
     {
         if (isAirAttacking)
         {
-            rb.gravityScale = originalGravityScale;
-            rb.linearVelocity = new Vector2(rb.linearVelocity.x, -2f);
-            
+            // DESIGN CHANGE: No physics modifications - let attacks fall naturally
+            // Attack ending is handled by UpdateCombatTimers() based on falling + minimum duration
+            // This callback is just for animation event compatibility
+
             attackTimer = 0;
             ResetAttackSystem();
         }
