@@ -143,11 +143,6 @@ public class PlayerController : MonoBehaviour
     private float dashJumpTime = 0f;
     private float dashJumpMomentumDuration = 0.3f; // Preserve momentum for 0.3 seconds
     
-    // Death/Reset system
-    private Vector3 initialPosition;
-    private Vector3 respawnPosition;
-    private bool hasRespawnPoint = false;
-    
     // Wall state sequence tracking
     private bool wasWallSticking = false;
     private bool hasEverWallStuck = false;
@@ -279,15 +274,11 @@ public class PlayerController : MonoBehaviour
         
         // Auto-calculate upper-mid raycast position to match top of player collider
         CalculateOptimalRaycastPositions();
-        
-        // Store initial position for death/reset system
-        initialPosition = transform.position;
-        respawnPosition = initialPosition; // Default respawn is initial position
-        
+
         // Initialize SimpleRespawnManager with player's actual starting position
         if (SimpleRespawnManager.Instance != null)
         {
-            SimpleRespawnManager.Instance.InitializeWithPlayerStartPosition(initialPosition);
+            SimpleRespawnManager.Instance.InitializeWithPlayerStartPosition(transform.position);
         }
         else
         {
@@ -357,8 +348,36 @@ public class PlayerController : MonoBehaviour
         movement.Initialize(rb, transform, animator, col, groundDetection, wallDetection, combat, jumpSystem);
         jumpSystem.Initialize(rb, transform, groundDetection, wallDetection, abilities, animator);
         animationController.Initialize(animator);
-        respawnSystem.Initialize(transform, rb);
+        respawnSystem.Initialize(transform, rb, combat);
         stateTracker.Initialize(rb, groundDetection, wallDetection, movement, jumpSystem, combat);
+
+        // Set up respawn callbacks for state reset
+        respawnSystem.SetResetCallbacks(
+            // Dash state reset: dashTimer, dashJumpTime, lastDashEndTime
+            (timer, jumpTime, endTime) =>
+            {
+                isDashing = false;
+                dashTimer = timer;
+                dashJumpTime = jumpTime;
+                lastDashEndTime = endTime;
+                wasAgainstWall = false;
+            },
+            // Jump state reset: 3 unused float params, 1 bool for leftGroundByJumping
+            (unused1, unused2, unused3, leftGround) =>
+            {
+                coyoteTimeCounter = 0f;
+                leftGroundByJumping = leftGround;
+                jumpsRemaining = extraJumps;
+                dashesRemaining = maxDashes;
+                airDashesRemaining = maxAirDashes;
+                airDashesUsed = 0;
+            },
+            // Combat reset
+            () =>
+            {
+                combat?.ResetAttackSystem();
+            }
+        );
 
         // Configure ground detection with all necessary values
         groundDetection.SetConfiguration(groundCheckOffsetY, groundCheckRadius, maxSlopeAngle,
@@ -573,10 +592,10 @@ public class PlayerController : MonoBehaviour
         combat?.CheckBufferedDashAttack();
         
         // Simple death zone check - if player falls below deathZoneY, reset
-        if (transform.position.y < deathZoneY)
+        if (respawnSystem.IsInDeathZone(deathZoneY))
         {
             // Debug.Log($"[Death/Reset] Player fell below death zone (Y < -20). Current Y: {transform.position.y}");
-            ResetToRespawnPoint();
+            respawnSystem.ResetToRespawnPoint();
             return; // Skip rest of frame after reset
         }
         
@@ -1306,12 +1325,12 @@ public class PlayerController : MonoBehaviour
             float halfWidth = deathZoneWidth / 2f;
             float leftBound = -halfWidth;
             float rightBound = halfWidth;
-            
+
             // Center on player's initial X position for better visibility
-            if (initialPosition != Vector3.zero)
+            if (respawnSystem != null && respawnSystem.InitialPosition != Vector3.zero)
             {
-                leftBound = initialPosition.x - halfWidth;
-                rightBound = initialPosition.x + halfWidth;
+                leftBound = respawnSystem.InitialPosition.x - halfWidth;
+                rightBound = respawnSystem.InitialPosition.x + halfWidth;
             }
             
             // Draw death zone line
@@ -1350,159 +1369,34 @@ public class PlayerController : MonoBehaviour
         }
     }
     
-    // Death/Reset system for testing
+    // Death/Reset system - delegated to PlayerRespawnSystem
     void OnTriggerEnter2D(Collider2D other)
     {
         if (other.CompareTag("Camera Bounder"))
         {
             // Debug.Log("[Death/Reset] Camera Bounder detected! Resetting...");
-            ResetToRespawnPoint();
+            respawnSystem.ResetToRespawnPoint();
         }
     }
-    
+
     void OnCollisionEnter2D(Collision2D other)
     {
         if (other.gameObject.CompareTag("Camera Bounder"))
         {
             // Debug.Log("[Death/Reset] Camera Bounder detected! Resetting...");
-            ResetToRespawnPoint();
+            respawnSystem.ResetToRespawnPoint();
         }
     }
-    
-    // Manual reset for testing - add this as a public method you can call from inspector
+
+    // Public API methods - delegate to respawn system
     [ContextMenu("Test Reset")]
-    public void TestReset()
-    {
-        // Debug.Log("[Death/Reset] Manual reset triggered");
-        ResetToRespawnPoint();
-    }
-    
-    /// <summary>
-    /// Set a new respawn point (called by save points)
-    /// </summary>
-    public void SetRespawnPoint(Vector3 newRespawnPosition)
-    {
-        respawnPosition = newRespawnPosition;
-        hasRespawnPoint = true;
-        Debug.Log($"[SavePoint] Respawn point set to: {respawnPosition}");
-    }
-    
-    /// <summary>
-    /// Reset to the current respawn point (save point or initial position)
-    /// </summary>
-    public void ResetToRespawnPoint()
-    {
-        Vector3 targetPosition;
-        
-        // Use SimpleRespawnManager if available and properly initialized, otherwise fall back to existing system
-        if (SimpleRespawnManager.Instance != null && SimpleRespawnManager.Instance.IsInitialized())
-        {
-            targetPosition = SimpleRespawnManager.Instance.GetRespawnPosition();
-        }
-        else
-        {
-            targetPosition = hasRespawnPoint ? respawnPosition : initialPosition;
-        }
-        
-        ResetToPosition(targetPosition);
-    }
-    
-    /// <summary>
-    /// Reset to save point position
-    /// </summary>
-    public void ResetToSavePoint(Vector3 savePosition)
-    {
-        ResetToPosition(savePosition);
-    }
-    
-    /// <summary>
-    /// Reset to initial position (legacy method)
-    /// </summary>
-    public void ResetToInitialPosition()
-    {
-        ResetToPosition(initialPosition);
-    }
-    
-    /// <summary>
-    /// Core reset method that handles position reset and state cleanup
-    /// </summary>
-    private void ResetToPosition(Vector3 targetPosition)
-    {
-        // Debug.Log($"[Death/Reset] BEFORE RESET - Current: {transform.position}, Target: {targetPosition}");
-        
-        // Reset physics FIRST to prevent interference
-        rb.linearVelocity = Vector2.zero;
-        rb.angularVelocity = 0f;
-        
-        // Force position through both transform and rigidbody
-        transform.position = targetPosition;
-        rb.position = targetPosition;
-        
-        // Force physics update
-        Physics2D.SyncTransforms();
-        
-        // Double-check position was set
-        // Debug.Log($"[Death/Reset] AFTER RESET - Position is now: {transform.position}, RB position: {rb.position}");
-        
-        // Reset movement states
-        isDashing = false;
-        dashTimer = 0f;
-        dashJumpTime = 0f;
-        lastDashEndTime = 0f;
-        wasAgainstWall = false;
-        
-        // Reset coyote time
-        coyoteTimeCounter = 0f;
-        leftGroundByJumping = false;
-        
-        // Reset abilities
-        jumpsRemaining = extraJumps;
-        dashesRemaining = maxDashes;
-        airDashesRemaining = maxAirDashes;
-        airDashesUsed = 0;
-        
-        // Reset combat system
-        if (combat != null)
-        {
-            combat.ResetAttackSystem();
-        }
-        
-        // Reset camera position by forcing Cinemachine to snap
-        StartCoroutine(ResetCameraPosition());
-        
-        // Debug.Log($"[Death/Reset] Player reset to position: {targetPosition}");
-    }
-    
-    private System.Collections.IEnumerator ResetCameraPosition()
-    {
-        // Wait one frame for position to be applied
-        yield return null;
-        
-        // Try to find and reset Cinemachine camera using reflection to avoid compile errors
-        var cinemachineType = System.Type.GetType("Cinemachine.CinemachineVirtualCamera, Cinemachine");
-        if (cinemachineType != null)
-        {
-            var vcam = FindFirstObjectByType(cinemachineType);
-            if (vcam != null)
-            {
-                // Use reflection to call OnTargetObjectWarped
-                var method = cinemachineType.GetMethod("OnTargetObjectWarped");
-                if (method != null)
-                {
-                    method.Invoke(vcam, new object[] { transform, transform.position - initialPosition });
-                    // Debug.Log("[Death/Reset] Camera position reset via Cinemachine");
-                    yield break;
-                }
-            }
-        }
-        
-        // Fallback: try to find regular camera and snap it directly
-        var mainCamera = Camera.main;
-        if (mainCamera != null)
-        {
-            // Simple camera snap to player position
-            mainCamera.transform.position = new Vector3(initialPosition.x, initialPosition.y, mainCamera.transform.position.z);
-            // Debug.Log("[Death/Reset] Camera position reset directly");
-        }
-    }
+    public void TestReset() => respawnSystem.TestReset();
+
+    public void SetRespawnPoint(Vector3 newRespawnPosition) => respawnSystem.SetRespawnPoint(newRespawnPosition);
+
+    public void ResetToRespawnPoint() => respawnSystem.ResetToRespawnPoint();
+
+    public void ResetToSavePoint(Vector3 savePosition) => respawnSystem.ResetToSavePoint(savePosition);
+
+    public void ResetToInitialPosition() => respawnSystem.ResetToInitialPosition();
 }
