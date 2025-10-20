@@ -26,6 +26,7 @@ GameObject:
   - component: {fileID: 5453981786391944949}
   - component: {fileID: 7494720635182309984}
   - component: {fileID: -861106453994670169}
+  - component: {fileID: 2404340546186456667}
   m_Layer: 0
   m_Name: Player
   m_TagString: Player
@@ -439,6 +440,18 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 17c908905a8d5f742ac2c47f0f89b919, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerWallDetection
+--- !u!114 &2404340546186456667
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 853602305263445774}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9bd19c34c2b4e98448d0bbb3f1e72fb3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerInputHandler
 --- !u!1 &4056091754182830568
 GameObject:
   m_ObjectHideFlags: 0

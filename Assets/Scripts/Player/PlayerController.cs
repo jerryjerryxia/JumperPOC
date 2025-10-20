@@ -105,6 +105,7 @@ public class PlayerController : MonoBehaviour
     private PlayerRespawnSystem respawnSystem;
     private PlayerStateTracker stateTracker;
     private PlayerDebugVisualizer debugVisualizer;
+    private PlayerInputHandler inputHandler;
 
     // Input
     private Vector2 moveInput;
@@ -240,12 +241,7 @@ public class PlayerController : MonoBehaviour
     
     void Start()
     {
-        // Ensure input is set up if InputManager is available
-        if (InputManager.Instance != null && inputManager == null)
-        {
-            SetupInputManager();
-        }
-        
+        // Input setup now handled by PlayerInputHandler component
         // Debug: Check for physics materials that might cause unwanted friction
         Collider2D playerCollider = GetComponent<Collider2D>();
         if (playerCollider != null && playerCollider.sharedMaterial != null)
@@ -301,6 +297,7 @@ public class PlayerController : MonoBehaviour
         respawnSystem = GetComponent<PlayerRespawnSystem>();
         stateTracker = GetComponent<PlayerStateTracker>();
         debugVisualizer = GetComponent<PlayerDebugVisualizer>();
+        inputHandler = GetComponent<PlayerInputHandler>();
 
         // Initialize each component with required references
         Collider2D col = GetComponent<Collider2D>();
@@ -342,6 +339,9 @@ public class PlayerController : MonoBehaviour
             }
         );
 
+        // Set up input handler callbacks
+        SetupInputHandlerCallbacks();
+
         // Configure ground detection with all necessary values
         groundDetection.SetConfiguration(groundCheckOffsetY, groundCheckRadius, maxSlopeAngle,
                                         enableSlopeVisualization, slopeRaycastDistance,
@@ -367,6 +367,74 @@ public class PlayerController : MonoBehaviour
                                    wallRaycastTop, wallRaycastMiddle, wallRaycastBottom,
                                    enableCoyoteTime, coyoteTimeDuringDashWindow, maxAirDashes, maxDashes,
                                    combat, inputManager);
+    }
+
+    /// <summary>
+    /// Subscribe to input handler events
+    /// </summary>
+    private void SetupInputHandlerCallbacks()
+    {
+        if (inputHandler == null) return;
+
+        // Move input
+        inputHandler.OnMove += (input) => moveInput = input;
+
+        // Jump input
+        inputHandler.OnJumpPressed += () =>
+        {
+            jumpQueued = true;
+
+            // Track jump hold state for variable jump
+            if (enableVariableJump)
+            {
+                isJumpHeld = true;
+                jumpSystem.IsJumpHeld = true; // Set jumpSystem's jump hold state
+            }
+        };
+
+        // Jump released
+        inputHandler.OnJumpReleased += () =>
+        {
+            // Clear jump hold state when button is released
+            if (enableVariableJump)
+            {
+                isJumpHeld = false;
+                jumpSystem.IsJumpHeld = false;
+            }
+        };
+
+        // Dash input
+        inputHandler.OnDashPressed += () =>
+        {
+            if (Time.time - lastDashInputTime < 0.05f)
+            {
+                return;
+            }
+
+            // Prevent dash input when actively wall sticking or wall sliding
+            // Allow dash when jumping from wall (onWall may still be true but not in wall state)
+            if (onWall && (isWallSticking || isWallSliding))
+            {
+                return;
+            }
+
+            lastDashInputTime = Time.time;
+            dashQueued = true;
+        };
+
+        // Attack input
+        inputHandler.OnAttackPressed += () =>
+        {
+            if (combat != null)
+            {
+                combat.HandleAttackInput();
+            }
+            else
+            {
+                // Basic attack when PlayerCombat is not attached
+                StartCoroutine(BasicAttack());
+            }
+        };
     }
 
     private void VerifyComponentSetup()
@@ -411,74 +479,18 @@ public class PlayerController : MonoBehaviour
             Debug.LogWarning("[PlayerController] 'LandingBuffer' layer is not defined. Edge detection may not work properly.");
         }
     }
-    
-    void OnEnable() 
-    { 
-        // Try to get InputManager instance, with retry for timing issues
-        if (InputManager.Instance != null)
-        {
-            SetupInputManager();
-        }
-        else
-        {
-            // Retry after a frame in case InputManager hasn't initialized yet
-            StartCoroutine(RetryInputManagerSetup());
-        }
-    }
-    
-    private void SetupInputManager()
-    {
-        inputManager = InputManager.Instance;
-        if (inputManager != null)
-        {
-            // Subscribe to input events
-            inputManager.OnMoveInput += OnMoveInput;
-            inputManager.OnJumpPressed += OnJumpInput;
-            inputManager.OnJumpReleased += OnJumpReleased;  // Subscribe to release event
-            inputManager.OnDashPressed += OnDashInput;
-            inputManager.OnAttackPressed += OnAttackInput;
-        }
-    }
-    
-    private System.Collections.IEnumerator RetryInputManagerSetup()
-    {
-        yield return null; // Wait one frame
-        
-        if (InputManager.Instance != null)
-        {
-            SetupInputManager();
-        }
-        else
-        {
-            Debug.LogError("InputManager instance not found! Make sure InputManager is in the scene.");
-        }
-    }
-    
-    void OnDisable() 
-    { 
-        if (inputManager != null)
-        {
-            // Unsubscribe from input events
-            inputManager.OnMoveInput -= OnMoveInput;
-            inputManager.OnJumpPressed -= OnJumpInput;
-            inputManager.OnJumpReleased -= OnJumpReleased;  // Unsubscribe from release event
-            inputManager.OnDashPressed -= OnDashInput;
-            inputManager.OnAttackPressed -= OnAttackInput;
-        }
-    }
+
+    // Input handling moved to PlayerInputHandler component
+    // Events subscribed in SetupInputHandlerCallbacks()
 
     void FixedUpdate()
     {
-        // Update moveInput from InputManager if available
-        if (inputManager != null)
+        // Update moveInput from InputHandler if available
+        if (inputHandler != null)
         {
-            moveInput = inputManager.MoveInput;
+            moveInput = inputHandler.GetMoveInput();
         }
-        else
-        {
-            Debug.LogError("[PlayerController] InputManager is NULL!");
-        }
-        
+
         // Update jump system state
         jumpSystem.UpdateExternalState(facingRight, moveInput, isGrounded, onWall,
                                        isOnSlope, currentSlopeAngle, slopeNormal,
@@ -788,65 +800,8 @@ public class PlayerController : MonoBehaviour
         // Delegate to combat component - this is for backward compatibility
     }
 
-    /* �?Input Event Handlers �?*/
-    private void OnMoveInput(Vector2 input)
-    {
-        moveInput = input;
-    }
-    
-    private void OnJumpInput()
-    {
-        jumpQueued = true;
-
-        // Track jump hold state for variable jump
-        if (enableVariableJump)
-        {
-            isJumpHeld = true;
-            jumpSystem.IsJumpHeld = true; // Set jumpSystem's jump hold state
-        }
-    }
-
-    private void OnJumpReleased()
-    {
-        // Clear jump hold state when button is released
-        if (enableVariableJump)
-        {
-            isJumpHeld = false;
-            jumpSystem.IsJumpHeld = false;
-        }
-    }
-
-    private void OnDashInput()
-    {
-        if (Time.time - lastDashInputTime < 0.05f)
-        {
-            return;
-        }
-
-        // Prevent dash input when actively wall sticking or wall sliding
-        // Allow dash when jumping from wall (onWall may still be true but not in wall state)
-        if (onWall && (isWallSticking || isWallSliding))
-        {
-            return;
-        }
-
-        lastDashInputTime = Time.time;
-        dashQueued = true;
-    }
-    
-    private void OnAttackInput()
-    {
-        if (combat != null)
-        {
-            combat.HandleAttackInput();
-        }
-        else
-        {
-            // Basic attack when PlayerCombat is not attached
-            // Debug.Log("Attack input received - using basic attack (add PlayerCombat for full combat system)");
-            StartCoroutine(BasicAttack());
-        }
-    }
+    // Input event handlers moved to PlayerInputHandler component
+    // Event subscriptions handled in SetupInputHandlerCallbacks()
 
     // Debug visualization moved to PlayerDebugVisualizer component
     // Toggle debug panels via PlayerDebugVisualizer inspector settings
