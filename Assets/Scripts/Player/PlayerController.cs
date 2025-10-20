@@ -44,9 +44,9 @@ public class PlayerController : MonoBehaviour
     [SerializeField] public float dashJumpWindow = 0.1f; // Grace period after dash ends
     
     [Header("Death Zone")]
-    [SerializeField] private float deathZoneY = -20f; // Y position that triggers reset
-    [SerializeField] private float deathZoneWidth = 100f; // Width of death zone visualization
-    [SerializeField] private bool showDeathZone = true; // Show death zone in scene view
+    public float deathZoneY = -20f; // Y position that triggers reset
+    public float deathZoneWidth = 100f; // Width of death zone visualization
+    public bool showDeathZone = true; // Show death zone in scene view
 
     [Header("Buffer Climbing")]
     [SerializeField] private float climbingAssistanceOffset = 0.06f; // How far below platform edge to trigger assistance
@@ -57,7 +57,7 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private bool enableCoyoteTime = true; // Enable coyote time feature
     [SerializeField] private float coyoteTimeDuration = 0.12f; // Grace period after leaving ground
     [SerializeField] private bool coyoteTimeDuringDashWindow = false; // Allow coyote time during dash jump window
-    [SerializeField] private bool showClimbingGizmos = true;
+    public bool showClimbingGizmos = true;
     
     [Header("Jump Compensation")]
     [SerializeField] private float wallJumpCompensation = 1.2f; // Multiplier to counteract friction
@@ -86,9 +86,9 @@ public class PlayerController : MonoBehaviour
     public float wallCheckDistance = 0.15f;
     
     [Header("Wall Detection Raycasts")]
-    [SerializeField] private float wallRaycastTop = 0.32f;    // Top raycast position
-    [SerializeField] private float wallRaycastMiddle = 0.28f; // Middle raycast position  
-    [SerializeField] private float wallRaycastBottom = 0.02f; // Bottom raycast position
+    public float wallRaycastTop = 0.32f;    // Top raycast position
+    public float wallRaycastMiddle = 0.28f; // Middle raycast position
+    public float wallRaycastBottom = 0.02f; // Bottom raycast position
     
     // Component references
     private Rigidbody2D rb;
@@ -104,6 +104,7 @@ public class PlayerController : MonoBehaviour
     private PlayerAnimationController animationController;
     private PlayerRespawnSystem respawnSystem;
     private PlayerStateTracker stateTracker;
+    private PlayerDebugVisualizer debugVisualizer;
 
     // Input
     private Vector2 moveInput;
@@ -121,30 +122,18 @@ public class PlayerController : MonoBehaviour
     private float lastDashInputTime = 0f;
     private float lastDashEndTime = 0f;
     
-    // Variable jump state
+    // Variable jump state (synced from jumpSystem)
     private bool isJumpHeld = false;
     private bool isVariableJumpActive = false;
-    private float jumpHoldTimer = 0f;
-    
-    // Forced fall state for double jump
-    private bool isForcedFalling = false;
-    private float forcedFallTimer = 0f;
-    private bool pendingDoubleJump = false;
-    private float originalGravityScaleForJump = 1f;
-    private float compensatedMinVelocity = 0f;
-    private float compensatedMaxVelocity = 0f;
     private float lastLandTime = 0f;
     private float lastJumpTime = 0f;
-    private bool wasGroundedBeforeDash = false;
-    
+
     // Dash jump momentum preservation
     private float dashJumpTime = 0f;
-    private float dashJumpMomentumDuration = 0.3f; // Preserve momentum for 0.3 seconds
-    
+
     // Wall state sequence tracking
     private bool wasWallSticking = false;
     private bool hasEverWallStuck = false;
-    private bool wasAgainstWall = false; // Track wall contact for mid-jump compensation
     
     // Coyote time tracking
     private float coyoteTimeCounter = 0f;
@@ -155,7 +144,6 @@ public class PlayerController : MonoBehaviour
     // Animation state tracking
     private bool isGrounded;
     private bool isRunning;
-    private bool wallContact; // Simple wall contact detection
     
     // Ground detection state (synced from PlayerGroundDetection)
     private bool isBufferClimbing;
@@ -171,7 +159,6 @@ public class PlayerController : MonoBehaviour
     private float facingDirection;
     private float horizontalInput;
     private float verticalInput;
-    private bool prevOnWall;
     private bool isGroundedByPlatform;
     private bool isGroundedByBuffer;
     
@@ -305,34 +292,15 @@ public class PlayerController : MonoBehaviour
     /// </summary>
     private void InitializeComponents()
     {
-        // Add components if they don't exist
-        groundDetection = gameObject.GetComponent<PlayerGroundDetection>();
-        if (groundDetection == null)
-            groundDetection = gameObject.AddComponent<PlayerGroundDetection>();
-
-        wallDetection = gameObject.GetComponent<PlayerWallDetection>();
-        if (wallDetection == null)
-            wallDetection = gameObject.AddComponent<PlayerWallDetection>();
-
-        movement = gameObject.GetComponent<PlayerMovement>();
-        if (movement == null)
-            movement = gameObject.AddComponent<PlayerMovement>();
-
-        jumpSystem = gameObject.GetComponent<PlayerJumpSystem>();
-        if (jumpSystem == null)
-            jumpSystem = gameObject.AddComponent<PlayerJumpSystem>();
-
-        animationController = gameObject.GetComponent<PlayerAnimationController>();
-        if (animationController == null)
-            animationController = gameObject.AddComponent<PlayerAnimationController>();
-
-        respawnSystem = gameObject.GetComponent<PlayerRespawnSystem>();
-        if (respawnSystem == null)
-            respawnSystem = gameObject.AddComponent<PlayerRespawnSystem>();
-
-        stateTracker = gameObject.GetComponent<PlayerStateTracker>();
-        if (stateTracker == null)
-            stateTracker = gameObject.AddComponent<PlayerStateTracker>();
+        // Get component references (components must be manually added to GameObject)
+        groundDetection = GetComponent<PlayerGroundDetection>();
+        wallDetection = GetComponent<PlayerWallDetection>();
+        movement = GetComponent<PlayerMovement>();
+        jumpSystem = GetComponent<PlayerJumpSystem>();
+        animationController = GetComponent<PlayerAnimationController>();
+        respawnSystem = GetComponent<PlayerRespawnSystem>();
+        stateTracker = GetComponent<PlayerStateTracker>();
+        debugVisualizer = GetComponent<PlayerDebugVisualizer>();
 
         // Initialize each component with required references
         Collider2D col = GetComponent<Collider2D>();
@@ -345,6 +313,7 @@ public class PlayerController : MonoBehaviour
         animationController.Initialize(animator);
         respawnSystem.Initialize(transform, rb, combat);
         stateTracker.Initialize(rb, groundDetection, wallDetection, movement, jumpSystem, combat);
+        debugVisualizer.Initialize(this, rb, inputManager, respawnSystem);
 
         // Set up respawn callbacks for state reset
         respawnSystem.SetResetCallbacks(
@@ -355,7 +324,6 @@ public class PlayerController : MonoBehaviour
                 dashTimer = timer;
                 dashJumpTime = jumpTime;
                 lastDashEndTime = endTime;
-                wasAgainstWall = false;
             },
             // Jump state reset: 3 unused float params, 1 bool for leftGroundByJumping
             (unused1, unused2, unused3, leftGround) =>
@@ -525,7 +493,6 @@ public class PlayerController : MonoBehaviour
 
         // Sync jump state from jumpSystem
         isVariableJumpActive = jumpSystem.IsVariableJumpActive;
-        isForcedFalling = jumpSystem.IsForcedFalling;
         jumpsRemaining = jumpSystem.JumpsRemaining;
         lastJumpTime = jumpSystem.LastJumpTime;
         dashJumpTime = jumpSystem.DashJumpTime;
@@ -709,7 +676,7 @@ public class PlayerController : MonoBehaviour
                 
                 if (showJumpDebug)
                 {
-                    Debug.Log($"[Wall Stick] EMERGENCY STOP - cancelled velocity {originalVelocity:F2} â†?0, dash momentum cleared");
+                    Debug.Log($"[Wall Stick] EMERGENCY STOP - cancelled velocity {originalVelocity:F2} ï¿½?0, dash momentum cleared");
                 }
             }
             
@@ -821,7 +788,7 @@ public class PlayerController : MonoBehaviour
         // Delegate to combat component - this is for backward compatibility
     }
 
-    /* â€?Input Event Handlers â€?*/
+    /* ï¿½?Input Event Handlers ï¿½?*/
     private void OnMoveInput(Vector2 input)
     {
         moveInput = input;
@@ -881,334 +848,11 @@ public class PlayerController : MonoBehaviour
         }
     }
 
-    // Debug info - DISABLED for clean play mode
-    void OnGUI()
-    {
-        if (!Application.isPlaying) return;
-        
-        // Debug panel is currently disabled for clean play mode
-        // Uncomment below to show wall debug information
-        /*
-        GUILayout.BeginArea(new Rect(10, 10, 350, 600));
-        GUILayout.Label("=== WALL LAND DEBUG ===", GUI.skin.label);
-        
-        // Ability status
-        bool hasWallStickAbility = PlayerAbilities.Instance != null && PlayerAbilities.Instance.HasWallStick;
-        GUI.contentColor = hasWallStickAbility ? Color.green : Color.red;
-        GUILayout.Label($"Wall Stick Ability: {(hasWallStickAbility ? "ENABLED" : "DISABLED")}");
-        GUI.contentColor = Color.white;
-        
-        // Key states only
-        GUILayout.Label($"Grounded: {isGrounded}");
-        GUILayout.Label($"Moving: {isRunning}");
-        GUI.contentColor = isWallSticking ? Color.green : Color.red;
-        GUILayout.Label($"Wall Sticking: {isWallSticking}");
-        GUI.contentColor = isWallSliding ? Color.green : Color.red;
-        GUILayout.Label($"Wall Sliding: {isWallSliding}");
-        GUI.contentColor = onWall ? Color.green : Color.red;
-        GUILayout.Label($"On Wall: {onWall}");
-        GUI.contentColor = hasEverWallStuck ? Color.green : Color.red;
-        GUILayout.Label($"Has Ever Wall Stuck: {hasEverWallStuck}");
-        GUI.contentColor = Color.white;
-        
-        // Simple wall detection breakdown
-        GUILayout.Label("\n--- SIMPLE WALL DETECTION ---");
-        GUI.contentColor = wallContact ? Color.green : Color.red;
-        GUILayout.Label($"Wall Contact: {wallContact}");
-        GUI.contentColor = Color.white;
-        
-        GUILayout.Label($"wallCheckDistance: {wallCheckDistance:F2}");
-        GUILayout.Label($"Player Position: {transform.position:F2}");
-        GUILayout.Label($"Facing Right: {facingRight}");
-        GUILayout.Label($"moveInput.x: {moveInput.x:F3}");
-        
-        // Simple wall stick conditions
-        GUILayout.Label("\n--- SIMPLE WALL STICK CONDITIONS ---");
-        bool pressingTowardWall = (facingRight && moveInput.x > 0.1f) || (!facingRight && moveInput.x < -0.1f);
-        
-        GUI.contentColor = !isGrounded ? Color.green : Color.red;
-        GUILayout.Label($"1. !isGrounded: {!isGrounded}");
-        GUI.contentColor = wallContact ? Color.green : Color.red;
-        GUILayout.Label($"2. wallContact: {wallContact}");
-        GUI.contentColor = pressingTowardWall ? Color.green : Color.red;
-        GUILayout.Label($"3. pressingTowardWall: {pressingTowardWall}");
-        GUI.contentColor = !isBufferClimbing ? Color.green : Color.red;
-        GUILayout.Label($"4. !isBufferClimbing: {!isBufferClimbing}");
-        GUI.contentColor = Color.white;
-        
-        // Sequential wall logic status
-        GUILayout.Label("\n--- SEQUENTIAL WALL LOGIC ---");
-        bool canWallSlide = onWall && rb.linearVelocity.y < -wallSlideSpeed;
-        GUI.contentColor = canWallSlide ? Color.green : Color.red;
-        GUILayout.Label($"Can Wall Slide (Physics): {canWallSlide}");
-        GUI.contentColor = hasEverWallStuck ? Color.green : Color.red;
-        GUILayout.Label($"Allows Wall Slide (Logic): {hasEverWallStuck}");
-        GUI.contentColor = Color.white;
-        GUILayout.Label($"Velocity Y: {rb.linearVelocity.y:F2}");
-        GUILayout.Label($"Wall Slide Speed: -{wallSlideSpeed}");
-        
-        // Animation triggers
-        GUILayout.Label("\n--- ANIMATION TRIGGERS ---");
-        bool pressingTowardWallAnim = (facingRight && horizontalInput > 0.1f) || (!facingRight && horizontalInput < -0.1f);
-        GUILayout.Label($"IsWallSticking: {isWallSticking}");
-        GUILayout.Label($"PressingTowardWall: {pressingTowardWallAnim}");
-        
-        // Coyote time debug (only show when enabled)
-        if (enableCoyoteTime)
-        {
-            GUILayout.Label("\n--- COYOTE TIME ---");
-            GUI.contentColor = coyoteTimeCounter > 0f ? Color.yellow : Color.gray;
-            GUILayout.Label($"Coyote Counter: {coyoteTimeCounter:F3}s");
-            GUI.contentColor = leftGroundByJumping ? Color.red : Color.green;
-            GUILayout.Label($"Left By Jumping: {leftGroundByJumping}");
-            
-            // Show dash window separation info
-            bool inDashWindow = lastDashEndTime > 0 && Time.time - lastDashEndTime <= dashJumpWindow;
-            GUI.contentColor = inDashWindow ? Color.red : Color.gray;
-            GUILayout.Label($"In Dash Window: {inDashWindow}");
-            GUI.contentColor = coyoteTimeDuringDashWindow ? Color.green : Color.red;
-            GUILayout.Label($"Coyote During Dash: {coyoteTimeDuringDashWindow}");
-            
-            GUI.contentColor = Color.white;
-            bool allowCoyoteTime = enableCoyoteTime && (!inDashWindow || coyoteTimeDuringDashWindow);
-            bool coyoteActive = allowCoyoteTime && coyoteTimeCounter > 0f && !leftGroundByJumping && !isGrounded;
-            GUI.contentColor = coyoteActive ? Color.green : Color.gray;
-            GUILayout.Label($"Coyote Jump Available: {coyoteActive}");
-            GUI.contentColor = Color.white;
-        }
-        
-        GUILayout.EndArea();
-        */
-        
-        // Variable Jump Debug Panel (Active when showJumpDebug is enabled)
-        if (showJumpDebug)
-        {
-            GUILayout.BeginArea(new Rect(Screen.width - 320, 10, 310, 300));
-            GUILayout.Label("=== VARIABLE JUMP DEBUG ===", GUI.skin.label);
-            
-            // Variable jump settings
-            GUI.contentColor = enableVariableJump ? Color.green : Color.red;
-            GUILayout.Label($"Variable Jump: {(enableVariableJump ? "ENABLED" : "DISABLED")}");
-            GUI.contentColor = Color.white;
-            
-            if (enableVariableJump)
-            {
-                GUILayout.Label($"Min Velocity: {minJumpVelocity:F1}");
-                GUILayout.Label($"Max Velocity: {maxJumpVelocity:F1}");
-                GUILayout.Label($"Hold Duration: {jumpHoldDuration:F2}s");
-                GUILayout.Label($"Velocity Clamping: {useVelocityClamping}");
-                GUILayout.Label($"Gravity Reduction: {jumpGravityReduction:F2}");
-                
-                // Show calculated values
-                if (isVariableJumpActive)
-                {
-                    float effectiveMinVelocity = compensatedMinVelocity > 0 ? compensatedMinVelocity : minJumpVelocity;
-                    float effectiveMaxVelocity = compensatedMaxVelocity > 0 ? compensatedMaxVelocity : maxJumpVelocity;
-                    float progress = jumpHoldTimer / jumpHoldDuration;
-                    float targetMaxVelocity = Mathf.Lerp(effectiveMinVelocity, effectiveMaxVelocity, progress);
-                    
-                    GUILayout.Label($"Progress: {progress:F2}");
-                    GUILayout.Label($"Target Max Vel: {targetMaxVelocity:F1}");
-                    
-                    // Show compensation info
-                    if (compensatedMinVelocity > 0)
-                    {
-                        GUI.contentColor = Color.yellow;
-                        GUILayout.Label($"COMPENSATED JUMP");
-                        GUILayout.Label($"Effective Min: {effectiveMinVelocity:F1}");
-                        GUILayout.Label($"Effective Max: {effectiveMaxVelocity:F1}");
-                        GUI.contentColor = Color.white;
-                    }
-                }
-                
-                GUILayout.Space(10);
-                
-                // Current state
-                GUI.contentColor = isJumpHeld ? Color.green : Color.gray;
-                GUILayout.Label($"Jump Held: {isJumpHeld}");
-                GUI.contentColor = isVariableJumpActive ? Color.green : Color.gray;
-                GUILayout.Label($"Variable Jump Active: {isVariableJumpActive}");
-                GUI.contentColor = Color.white;
-                
-                if (isVariableJumpActive)
-                {
-                    GUILayout.Label($"Hold Timer: {jumpHoldTimer:F2}/{jumpHoldDuration:F2}");
-                    GUILayout.Label($"Current Gravity: {rb.gravityScale:F2}");
-                    GUILayout.Label($"Y Velocity: {rb.linearVelocity.y:F2}");
-                    
-                    // Progress bar for hold timer
-                    float progress = jumpHoldTimer / jumpHoldDuration;
-                    GUI.backgroundColor = Color.Lerp(Color.green, Color.red, progress);
-                    GUILayout.Box("", GUILayout.Height(10), GUILayout.Width(280 * progress));
-                    GUI.backgroundColor = Color.white;
-                }
-                
-                // Input state from InputManager
-                if (inputManager != null)
-                {
-                    GUILayout.Space(5);
-                    GUI.contentColor = inputManager.JumpHeld ? Color.green : Color.gray;
-                    GUILayout.Label($"Input Jump Held: {inputManager.JumpHeld}");
-                    GUI.contentColor = Color.white;
-                }
-            }
-            
-            GUILayout.EndArea();
-        }
-    }
+    // Debug visualization moved to PlayerDebugVisualizer component
+    // Toggle debug panels via PlayerDebugVisualizer inspector settings
 
-    
-    
-    
-    // Debug visualization for wall detection
-    void OnDrawGizmos()
-    {
-        // Remove the isPlaying check so gizmos show in edit mode too
-        // if (!Application.isPlaying) return;
-        
-        Vector3 playerPos = transform.position;
-        Vector3 direction = facingRight ? Vector3.right : Vector3.left;
-        
-        // Main wall detection rays - 3 rays (using inspector parameters)
-        if (!isGrounded)
-        {
-            Gizmos.color = onWall ? Color.red : Color.yellow;
-            // Draw the 3 wall check rays
-            Gizmos.DrawRay(playerPos + Vector3.up * wallRaycastTop, direction * wallCheckDistance);    // Top (0.32)
-            Gizmos.DrawRay(playerPos + Vector3.up * wallRaycastMiddle, direction * wallCheckDistance); // Middle (0.28)
-            Gizmos.DrawRay(playerPos + Vector3.up * wallRaycastBottom, direction * wallCheckDistance); // Bottom (0.02)
-        }
-        else
-        {
-            Gizmos.color = Color.gray;
-            // Show disabled wall detection when grounded
-            Gizmos.DrawRay(playerPos + Vector3.up * wallRaycastTop, direction * wallCheckDistance);
-            Gizmos.DrawRay(playerPos + Vector3.up * wallRaycastMiddle, direction * wallCheckDistance);
-            Gizmos.DrawRay(playerPos + Vector3.up * wallRaycastBottom, direction * wallCheckDistance);
-        }
-        
-        // Draw small spheres at raycast origins for clarity
-        Gizmos.color = Color.cyan;
-        Gizmos.DrawWireSphere(playerPos + Vector3.up * wallRaycastTop, 0.02f);    // Top
-        Gizmos.DrawWireSphere(playerPos + Vector3.up * wallRaycastMiddle, 0.02f); // Middle
-        Gizmos.DrawWireSphere(playerPos + Vector3.up * wallRaycastBottom, 0.02f); // Bottom
-        
-        // Ground detection
-        Gizmos.color = isGrounded ? Color.green : Color.blue;
-        Gizmos.DrawWireSphere(playerPos + Vector3.down * 0.6f, 0.1f);
-        
-        // Precise ground check visualization
-        Collider2D col = GetComponent<Collider2D>();
-        if (col != null)
-        {
-            float feetY = col.bounds.min.y;
-            Vector2 feetPos = new Vector2(transform.position.x, feetY + groundCheckOffsetY);
-            
-            // Smaller, less prominent ground check visualization  
-            Gizmos.color = new Color(1f, 0f, 1f, 0.3f); // Transparent magenta
-            Gizmos.DrawWireSphere(feetPos, groundCheckRadius);
-            
-            if (Application.isPlaying)
-            {
-                int groundLayer = LayerMask.NameToLayer("Ground");
-                int bufferLayer = LayerMask.NameToLayer("LandingBuffer");
-                int platformMask = (1 << groundLayer);
-                int bufferMask = (1 << bufferLayer);
-                
-                bool groundedByPlatform = Physics2D.OverlapCircle(feetPos, groundCheckRadius, platformMask);
-                bool groundedByBuffer = Physics2D.OverlapCircle(feetPos, groundCheckRadius, bufferMask);
-                
-                // Apply velocity restriction to buffer detection (same as main logic)
-                if (groundedByBuffer && rb.linearVelocity.y > 0.1f)
-                {
-                    groundedByBuffer = false;
-                }
-                
-                // More subtle ground detection visualization
-                Gizmos.color = groundedByPlatform ? new Color(0f, 1f, 0f, 0.4f) : new Color(1f, 0f, 0f, 0.4f);
-                Gizmos.DrawWireSphere(feetPos, groundCheckRadius + 0.02f);
-                
-                Gizmos.color = groundedByBuffer ? new Color(1f, 1f, 0f, 0.4f) : new Color(0f, 1f, 1f, 0.4f);
-                Gizmos.DrawWireSphere(feetPos, groundCheckRadius + 0.04f);
-                
-                
-                // Climbing assistance zone visualization
-                // NOTE: CheckClimbingAssistanceZone is now internal to PlayerGroundDetection
-                // Force recompile
-                if (showClimbingGizmos)
-                {
-                    float checkDirection = facingRight ? 1f : -1f;
+    // Gizmos visualization moved to PlayerDebugVisualizer component
 
-                    // Show activation status
-                    Gizmos.color = isBufferClimbing ? Color.green : Color.red;
-                    Gizmos.DrawWireSphere(playerPos + Vector3.up * 0.5f, 0.1f);
-
-                    // Draw climbing force visualization when active
-                    if (isBufferClimbing)
-                    {
-                        Gizmos.color = Color.red;
-                        Gizmos.DrawRay(playerPos, Vector3.up * climbForce * 0.2f); // Scale for visibility
-
-                        Gizmos.color = Color.blue;
-                        Gizmos.DrawRay(playerPos, direction * forwardBoost);
-                    }
-                }
-            }
-        }
-        
-        // Draw death zone in scene view
-        if (showDeathZone)
-        {
-            Gizmos.color = Color.red;
-            
-            // Use adjustable width for death zone visualization
-            float halfWidth = deathZoneWidth / 2f;
-            float leftBound = -halfWidth;
-            float rightBound = halfWidth;
-
-            // Center on player's initial X position for better visibility
-            if (respawnSystem != null && respawnSystem.InitialPosition != Vector3.zero)
-            {
-                leftBound = respawnSystem.InitialPosition.x - halfWidth;
-                rightBound = respawnSystem.InitialPosition.x + halfWidth;
-            }
-            
-            // Draw death zone line
-            Vector3 leftPoint = new Vector3(leftBound, deathZoneY, 0);
-            Vector3 rightPoint = new Vector3(rightBound, deathZoneY, 0);
-            Gizmos.DrawLine(leftPoint, rightPoint);
-            
-            // Draw danger zone (area below death line)
-            Gizmos.color = new Color(1f, 0f, 0f, 0.1f); // Semi-transparent red
-            Vector3[] dangerZone = new Vector3[4];
-            dangerZone[0] = leftPoint;
-            dangerZone[1] = rightPoint;
-            dangerZone[2] = new Vector3(rightBound, deathZoneY - 10f, 0);
-            dangerZone[3] = new Vector3(leftBound, deathZoneY - 10f, 0);
-            
-            // Draw filled danger zone
-            Gizmos.DrawLine(dangerZone[0], dangerZone[1]);
-            Gizmos.DrawLine(dangerZone[1], dangerZone[2]);
-            Gizmos.DrawLine(dangerZone[2], dangerZone[3]);
-            Gizmos.DrawLine(dangerZone[3], dangerZone[0]);
-            
-            // Add warning text indicators
-            Gizmos.color = Color.red;
-            for (float x = leftBound; x <= rightBound; x += 10f)
-            {
-                // Draw small downward arrows to indicate danger
-                Vector3 arrowTop = new Vector3(x, deathZoneY, 0);
-                Vector3 arrowBottom = new Vector3(x, deathZoneY - 0.5f, 0);
-                Vector3 arrowLeft = new Vector3(x - 0.2f, deathZoneY - 0.3f, 0);
-                Vector3 arrowRight = new Vector3(x + 0.2f, deathZoneY - 0.3f, 0);
-                
-                Gizmos.DrawLine(arrowTop, arrowBottom);
-                Gizmos.DrawLine(arrowBottom, arrowLeft);
-                Gizmos.DrawLine(arrowBottom, arrowRight);
-            }
-        }
-    }
-    
     // Death/Reset system - delegated to PlayerRespawnSystem
     void OnTriggerEnter2D(Collider2D other)
     {

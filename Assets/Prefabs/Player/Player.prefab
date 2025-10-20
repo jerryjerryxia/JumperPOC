@@ -18,6 +18,14 @@ GameObject:
   - component: {fileID: 621089435835036298}
   - component: {fileID: 1371407004178901666}
   - component: {fileID: 152825624714048883}
+  - component: {fileID: -7027220865976239144}
+  - component: {fileID: 1864909341138742646}
+  - component: {fileID: 3293366863225908851}
+  - component: {fileID: -8907313174223624960}
+  - component: {fileID: 3603355167932824703}
+  - component: {fileID: 5453981786391944949}
+  - component: {fileID: 7494720635182309984}
+  - component: {fileID: -861106453994670169}
   m_Layer: 0
   m_Name: Player
   m_TagString: Player
@@ -204,6 +212,18 @@ MonoBehaviour:
   extraJumps: 1
   wallSlideSpeed: 2
   wallJump: {x: 7, y: 10}
+  enableVariableJump: 1
+  minJumpVelocity: 4
+  maxJumpVelocity: 4
+  jumpHoldDuration: 0.3
+  jumpGravityReduction: 0
+  minDoubleJumpVelocity: 4
+  maxDoubleJumpVelocity: 4
+  doubleJumpMinDelay: 0.2
+  forcedFallDuration: 0.1
+  forcedFallVelocity: -2
+  useVelocityClamping: 1
+  showJumpDebug: 0
   dashSpeed: 8
   dashTime: 0.25
   dashCooldown: 0.4
@@ -320,6 +340,105 @@ MonoBehaviour:
   hasDoubleAirDash: 0
   hasTripleJump: 0
   hasGlide: 0
+--- !u!114 &-7027220865976239144
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 853602305263445774}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7cc8f249d8a3c074d87a70479e284f8b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerAnimationController
+--- !u!114 &1864909341138742646
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 853602305263445774}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fa857092be0a35e4291b4abf7cb22f18, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerDebugVisualizer
+  enableWallDebugPanel: 0
+  enableJumpDebugPanel: 0
+  enableGizmos: 1
+--- !u!114 &3293366863225908851
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 853602305263445774}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a663e42c1d1fffd489fdf7c39d18a9d1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerGroundDetection
+--- !u!114 &-8907313174223624960
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 853602305263445774}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 612d3f90471adc44db57f98178b2ae7b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerJumpSystem
+--- !u!114 &3603355167932824703
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 853602305263445774}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 677fb729f48bee14a807f82313215c9d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerMovement
+--- !u!114 &5453981786391944949
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 853602305263445774}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 427917a2fbe21e547aba80533cc3ac57, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerRespawnSystem
+--- !u!114 &7494720635182309984
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 853602305263445774}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d2b1b783d49ba46458ff2b258daf37dc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerStateTracker
+--- !u!114 &-861106453994670169
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 853602305263445774}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 17c908905a8d5f742ac2c47f0f89b919, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerWallDetection
 --- !u!1 &4056091754182830568
 GameObject:
   m_ObjectHideFlags: 0
