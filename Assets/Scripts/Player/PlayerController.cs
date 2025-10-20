@@ -97,7 +97,16 @@ public class PlayerController : MonoBehaviour
     private Animator animator;
     private PlayerCombat combat;
     private InputManager inputManager;
-    
+
+    // Refactored component system
+    private PlayerGroundDetection groundDetection;
+    private PlayerWallDetection wallDetection;
+    private PlayerMovement movement;
+    private PlayerJumpSystem jumpSystem;
+    private PlayerAnimationController animationController;
+    private PlayerRespawnSystem respawnSystem;
+    private PlayerStateTracker stateTracker;
+
     // Input
     private Vector2 moveInput;
     private bool jumpQueued, dashQueued;
@@ -239,7 +248,10 @@ public class PlayerController : MonoBehaviour
         animator = GetComponent<Animator>();
         combat = GetComponent<PlayerCombat>();
         Physics2D.queriesStartInColliders = false;
-        
+
+        // Initialize refactored component system
+        InitializeComponents();
+
         // Verify required components
         VerifyComponentSetup();
         
@@ -304,6 +316,53 @@ public class PlayerController : MonoBehaviour
         }
     }
     
+    /// <summary>
+    /// Initialize all refactored components
+    /// </summary>
+    private void InitializeComponents()
+    {
+        // Add components if they don't exist
+        groundDetection = gameObject.GetComponent<PlayerGroundDetection>();
+        if (groundDetection == null)
+            groundDetection = gameObject.AddComponent<PlayerGroundDetection>();
+
+        wallDetection = gameObject.GetComponent<PlayerWallDetection>();
+        if (wallDetection == null)
+            wallDetection = gameObject.AddComponent<PlayerWallDetection>();
+
+        movement = gameObject.GetComponent<PlayerMovement>();
+        if (movement == null)
+            movement = gameObject.AddComponent<PlayerMovement>();
+
+        jumpSystem = gameObject.GetComponent<PlayerJumpSystem>();
+        if (jumpSystem == null)
+            jumpSystem = gameObject.AddComponent<PlayerJumpSystem>();
+
+        animationController = gameObject.GetComponent<PlayerAnimationController>();
+        if (animationController == null)
+            animationController = gameObject.AddComponent<PlayerAnimationController>();
+
+        respawnSystem = gameObject.GetComponent<PlayerRespawnSystem>();
+        if (respawnSystem == null)
+            respawnSystem = gameObject.AddComponent<PlayerRespawnSystem>();
+
+        stateTracker = gameObject.GetComponent<PlayerStateTracker>();
+        if (stateTracker == null)
+            stateTracker = gameObject.AddComponent<PlayerStateTracker>();
+
+        // Initialize each component with required references
+        Collider2D col = GetComponent<Collider2D>();
+        PlayerAbilities abilities = GetComponent<PlayerAbilities>();
+
+        groundDetection.Initialize(rb, col, transform);
+        wallDetection.Initialize(rb, col, transform, abilities);
+        movement.Initialize(rb, transform, groundDetection, wallDetection, combat);
+        jumpSystem.Initialize(rb, transform, groundDetection, wallDetection, abilities, animator);
+        animationController.Initialize(animator);
+        respawnSystem.Initialize(transform, rb);
+        stateTracker.Initialize(rb, groundDetection, wallDetection, movement, jumpSystem, combat);
+    }
+
     private void VerifyComponentSetup()
     {
         // Check required components
