@@ -24,6 +24,7 @@ public class InputManager : MonoBehaviour
     
     // Input events - other systems can subscribe to these
     public System.Action OnJumpPressed;
+    public System.Action OnJumpReleased;  // NEW: Event for when jump button is released
     public System.Action OnDashPressed;
     public System.Action OnAttackPressed;
     public System.Action<Vector2> OnMoveInput;
@@ -135,7 +136,8 @@ public class InputManager : MonoBehaviour
     private void OnJumpCanceled(UnityEngine.InputSystem.InputAction.CallbackContext context)
     {
         JumpHeld = false;
-        
+        OnJumpReleased?.Invoke();  // Fire the release event
+
         if (enableInputDebugging)
         {
             // Debug.Log("InputManager: Jump released");

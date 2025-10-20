@@ -369,6 +369,17 @@ public class PlayerController : MonoBehaviour
 
         // Configure wall detection
         wallDetection.SetConfiguration(wallCheckDistance, wallRaycastTop, wallRaycastMiddle, wallRaycastBottom);
+
+        // Configure jump system
+        jumpSystem.SetConfiguration(extraJumps, wallJump, enableVariableJump,
+                                   minJumpVelocity, maxJumpVelocity, jumpHoldDuration,
+                                   jumpGravityReduction, minDoubleJumpVelocity, maxDoubleJumpVelocity,
+                                   doubleJumpMinDelay, forcedFallDuration, forcedFallVelocity,
+                                   useVelocityClamping, showJumpDebug, dashJump, dashJumpWindow,
+                                   wallJumpCompensation, enableJumpCompensation, wallCheckDistance,
+                                   wallRaycastTop, wallRaycastMiddle, wallRaycastBottom,
+                                   enableCoyoteTime, coyoteTimeDuringDashWindow, maxAirDashes, maxDashes,
+                                   combat, inputManager);
     }
 
     private void VerifyComponentSetup()
@@ -486,6 +497,7 @@ public class PlayerController : MonoBehaviour
             // Subscribe to input events
             inputManager.OnMoveInput += OnMoveInput;
             inputManager.OnJumpPressed += OnJumpInput;
+            inputManager.OnJumpReleased += OnJumpReleased;  // Subscribe to release event
             inputManager.OnDashPressed += OnDashInput;
             inputManager.OnAttackPressed += OnAttackInput;
         }
@@ -512,6 +524,7 @@ public class PlayerController : MonoBehaviour
             // Unsubscribe from input events
             inputManager.OnMoveInput -= OnMoveInput;
             inputManager.OnJumpPressed -= OnJumpInput;
+            inputManager.OnJumpReleased -= OnJumpReleased;  // Unsubscribe from release event
             inputManager.OnDashPressed -= OnDashInput;
             inputManager.OnAttackPressed -= OnAttackInput;
         }
@@ -529,11 +542,25 @@ public class PlayerController : MonoBehaviour
             Debug.LogError("[PlayerController] InputManager is NULL!");
         }
         
+        // Update jump system state
+        jumpSystem.UpdateExternalState(facingRight, moveInput, isGrounded, onWall,
+                                       isOnSlope, currentSlopeAngle, slopeNormal,
+                                       coyoteTimeCounter, leftGroundByJumping, isBufferClimbing,
+                                       isDashing, lastDashEndTime);
+
         // Handle variable jump mechanics
-        HandleVariableJump();
-        
+        jumpSystem.UpdateVariableJump();
+
         // Handle forced fall for double jump
-        HandleForcedFall();
+        jumpSystem.UpdateForcedFall();
+
+        // Sync jump state from jumpSystem
+        isVariableJumpActive = jumpSystem.IsVariableJumpActive;
+        isForcedFalling = jumpSystem.IsForcedFalling;
+        jumpsRemaining = jumpSystem.JumpsRemaining;
+        lastJumpTime = jumpSystem.LastJumpTime;
+        dashJumpTime = jumpSystem.DashJumpTime;
+        isJumpHeld = jumpSystem.IsJumpHeld;
         
         // Removed complex horizontal movement tracking
         
@@ -588,16 +615,38 @@ public class PlayerController : MonoBehaviour
 
         // Update movement states
         UpdateMovementStates();
-        
-        // Handle mid-jump wall contact compensation (for wall stick disabled scenarios)
-        HandleMidJumpWallCompensation();
-        
+
         // Handle movement
         HandleMovement();
         
         // Handle jumping
-        HandleJumping();
-        
+        int airDashOut, airDashUsedOut, dashesOut;
+        float coyoteOut;
+        bool leftGroundOut;
+        bool jumpExecuted = jumpSystem.HandleJumping(jumpQueued, out airDashOut, out airDashUsedOut, out dashesOut, out coyoteOut, out leftGroundOut);
+
+        if (jumpExecuted)
+        {
+            // Sync state updated by jump system
+            airDashesRemaining = airDashOut;
+            airDashesUsed = airDashUsedOut;
+            dashesRemaining = dashesOut;
+            coyoteTimeCounter = coyoteOut;
+            leftGroundByJumping = leftGroundOut;
+            jumpsRemaining = jumpSystem.JumpsRemaining;
+            facingRight = jumpSystem.FacingRight; // Sync facing direction (changes during wall jump)
+
+            // CRITICAL: If this was a dash jump, end the dash to prevent velocity override
+            if (jumpSystem.DashJumpTime == Time.time)
+            {
+                isDashing = false;
+                lastDashEndTime = Time.time;
+                combat?.OnDashEnd();
+            }
+        }
+
+        jumpQueued = false;
+
         // Handle dashing
         HandleDashInput();
         
@@ -676,13 +725,7 @@ public class PlayerController : MonoBehaviour
                 
                 // ZERO out vertical velocity immediately - no gradual transition
                 rb.linearVelocity = new Vector2(rb.linearVelocity.x, 0f);
-                
-                // End any active variable jump
-                if (isVariableJumpActive)
-                {
-                    EndVariableJump();
-                }
-                
+
                 // Clear any dash jump momentum that might interfere
                 if (dashJumpTime > 0f)
                 {
@@ -1045,357 +1088,6 @@ public class PlayerController : MonoBehaviour
         }
     }
     
-    /// <summary>
-    /// Handles variable jump height mechanics (Hollow Knight style)
-    /// </summary>
-    private void HandleVariableJump()
-    {
-        if (!enableVariableJump) return;
-        
-        // Update jump hold state from InputManager
-        bool jumpCurrentlyHeld = inputManager != null && inputManager.JumpHeld;
-        
-        // Check if jump was released
-        if (isJumpHeld && !jumpCurrentlyHeld)
-        {
-            isJumpHeld = false;
-            // End variable jump immediately when released
-            if (isVariableJumpActive)
-            {
-                EndVariableJump();
-            }
-        }
-        
-        // Handle active variable jump
-        if (isVariableJumpActive)
-        {
-            // Check if still moving upward
-            bool movingUpward = rb.linearVelocity.y > 0.1f;
-            
-            // Update timer
-            jumpHoldTimer += Time.fixedDeltaTime;
-            
-            // Check end conditions
-            if (!jumpCurrentlyHeld || !movingUpward || jumpHoldTimer >= jumpHoldDuration)
-            {
-                EndVariableJump();
-            }
-            else
-            {
-                // Use compensated velocities if they were set (for jump compensation)
-                float effectiveMinVelocity = compensatedMinVelocity > 0 ? compensatedMinVelocity : minJumpVelocity;
-                float effectiveMaxVelocity = compensatedMaxVelocity > 0 ? compensatedMaxVelocity : maxJumpVelocity;
-                
-                // If min and max velocities are the same, no variable jump behavior needed
-                if (Mathf.Approximately(effectiveMinVelocity, effectiveMaxVelocity))
-                {
-                    // NO velocity manipulation and NO gravity reduction when Min=Max
-                    // This ensures short and long press produce identical jump height
-                    
-                    if (showJumpDebug)
-                    {
-                        Debug.Log($"[Variable Jump] Min=Max ({effectiveMinVelocity:F1}), no height variance - Timer: {jumpHoldTimer:F2}/{jumpHoldDuration:F2}");
-                    }
-                }
-                else if (useVelocityClamping)
-                {
-                    // CONSTANT VELOCITY METHOD: Maintain perfectly steady upward velocity
-                    // NO acceleration or deceleration during hold - constant speed only
-                    
-                    // Use the velocity that was set at jump start - no changes during hold
-                    float constantVelocity = effectiveMaxVelocity; // Keep velocity constant at max
-                    
-                    // Force constant velocity - completely override physics
-                    rb.linearVelocity = new Vector2(rb.linearVelocity.x, constantVelocity);
-                    
-                    // Use jumpGravityReduction instead of zero gravity to maintain compensation compatibility
-                    // This allows wall jump compensation to still work while reducing unwanted deceleration
-                    rb.gravityScale = originalGravityScaleForJump * jumpGravityReduction;
-                    
-                    if (showJumpDebug)
-                    {
-                        Debug.Log($"[Constant Velocity Jump] Constant Vel: {constantVelocity:F1}, Gravity: {rb.gravityScale:F2}, Timer: {jumpHoldTimer:F2}/{jumpHoldDuration:F2}");
-                    }
-                }
-            }
-        }
-    }
-    
-    /// <summary>
-    /// Ends the variable jump and restores normal gravity
-    /// </summary>
-    private void EndVariableJump()
-    {
-        isVariableJumpActive = false;
-        rb.gravityScale = originalGravityScaleForJump;
-        
-        // Reset compensated values
-        compensatedMinVelocity = 0f;
-        compensatedMaxVelocity = 0f;
-        
-        if (showJumpDebug)
-        {
-            Debug.Log($"[Variable Jump] Ended - Final height achieved, Timer: {jumpHoldTimer:F2}");
-        }
-    }
-    
-    /// <summary>
-    /// Checks if double jump can be performed and handles forced fall logic
-    /// </summary>
-    private bool CanPerformDoubleJump()
-    {
-        // Check minimum time delay since last jump
-        float timeSinceLastJump = Time.time - lastJumpTime;
-        if (timeSinceLastJump < doubleJumpMinDelay)
-        {
-            if (showJumpDebug)
-            {
-                Debug.Log($"[Double Jump] Too soon! Time since last jump: {timeSinceLastJump:F2}s (min: {doubleJumpMinDelay:F2}s)");
-            }
-            return false;
-        }
-        
-        // If player is falling, allow immediate double jump
-        if (rb.linearVelocity.y < 0f)
-        {
-            if (showJumpDebug)
-            {
-                Debug.Log($"[Double Jump] Natural falling - immediate double jump! Velocity: {rb.linearVelocity.y:F2}");
-            }
-            return true;
-        }
-        
-        // If player is ascending, initiate forced fall then double jump
-        if (rb.linearVelocity.y >= 0f)
-        {
-            if (!isForcedFalling && !pendingDoubleJump)
-            {
-                StartForcedFall();
-                if (showJumpDebug)
-                {
-                    Debug.Log($"[Double Jump] Ascending - starting forced fall! Velocity: {rb.linearVelocity.y:F2}");
-                }
-            }
-            return false; // Don't perform double jump yet, wait for forced fall to complete
-        }
-        
-        return true;
-    }
-    
-    /// <summary>
-    /// Starts the forced fall phase before double jump
-    /// </summary>
-    private void StartForcedFall()
-    {
-        isForcedFalling = true;
-        forcedFallTimer = 0f;
-        pendingDoubleJump = true;
-        
-        // End any active variable jump
-        if (isVariableJumpActive)
-        {
-            EndVariableJump();
-        }
-        
-        // Set downward velocity
-        rb.linearVelocity = new Vector2(rb.linearVelocity.x, forcedFallVelocity);
-    }
-    
-    /// <summary>
-    /// Handles the forced fall state and triggers double jump when ready
-    /// </summary>
-    private void HandleForcedFall()
-    {
-        if (!isForcedFalling) return;
-        
-        forcedFallTimer += Time.fixedDeltaTime;
-        
-        // Maintain forced fall velocity
-        rb.linearVelocity = new Vector2(rb.linearVelocity.x, forcedFallVelocity);
-        
-        // Check if forced fall duration is complete
-        if (forcedFallTimer >= forcedFallDuration)
-        {
-            // End forced fall and trigger double jump
-            isForcedFalling = false;
-            
-            if (pendingDoubleJump && jumpsRemaining > 0)
-            {
-                pendingDoubleJump = false;
-                PerformDoubleJump();
-                
-                if (showJumpDebug)
-                {
-                    Debug.Log($"[Double Jump] Forced fall complete - executing double jump! Duration: {forcedFallTimer:F2}s");
-                }
-            }
-        }
-    }
-    
-    /// <summary>
-    /// Executes the actual double jump
-    /// </summary>
-    private void PerformDoubleJump()
-    {
-        // Double jump uses variable jump mechanics with separate parameters
-        if (enableVariableJump)
-        {
-            // Start double jump with min double jump velocity (will increase with hold)
-            rb.linearVelocity = new Vector2(rb.linearVelocity.x, minDoubleJumpVelocity);
-            
-            // Initialize variable jump state for double jump
-            isVariableJumpActive = true;
-            jumpHoldTimer = 0f;
-            isJumpHeld = inputManager != null && inputManager.JumpHeld;
-            
-            // Store original gravity for restoration
-            originalGravityScaleForJump = rb.gravityScale;
-            
-            // Set compensated values to use double jump parameters
-            compensatedMinVelocity = minDoubleJumpVelocity;
-            compensatedMaxVelocity = maxDoubleJumpVelocity;
-            
-            lastJumpTime = Time.time;
-            
-            // Reset coyote time and set jump state
-            coyoteTimeCounter = 0f;
-            isJumping = true;
-        }
-        else
-        {
-            Jump(maxJumpVelocity * 0.9f);
-        }
-        
-        jumpsRemaining--;
-        airDashesUsed = 0;
-        if (animator != null) SafeSetTrigger("DoubleJump");
-        
-        // Notify combat system about double jump
-        if (combat != null)
-        {
-            combat.OnDoubleJump();
-        }
-    }
-    
-    private void HandleJumping()
-    {
-        if (!jumpQueued) return;
-
-        // DEBUG: Log when jump is blocked while moving on slopes
-        if (isOnSlope && Mathf.Abs(moveInput.x) > 0.1f)
-        {
-            Debug.Log($"[SLOPE JUMP DEBUG] Attempting jump while moving on slope - isGrounded: {isGrounded}, on Wall: {onWall}");
-        }
-
-        // CRITICAL: Block jumping during active air attacks to prevent infinite elevation exploit
-        // Allow normal jumps when airborne after dashing off platform
-        if (combat != null && (combat.IsAirAttacking || (combat.IsDashAttacking && isGrounded)))
-        {
-            // DEBUG: Log if this blocks the jump
-            if (isOnSlope && Mathf.Abs(moveInput.x) > 0.1f)
-            {
-                Debug.Log($"[SLOPE JUMP DEBUG] BLOCKED by combat check - IsAirAttacking: {combat.IsAirAttacking}, IsDashAttacking: {combat.IsDashAttacking}");
-            }
-            jumpQueued = false;
-            return;
-        }
-        
-        // Dash Jump: Jump during active dash or shortly after dash ends
-        if (CanPerformDashJump())
-        {
-            // DEBUG: Log if dash jump blocks normal jump
-            if (isOnSlope && Mathf.Abs(moveInput.x) > 0.1f)
-            {
-                Debug.Log($"[SLOPE JUMP DEBUG] BLOCKED by dash jump - performing dash jump instead");
-            }
-            PerformDashJump();
-            jumpQueued = false;
-            return;
-        }
-
-        // DEBUG: Log that we passed all blocking checks
-        if (isOnSlope && Mathf.Abs(moveInput.x) > 0.1f)
-        {
-            Debug.Log($"[SLOPE JUMP DEBUG] Passed all blocking checks, calculating canGroundJump...");
-        }
-        
-        // PRIORITY 1: Ground jump ALWAYS takes priority over wall jumps
-        // This ensures jumping near walls works regardless of wall stick state
-        bool inDashJumpWindow = lastDashEndTime > 0 && Time.time - lastDashEndTime <= dashJumpWindow;
-        bool allowCoyoteTime = enableCoyoteTime && (!inDashJumpWindow || coyoteTimeDuringDashWindow);
-        bool canGroundJump = isGrounded || (allowCoyoteTime && coyoteTimeCounter > 0f && !leftGroundByJumping);
-        
-        if (canGroundJump)
-        {
-            // DEBUG: Log when ground jump executes
-            if (isOnSlope && Mathf.Abs(moveInput.x) > 0.1f)
-            {
-                Debug.Log($"[SLOPE JUMP DEBUG] Ground jump executing! canGroundJump: {canGroundJump}, isGrounded: {isGrounded}, velocity before: {rb.linearVelocity.y:F2}");
-            }
-
-            // Ground jump - works regardless of wall proximity or wall stick state
-            Jump(maxJumpVelocity); // Will use velocity directly if variable jump is enabled
-            jumpsRemaining = extraJumps;
-            airDashesRemaining = maxAirDashes;
-            airDashesUsed = 0;
-            dashesRemaining = maxDashes;
-            if (animator != null) SafeSetTrigger("Jump");
-
-            // DEBUG: Log velocity after jump
-            if (isOnSlope && Mathf.Abs(moveInput.x) > 0.1f)
-            {
-                Debug.Log($"[SLOPE JUMP DEBUG] After Jump() call, velocity: {rb.linearVelocity.y:F2}, isVariableJumpActive: {isVariableJumpActive}");
-            }
-            
-            // Consume coyote time if it was used
-            if (!isGrounded && enableCoyoteTime && coyoteTimeCounter > 0f)
-            {
-                coyoteTimeCounter = 0f;
-                leftGroundByJumping = true; // Prevent further coyote jumps
-            }
-            
-            if (showJumpDebug)
-            {
-                Debug.Log($"[Jump Priority] Ground jump executed - isGrounded: {isGrounded}, onWall: {onWall}, wallStick: {PlayerAbilities.Instance?.HasWallStick}");
-            }
-        }
-        // PRIORITY 2: Wall jump (only when airborne and wall stick enabled)
-        else if (!isGrounded && onWall && PlayerAbilities.Instance != null && PlayerAbilities.Instance.HasWallStick)
-        {
-            // Wall jump - only when airborne and wall stick is enabled
-            facingRight = !facingRight;
-            Jump(wallJump.y, wallJump.x * (facingRight ? 1 : -1));
-            jumpsRemaining = extraJumps;
-            airDashesRemaining = maxAirDashes;
-            airDashesUsed = 0;
-            dashesRemaining = maxDashes;
-            if (animator != null) SafeSetTrigger("Jump");
-            
-            if (showJumpDebug)
-            {
-                Debug.Log($"[Jump Priority] Wall jump executed - airborne wall stick");
-            }
-        }
-        // PRIORITY 3: Debug case for wall stick disabled but onWall detected
-        else if (!isGrounded && onWall && PlayerAbilities.Instance != null && !PlayerAbilities.Instance.HasWallStick)
-        {
-            // This should not happen with proper wall detection, but kept for debugging
-            if (showJumpDebug)
-            {
-                Debug.LogWarning($"[Jump Priority] Wall detected but wall stick disabled - onWall: {onWall}, airborne: {!isGrounded}");
-            }
-        }
-        else if (jumpsRemaining > 0 && PlayerAbilities.Instance != null && PlayerAbilities.Instance.HasDoubleJump && CanPerformDoubleJump())
-        {
-            PerformDoubleJump();
-            if (combat != null)
-            {
-                combat.OnDoubleJump();
-            }
-        }
-        
-        jumpQueued = false;
-    }
     
     private void HandleDashInput()
     {
@@ -1576,96 +1268,6 @@ public class PlayerController : MonoBehaviour
         }
         return false;
     }
-
-    private void Jump(float yForce, float xForce = 0)
-    {
-        // For variable jump, set initial velocity directly instead of using force
-        if (enableVariableJump && xForce == 0) // Only apply to regular jumps, not wall jumps
-        {
-            // Check if compensation is needed and adjust velocities accordingly
-            float actualMinVelocity = minJumpVelocity;
-            float actualMaxVelocity = maxJumpVelocity;
-            
-            if (enableJumpCompensation && CheckIfNeedsJumpCompensation())
-            {
-                // Apply compensation to both min and max velocities
-                float compensationMultiplier = wallJumpCompensation;
-                actualMinVelocity *= compensationMultiplier;
-                actualMaxVelocity *= compensationMultiplier;
-                
-                if (showJumpDebug)
-                {
-                    Debug.Log($"[Jump Compensation] Applied {compensationMultiplier:F2}x - Min: {minJumpVelocity:F1} -> {actualMinVelocity:F1}, Max: {maxJumpVelocity:F1} -> {actualMaxVelocity:F1}");
-                }
-            }
-            
-            // SLOPE JUMP COMPENSATION: Add extra upward velocity when jumping up slopes
-            float slopeCompensation = 0f;
-            if (isOnSlope && Mathf.Abs(moveInput.x) > 0.1f)
-            {
-                // Check if running upward on slope (moveInput direction matches upward slope direction)
-                Vector2 slopeUpDirection = new Vector2(slopeNormal.y, -slopeNormal.x).normalized;
-                bool runningUpSlope = Vector2.Dot(new Vector2(moveInput.x, 0), slopeUpDirection) > 0;
-
-                if (runningUpSlope)
-                {
-                    // Add compensation based on slope angle (0° = no compensation, 45° = max compensation)
-                    // Use a multiplier that scales with slope steepness
-                    float slopeAngleRatio = currentSlopeAngle / 45f; // Normalize to 45° as reference
-                    slopeCompensation = actualMinVelocity * 0.5f * slopeAngleRatio; // Up to 50% extra velocity on 45° slopes
-
-                    // Debug.Log($"[SLOPE JUMP] Running up {currentSlopeAngle:F1}° slope - adding {slopeCompensation:F2} compensation");
-                }
-            }
-
-            // Set velocity directly to compensated min jump velocity + slope compensation
-            rb.linearVelocity = new Vector2(rb.linearVelocity.x, actualMinVelocity + slopeCompensation);
-
-            // DEBUG: Log velocity set
-            if (isOnSlope && Mathf.Abs(moveInput.x) > 0.1f)
-            {
-                Debug.Log($"[SLOPE JUMP DEBUG] Jump() method set velocity to: {actualMinVelocity + slopeCompensation:F2} (base: {actualMinVelocity:F2}, slope compensation: {slopeCompensation:F2})");
-            }
-
-            // Start variable jump tracking with compensated values
-            isVariableJumpActive = true;
-            jumpHoldTimer = 0f;
-            originalGravityScaleForJump = rb.gravityScale;
-            
-            // Store compensated values for use in HandleVariableJump
-            compensatedMinVelocity = actualMinVelocity;
-            compensatedMaxVelocity = actualMaxVelocity;
-            
-            // Reset coyote time and set jump state
-            coyoteTimeCounter = 0f;
-            isJumping = true;
-            lastJumpTime = Time.time;
-            
-            // Skip the normal force application since we set velocity directly
-            return;
-        }
-        
-        // Use compensation method if the separate file exists, otherwise fallback to original
-        if (enableJumpCompensation)
-        {
-            JumpWithCompensation(yForce, xForce);
-        }
-        else
-        {
-            // For horizontal force (like dash jump), apply as impulse for proper momentum
-            if (xForce != 0)
-            {
-                rb.linearVelocity = new Vector2(rb.linearVelocity.x, 0); // Keep horizontal velocity, clear vertical only
-                rb.AddForce(new Vector2(xForce, yForce), ForceMode2D.Impulse);
-            }
-            else
-            {
-                rb.linearVelocity = new Vector2(rb.linearVelocity.x, 0);
-                rb.AddForce(new Vector2(0, yForce), ForceMode2D.Impulse);
-            }
-            lastJumpTime = Time.time; // Track jump time for wall stick timing
-        }
-    }
     
     public void ConsumeAirDash()
     {
@@ -1723,14 +1325,25 @@ public class PlayerController : MonoBehaviour
     private void OnJumpInput()
     {
         jumpQueued = true;
-        
+
         // Track jump hold state for variable jump
         if (enableVariableJump)
         {
             isJumpHeld = true;
+            jumpSystem.IsJumpHeld = true; // Set jumpSystem's jump hold state
         }
     }
-    
+
+    private void OnJumpReleased()
+    {
+        // Clear jump hold state when button is released
+        if (enableVariableJump)
+        {
+            isJumpHeld = false;
+            jumpSystem.IsJumpHeld = false;
+        }
+    }
+
     private void OnDashInput()
     {
         if (Time.time - lastDashInputTime < 0.05f)
@@ -1939,162 +1552,6 @@ public class PlayerController : MonoBehaviour
     }
 
     
-    /// <summary>
-    /// Enhanced jump method with wall friction compensation
-    /// </summary>
-    private void JumpWithCompensation(float yForce, float xForce = 0)
-    {
-        // For variable jump with compensation, use the same system as normal Jump
-        if (enableVariableJump && xForce == 0)
-        {
-            // This should use the same logic as normal Jump method
-            // Call normal Jump method to maintain consistency
-            Jump(yForce, xForce);
-            return;
-        }
-        
-        // Check if we need compensation
-        bool needsCompensation = CheckIfNeedsJumpCompensation();
-        
-        if (needsCompensation)
-        {
-            // Debug.Log($"[JumpFix] Wall friction detected - applying {wallJumpCompensation}x compensation");
-            
-            // Apply force compensation
-            float compensatedForce = yForce * wallJumpCompensation;
-            // For horizontal force (like dash jump), apply as impulse for proper momentum
-            if (xForce != 0)
-            {
-                rb.linearVelocity = new Vector2(rb.linearVelocity.x, 0); // Keep horizontal velocity, clear vertical only
-                rb.AddForce(new Vector2(xForce, compensatedForce), ForceMode2D.Impulse);
-            }
-            else
-            {
-                rb.linearVelocity = new Vector2(rb.linearVelocity.x, 0);
-                rb.AddForce(new Vector2(0, compensatedForce), ForceMode2D.Impulse);
-            }
-        }
-        else
-        {
-            // Normal jump without compensation
-            // For horizontal force (like dash jump), apply as impulse for proper momentum
-            if (xForce != 0)
-            {
-                rb.linearVelocity = new Vector2(rb.linearVelocity.x, 0); // Keep horizontal velocity, clear vertical only
-                rb.AddForce(new Vector2(xForce, yForce), ForceMode2D.Impulse);
-            }
-            else
-            {
-                rb.linearVelocity = new Vector2(rb.linearVelocity.x, 0);
-                rb.AddForce(new Vector2(0, yForce), ForceMode2D.Impulse);
-            }
-        }
-        
-        lastJumpTime = Time.time;
-    }
-    
-    /// <summary>
-    /// Check if jump needs friction compensation
-    /// </summary>
-    private bool CheckIfNeedsJumpCompensation()
-    {
-        // ALWAYS compensate ground jumps near walls, regardless of wall stick state
-        // Wall stick state only affects wall jump behavior, not ground jump compensation
-        
-        // Check if we're against a wall
-        if (!CheckIfAgainstWall())
-            return false;
-        
-        // Check if player is pressing into the wall
-        bool pressingIntoWall = (facingRight && moveInput.x > 0.1f) || 
-                                (!facingRight && moveInput.x < -0.1f);
-        
-        // Apply compensation when pressing into wall (for ground jumps)
-        if (pressingIntoWall)
-        {
-            if (showJumpDebug)
-            {
-                Debug.Log($"[Jump Compensation] Wall friction detected - wallStick: {PlayerAbilities.Instance?.HasWallStick}, pressingIntoWall: {pressingIntoWall}");
-            }
-            return true;
-        }
-        
-        return false;
-    }
-    
-    /// <summary>
-    /// Handle mid-jump wall contact compensation for consistent jump height
-    /// </summary>
-    private void HandleMidJumpWallCompensation()
-    {
-        // ALWAYS compensate ground jumps that contact walls mid-flight
-        // Wall stick state only affects wall jump behavior, not ground jump compensation
-        if (PlayerAbilities.Instance == null)
-        {
-            wasAgainstWall = CheckIfAgainstWall();
-            return;
-        }
-        
-        bool currentlyAgainstWall = CheckIfAgainstWall();
-        bool isJumpingUp = rb.linearVelocity.y > 1f && Time.time - lastJumpTime < 0.5f;
-        
-        // Check if we just made wall contact during an upward jump
-        if (isJumpingUp && !wasAgainstWall && currentlyAgainstWall)
-        {
-            // Detect jump type based on momentum preservation period and velocity characteristics
-            bool isDashJumpActive = dashJumpTime > 0 && Time.time - dashJumpTime <= dashJumpMomentumDuration;
-            bool hasHighHorizontalVelocity = Mathf.Abs(rb.linearVelocity.x) > runSpeed * 1.5f;
-            bool likelyDashJump = isDashJumpActive || (Time.time - lastJumpTime < 0.15f && hasHighHorizontalVelocity);
-            
-            // Use appropriate base force for compensation depending on jump type
-            float baseForce = likelyDashJump ? dashJump.y : maxJumpVelocity;
-            float compensationForce = baseForce * (wallJumpCompensation - 1f);
-            
-            // Apply compensation force
-            rb.AddForce(Vector2.up * compensationForce, ForceMode2D.Impulse);
-            
-            // Debug.Log($"[JumpFix] {(likelyDashJump ? "Dash" : "Normal")} jump wall contact - applying compensation: {compensationForce:F2} (base: {baseForce:F2})");
-        }
-        
-        // Update wall contact state for next frame
-        wasAgainstWall = currentlyAgainstWall;
-    }
-    
-    /// <summary>
-    /// Check if player is physically against a wall
-    /// </summary>
-    private bool CheckIfAgainstWall()
-    {
-        Collider2D playerCollider = GetComponent<Collider2D>();
-        int groundLayer = LayerMask.NameToLayer("Ground");
-        int groundMask = 1 << groundLayer;
-        
-        Vector2 wallDirection = facingRight ? Vector2.right : Vector2.left;
-        
-        // Use the same 3 raycasts as wall detection
-        Vector2[] checkPoints = {
-            transform.position + Vector3.up * wallRaycastTop,
-            transform.position + Vector3.up * wallRaycastMiddle,
-            transform.position + Vector3.up * wallRaycastBottom
-        };
-        
-        foreach (Vector2 point in checkPoints)
-        {
-            // Use shorter distance to check for actual contact
-            RaycastHit2D hit = Physics2D.Raycast(point, wallDirection, wallCheckDistance * 0.7f, groundMask);
-            
-            if (hit.collider != null && hit.collider != playerCollider)
-            {
-                // Check if it's a vertical wall
-                if (Mathf.Abs(hit.normal.x) > 0.9f)
-                {
-                    return true; // We're against a wall
-                }
-            }
-        }
-        
-        return false;
-    }
     
     /// <summary>
     /// Check if dash should end early due to wall collision
@@ -2138,79 +1595,6 @@ public class PlayerController : MonoBehaviour
         return false; // No wall collision, continue dash
     }
     
-    /// <summary>
-    /// Check if player can perform dash jump
-    /// </summary>
-    private bool CanPerformDashJump()
-    {
-        // Must have dash jump ability
-        if (PlayerAbilities.Instance == null || !PlayerAbilities.Instance.GetAbility("dashjump"))
-            return false;
-        
-        // GROUND ONLY: Disable dash jump completely in air
-        if (!isGrounded)
-            return false;
-        
-        // Can dash jump during active dash
-        if (isDashing)
-            return true;
-        
-        // Can dash jump shortly after dash ends (grace period)
-        if (lastDashEndTime > 0 && Time.time - lastDashEndTime <= dashJumpWindow)
-            return true;
-        
-        return false;
-    }
-    
-    /// <summary>
-    /// Execute dash jump with horizontal momentum
-    /// </summary>
-    private void PerformDashJump()
-    {
-        // Use dashJump.x for proper horizontal impulse force
-        float horizontalForce = facingRight ? dashJump.x : -dashJump.x;
-        
-        // Store current velocity before ending dash
-        Vector2 currentVelocity = rb.linearVelocity;
-        // Debug.Log($"[DashJump] Current velocity before dash jump: {currentVelocity}");
-        
-        // End dash if currently dashing (prevents physics conflicts)
-        if (isDashing)
-        {
-            isDashing = false;
-            dashTimer = dashTime; // Force dash timer to expire
-            lastDashEndTime = Time.time;
-            combat?.OnDashEnd();
-            // Debug.Log("[DashJump] Ended dash to perform dash jump");
-        }
-        
-        // Apply dash jump manually without using Jump() method to avoid velocity clearing
-        rb.linearVelocity = new Vector2(currentVelocity.x, 0); // Keep dash momentum, clear vertical
-        rb.AddForce(new Vector2(horizontalForce, dashJump.y), ForceMode2D.Impulse);
-        
-        // Start momentum preservation period and track jump time
-        dashJumpTime = Time.time;
-        lastJumpTime = Time.time; // Track for compensation system
-        
-        // Debug.Log($"[DashJump] Applied force: H={horizontalForce}, V={dashJump.y}, Final velocity: {rb.linearVelocity}");
-        
-        // Ground dash jump: reset air abilities like normal jump
-        // (Air dash jump is disabled, so this only applies to ground)
-        jumpsRemaining = extraJumps;
-        airDashesRemaining = maxAirDashes;
-        airDashesUsed = 0;
-        
-        // Clear dash end time to prevent repeated dash jumps
-        lastDashEndTime = 0f;
-        
-        // Trigger jump animation (dash jumps use regular jump animation)
-        if (animator != null) 
-        {
-            SafeSetTrigger("Jump");
-        }
-        
-        // Debug.Log($"[DashJump] Performed GROUND dash jump - Horizontal: {horizontalForce:F1}, Vertical: {dashJump.y:F1}, Result velocity: {rb.linearVelocity}");
-    }
     
     // Debug visualization for wall detection
     void OnDrawGizmos()
