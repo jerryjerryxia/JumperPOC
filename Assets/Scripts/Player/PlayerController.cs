@@ -366,6 +366,9 @@ public class PlayerController : MonoBehaviour
                                         raycastDirection1, raycastDirection2, raycastDirection3,
                                         debugLineDuration, enableCoyoteTime, coyoteTimeDuration,
                                         climbingAssistanceOffset, maxAirDashes, maxDashes, combat);
+
+        // Configure wall detection
+        wallDetection.SetConfiguration(wallCheckDistance, wallRaycastTop, wallRaycastMiddle, wallRaycastBottom);
     }
 
     private void VerifyComponentSetup()
@@ -575,7 +578,13 @@ public class PlayerController : MonoBehaviour
             dashJumpTime = 0f;
         }
 
-        CheckWallDetection();
+        // Wall detection
+        wallDetection.UpdateExternalState(facingRight, moveInput, isGrounded, isBufferClimbing);
+        wallDetection.CheckWallDetection();
+
+        // Sync wall state from detection component
+        onWall = wallDetection.OnWall;
+        wallStickAllowed = wallDetection.WallStickAllowed;
 
         // Update movement states
         UpdateMovementStates();
@@ -630,72 +639,6 @@ public class PlayerController : MonoBehaviour
         
     }
     
-    private void CheckWallDetection()
-    {
-        // Simplified wall detection using only 3 raycasts
-        Collider2D playerCollider = GetComponent<Collider2D>();
-        int groundLayer = LayerMask.NameToLayer("Ground");
-        int groundMask = 1 << groundLayer;
-        
-        // Wall detection using 3 raycasts at specified heights
-        Vector2 wallDirection = facingRight ? Vector2.right : Vector2.left;
-        Vector2[] checkPoints = {
-            transform.position + Vector3.up * wallRaycastTop,    // Top (0.32)
-            transform.position + Vector3.up * wallRaycastMiddle, // Middle (0.28)
-            transform.position + Vector3.up * wallRaycastBottom  // Bottom (0.02)
-        };
-        
-        // Count how many raycasts hit a wall
-        int wallHitCount = 0;
-        
-        foreach (Vector2 point in checkPoints)
-        {
-            RaycastHit2D hit = Physics2D.Raycast(point, wallDirection, wallCheckDistance, groundMask);
-            
-            if (hit.collider != null && hit.collider != playerCollider)
-            {
-                // Check if it's a valid vertical wall
-                bool isVerticalWall = Mathf.Abs(hit.normal.x) > 0.9f;
-                if (isVerticalWall)
-                {
-                    wallHitCount++;
-                }
-            }
-        }
-        
-        // Input checks
-        bool pressingTowardWall = (facingRight && moveInput.x > 0.1f) || (!facingRight && moveInput.x < -0.1f);
-        bool notMovingAwayFromWall = !((facingRight && moveInput.x < -0.1f) || (!facingRight && moveInput.x > 0.1f));
-        
-        // Wall stick ability check
-        bool hasWallStickAbility = PlayerAbilities.Instance != null && PlayerAbilities.Instance.HasWallStick;
-        
-        if (hasWallStickAbility)
-        {
-            // When wall stick enabled: Need at least 2 raycasts hitting to allow wall stick
-            bool hasEnoughContactForWallStick = wallHitCount >= 2;
-            
-            // Wall stick: Player actively pressing toward wall with enough contact
-            bool canStickToWall = !isGrounded && hasEnoughContactForWallStick && pressingTowardWall && !isBufferClimbing;
-            
-            // Wall slide: Player touching wall with enough contact but not pressing toward it
-            bool canSlideOnWall = !isGrounded && hasEnoughContactForWallStick && notMovingAwayFromWall && !pressingTowardWall && !isBufferClimbing;
-            
-            // Set physics state - either sticking or sliding
-            onWall = canStickToWall || canSlideOnWall;
-            
-            // Store wall stick state for animation
-            wallStickAllowed = canStickToWall;
-        }
-        else
-        {
-            // Wall stick ability disabled - no wall interaction at all
-            onWall = false;
-            wallStickAllowed = false;
-            
-            // Wall stick disabled - no wall interactions allowed
-        }
-    }
     
     private void UpdateMovementStates()
     {
