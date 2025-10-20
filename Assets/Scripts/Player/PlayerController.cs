@@ -853,15 +853,16 @@ public class PlayerController : MonoBehaviour
             return; // Skip normal movement processing
         }
         
-        // Horizontal run (skip during air attack, dashing, and dash jump momentum preservation)
+        // Horizontal run (skip during dashing and dash jump momentum preservation)
+        // DESIGN CHANGE: Allow horizontal movement during air attacks and dash attacks
         bool isDashJumpMomentumActive = dashJumpTime > 0 && Time.time - dashJumpTime <= dashJumpMomentumDuration;
         if (isDashJumpMomentumActive && moveInput.x == 0)
         {
             // Debug log when momentum preservation is preventing movement override
             // Debug.Log($"[DashJump] Momentum preservation active - keeping horizontal velocity: {rb.linearVelocity.x:F2}");
         }
-        
-        if (!IsAirAttacking && !isDashing && !isDashJumpMomentumActive)
+
+        if (!isDashing && !isDashJumpMomentumActive)
         {
             float horizontalVelocity = moveInput.x * runSpeed;
             
@@ -1108,7 +1109,9 @@ public class PlayerController : MonoBehaviour
             canDash = (airDashesUsed == 0);
         }
         
-        if (dashQueued && !isDashing && canDash && !onWall)
+        // Allow dash when jumping from wall (onWall may still be true but not in wall state)
+        bool actuallyOnWall = onWall && (isWallSticking || isWallSliding);
+        if (dashQueued && !isDashing && canDash && !actuallyOnWall)
         {
             if (isGrounded)
             {
@@ -1350,13 +1353,14 @@ public class PlayerController : MonoBehaviour
         {
             return;
         }
-        
-        // Prevent dash input when on wall
-        if (onWall)
+
+        // Prevent dash input when actively wall sticking or wall sliding
+        // Allow dash when jumping from wall (onWall may still be true but not in wall state)
+        if (onWall && (isWallSticking || isWallSliding))
         {
             return;
         }
-        
+
         lastDashInputTime = Time.time;
         dashQueued = true;
     }
@@ -1559,40 +1563,52 @@ public class PlayerController : MonoBehaviour
     private bool CheckDashWallCollision()
     {
         if (!isDashing) return false;
-        
+
         // Only check for wall collision when wall stick is disabled
         // When wall stick is enabled, dashing into walls is expected behavior
         if (PlayerAbilities.Instance != null && PlayerAbilities.Instance.HasWallStick)
             return false;
-            
-        // Use same wall detection as existing system
+
+        // CRITICAL FIX: Only end dash if ACTIVELY COLLIDING with wall (very close distance)
+        // Don't end dash just because a wall is nearby - check if we're actually hitting it
         Vector2 wallDirection = facingRight ? Vector2.right : Vector2.left;
         int groundLayer = LayerMask.NameToLayer("Ground");
         int groundMask = 1 << groundLayer;
-        
-        // Check if we're hitting a wall during dash
+
+        // Use very short raycast distance to only detect actual collisions
+        float collisionCheckDistance = 0.15f; // Much shorter than wallCheckDistance
+
         Vector2[] checkPoints = {
             transform.position + Vector3.up * wallRaycastTop,
             transform.position + Vector3.up * wallRaycastMiddle,
             transform.position + Vector3.up * wallRaycastBottom
         };
-        
+
+        // Count how many raycasts hit - require at least 2 for solid collision
+        int hitCount = 0;
+
         foreach (Vector2 point in checkPoints)
         {
-            RaycastHit2D hit = Physics2D.Raycast(point, wallDirection, wallCheckDistance * 0.8f, groundMask);
-            
+            RaycastHit2D hit = Physics2D.Raycast(point, wallDirection, collisionCheckDistance, groundMask);
+
             if (hit.collider != null)
             {
                 // Check if it's a vertical wall (not a slope)
                 if (Mathf.Abs(hit.normal.x) > 0.9f)
                 {
-                    // Debug.Log($"[DashFix] Dash collision detected - ending dash early");
-                    return true; // End dash early
+                    hitCount++;
                 }
             }
         }
-        
-        return false; // No wall collision, continue dash
+
+        // Only end dash if we hit wall with at least 2 raycasts (solid collision)
+        if (hitCount >= 2)
+        {
+            // Debug.Log($"[DashFix] Dash collision detected - hitCount: {hitCount}");
+            return true;
+        }
+
+        return false; // No solid wall collision, continue dash
     }
     
     

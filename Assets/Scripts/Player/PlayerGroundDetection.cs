@@ -111,6 +111,10 @@ public class PlayerGroundDetection : MonoBehaviour
     /// </summary>
     public void CheckGrounding()
     {
+        // DESIGN CHANGE: Dash attacks and air attacks now fall naturally
+        // No need to skip ground detection - all attacks use normal physics
+        // Ground detection runs normally for all states
+
         float feetY = col.bounds.min.y;
         Vector2 feetPos = new Vector2(playerTransform.position.x, feetY + groundCheckOffsetY);
         int groundLayer = LayerMask.NameToLayer("Ground");

@@ -298,7 +298,6 @@ public class PlayerCombat : MonoBehaviour
     
     public void OnLanding()
     {
-        // DESIGN CHANGE: All attacks (air and dash) now fall naturally
         // Reset all attacks on landing unless timer is still active
         bool attackStillActive = (isAirAttacking || isDashAttacking) && attackTimer > 0;
 
@@ -524,37 +523,20 @@ public class PlayerCombat : MonoBehaviour
         attackTimer = 0f;
         comboWindowTimer = 0f;
         inputBufferTimer = 0f;
-        isDuringDash = false; // Reset dash state tracking
-        
-        // No gravity restoration needed since we don't modify it anymore
-        // if (rb != null)
-        // {
-        //     rb.gravityScale = originalGravityScale;
-        // }
-        
+        isDuringDash = false;
+
         CancelInvoke(nameof(EnableComboWindow));
         CancelInvoke(nameof(RestartComboLoop));
         CancelInvoke(nameof(CheckDashAttackStuck));
-        
+
         if (animator != null)
         {
             animator.SetBool("IsAttacking", false);
             animator.SetBool("IsDashAttacking", false);
             animator.SetBool("IsAirAttacking", false);
             animator.SetInteger("AttackCombo", 0);
-            animator.Update(0);
-            
-            AnimatorStateInfo currentState = animator.GetCurrentAnimatorStateInfo(0);
-            if (currentState.IsName("PlayerSwordStab") ||
-                currentState.IsName("PlayerSwordChop") ||
-                currentState.IsName("PlayerSwordSwing3") ||
-                currentState.IsName("DashAttack") ||
-                currentState.IsName("PlayerAirSwordSwing"))
-            {
-                animator.CrossFade("DaggerIdle", 0f, 0);
-            }
         }
-        
+
         if (AttackHitbox != null)
         {
             AttackHitbox.SetActive(false);
@@ -608,16 +590,10 @@ public class PlayerCombat : MonoBehaviour
     
     public void OnDashAttackAnimationStart()
     {
-        if (isDashAttacking)
+        if (isDashAttacking && AttackHitbox != null)
         {
-            // Don't reset timer - it's already set in StartDashAttack()
-            // Resetting here would delay the timer expiration and break short attack durations
-
-            if (AttackHitbox != null)
-            {
-                AttackHitbox.SetAttackType(AttackHitbox.AttackType.DashAttack);
-                AttackHitbox.SetActive(true);
-            }
+            AttackHitbox.SetAttackType(AttackHitbox.AttackType.DashAttack);
+            AttackHitbox.SetActive(true);
         }
     }
     
@@ -625,12 +601,6 @@ public class PlayerCombat : MonoBehaviour
     {
         if (isDashAttacking)
         {
-            // Debug.Log($"Dash attack animation ended - isAirDashAttacking={isAirDashAttacking}");
-
-            // DESIGN CHANGE: No physics modifications - let attacks fall naturally
-            // Attack ending is handled by UpdateCombatTimers() based on falling + minimum duration
-            // This callback is just for animation event compatibility
-
             attackTimer = 0;
             ResetAttackSystem();
         }
@@ -638,16 +608,10 @@ public class PlayerCombat : MonoBehaviour
     
     public void OnAirAttackAnimationStart()
     {
-        if (isAirAttacking)
+        if (isAirAttacking && AttackHitbox != null)
         {
-            // Don't reset timer - it's already set in StartAirAttack()
-            // Resetting here would delay the timer expiration and break short attack durations
-
-            if (AttackHitbox != null)
-            {
-                AttackHitbox.SetAttackType(AttackHitbox.AttackType.AirAttack);
-                AttackHitbox.SetActive(true);
-            }
+            AttackHitbox.SetAttackType(AttackHitbox.AttackType.AirAttack);
+            AttackHitbox.SetActive(true);
         }
     }
     
@@ -655,10 +619,6 @@ public class PlayerCombat : MonoBehaviour
     {
         if (isAirAttacking)
         {
-            // DESIGN CHANGE: No physics modifications - let attacks fall naturally
-            // Attack ending is handled by UpdateCombatTimers() based on falling + minimum duration
-            // This callback is just for animation event compatibility
-
             attackTimer = 0;
             ResetAttackSystem();
         }

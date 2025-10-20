@@ -5869,56 +5869,6 @@ BoxCollider2D:
   m_AutoTiling: 0
   m_Size: {x: 0.28, y: 0.05}
   m_EdgeRadius: 0
---- !u!21 &470136499
-Material:
-  serializedVersion: 8
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_Name: Sprite-Lit-Default (Instance)
-  m_Shader: {fileID: 4800000, guid: e260cfa7296ee7642b167f1eb5be5023, type: 3}
-  m_Parent: {fileID: 0}
-  m_ModifiedSerializedProperties: 0
-  m_ValidKeywords: []
-  m_InvalidKeywords:
-  - ETC1_EXTERNAL_ALPHA
-  m_LightmapFlags: 4
-  m_EnableInstancingVariants: 0
-  m_DoubleSidedGI: 0
-  m_CustomRenderQueue: -1
-  stringTagMap: {}
-  disabledShaderPasses: []
-  m_LockedProperties: 
-  m_SavedProperties:
-    serializedVersion: 3
-    m_TexEnvs:
-    - _AlphaTex:
-        m_Texture: {fileID: 0}
-        m_Scale: {x: 1, y: 1}
-        m_Offset: {x: 0, y: 0}
-    - _MainTex:
-        m_Texture: {fileID: 0}
-        m_Scale: {x: 1, y: 1}
-        m_Offset: {x: 0, y: 0}
-    - _MaskTex:
-        m_Texture: {fileID: 0}
-        m_Scale: {x: 1, y: 1}
-        m_Offset: {x: 0, y: 0}
-    - _NormalMap:
-        m_Texture: {fileID: 0}
-        m_Scale: {x: 1, y: 1}
-        m_Offset: {x: 0, y: 0}
-    m_Ints: []
-    m_Floats:
-    - _EnableExternalAlpha: 0
-    - _ZWrite: 0
-    m_Colors:
-    - _Color: {r: 1, g: 1, b: 1, a: 1}
-    - _Flip: {r: 1, g: 1, b: 1, a: 1}
-    - _RendererColor: {r: 1, g: 1, b: 1, a: 1}
-  m_BuildTextureStacks: []
-  m_AllowLocking: 1
 --- !u!1 &485996419
 GameObject:
   m_ObjectHideFlags: 0
@@ -29670,6 +29620,56 @@ BoxCollider2D:
   m_AutoTiling: 0
   m_Size: {x: 0.28, y: 0.05}
   m_EdgeRadius: 0
+--- !u!21 &1914551918
+Material:
+  serializedVersion: 8
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: Sprite-Lit-Default (Instance) (Instance) (Instance)
+  m_Shader: {fileID: 4800000, guid: e260cfa7296ee7642b167f1eb5be5023, type: 3}
+  m_Parent: {fileID: 0}
+  m_ModifiedSerializedProperties: 0
+  m_ValidKeywords: []
+  m_InvalidKeywords:
+  - ETC1_EXTERNAL_ALPHA
+  m_LightmapFlags: 4
+  m_EnableInstancingVariants: 0
+  m_DoubleSidedGI: 0
+  m_CustomRenderQueue: -1
+  stringTagMap: {}
+  disabledShaderPasses: []
+  m_LockedProperties: 
+  m_SavedProperties:
+    serializedVersion: 3
+    m_TexEnvs:
+    - _AlphaTex:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _MainTex:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _MaskTex:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _NormalMap:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    m_Ints: []
+    m_Floats:
+    - _EnableExternalAlpha: 0
+    - _ZWrite: 0
+    m_Colors:
+    - _Color: {r: 1, g: 1, b: 1, a: 1}
+    - _Flip: {r: 1, g: 1, b: 1, a: 1}
+    - _RendererColor: {r: 1, g: 1, b: 1, a: 1}
+  m_BuildTextureStacks: []
+  m_AllowLocking: 1
 --- !u!1 &1927496365
 GameObject:
   m_ObjectHideFlags: 0
@@ -31447,6 +31447,26 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 621089435835036298, guid: ebd59aa10e47e0e428432c89ec85f1e1, type: 3}
+      propertyPath: AttackHitbox
+      value: 
+      objectReference: {fileID: 0}
+    - target: {fileID: 621089435835036298, guid: ebd59aa10e47e0e428432c89ec85f1e1, type: 3}
+      propertyPath: dashAttackSpeed
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 621089435835036298, guid: ebd59aa10e47e0e428432c89ec85f1e1, type: 3}
+      propertyPath: airAttackDuration
+      value: 0.25
+      objectReference: {fileID: 0}
+    - target: {fileID: 621089435835036298, guid: ebd59aa10e47e0e428432c89ec85f1e1, type: 3}
+      propertyPath: dashAttackDuration
+      value: 0.25
+      objectReference: {fileID: 0}
+    - target: {fileID: 621089435835036298, guid: ebd59aa10e47e0e428432c89ec85f1e1, type: 3}
+      propertyPath: dashAttackInputWindow
+      value: 0.2
+      objectReference: {fileID: 0}
     - target: {fileID: 853602305263445774, guid: ebd59aa10e47e0e428432c89ec85f1e1, type: 3}
       propertyPath: m_Name
       value: Player
@@ -31512,6 +31532,18 @@ PrefabInstance:
       value: 2
       objectReference: {fileID: 0}
     - target: {fileID: 4156483103085682113, guid: ebd59aa10e47e0e428432c89ec85f1e1, type: 3}
+      propertyPath: enableCoyoteTime
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4156483103085682113, guid: ebd59aa10e47e0e428432c89ec85f1e1, type: 3}
+      propertyPath: coyoteTimeDuration
+      value: 0.02
+      objectReference: {fileID: 0}
+    - target: {fileID: 4156483103085682113, guid: ebd59aa10e47e0e428432c89ec85f1e1, type: 3}
+      propertyPath: showClimbingGizmos
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4156483103085682113, guid: ebd59aa10e47e0e428432c89ec85f1e1, type: 3}
       propertyPath: slopeRaycastDistance
       value: 0.2
       objectReference: {fileID: 0}
@@ -31530,7 +31562,7 @@ PrefabInstance:
     - target: {fileID: 7359456463047706548, guid: ebd59aa10e47e0e428432c89ec85f1e1, type: 3}
       propertyPath: 'm_Materials.Array.data[0]'
       value: 
-      objectReference: {fileID: 470136499}
+      objectReference: {fileID: 1914551918}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
