@@ -11,6 +11,47 @@ This skill provides a comprehensive framework for analyzing Unity 2D platformer 
 
 Follow this structured approach for thorough project analysis:
 
+### 0. ⚠️ CRITICAL: Check Inspector & Animator Configuration FIRST
+
+**BEFORE diving into code changes or complex debugging, ALWAYS verify Unity Inspector and Animator settings:**
+
+This is the **single most important step** to avoid wasting time on unnecessary code fixes.
+
+**Animator Controller Configuration:**
+- Use Unity MCP tools: `mcp__UnityMCP__manage_asset` to inspect animator controller files
+- Check transition conditions between animation states
+- Verify parameter names match exactly (e.g., `IsWallSticking` vs `IsWallSliding`)
+- Check transition order/priority - higher transitions are evaluated first
+- Verify `Has Exit Time` settings on transitions
+- Check blend tree configurations and thresholds
+
+**Inspector Values:**
+- Use `mcp__UnityMCP__manage_gameobject` with `get_components` to read all component properties
+- Verify serialized field values match code defaults
+- Check if Inspector overrides are causing unexpected behavior
+- Validate prefab overrides haven't diverged from code
+
+**Common Inspector/Animator Issues That Masquerade as Code Bugs:**
+1. **Wrong parameter names** in animator transitions (e.g., `IsWallSliding` instead of `IsWallSticking`)
+2. **Incorrect transition conditions** (missing conditions, wrong comparison operators)
+3. **Transition priority issues** (important transitions blocked by less important ones)
+4. **Inspector values** overriding code defaults (e.g., duration = 0.8 in Inspector vs 0.05 in code)
+5. **Missing references** in Inspector (null GameObject/Component references)
+6. **Layer/Tag misconfigurations** causing physics or collision issues
+7. **Animation events** calling wrong methods or with wrong timing
+
+**Process:**
+1. When encountering animation bugs → Check Animator Controller transitions FIRST
+2. When parameters seem wrong → Check Inspector values FIRST
+3. When nothing makes sense → Verify ALL Unity configurations before touching code
+
+**Example from real debugging session:**
+- Symptom: Player stuck in idle animation after dash attack near wall, despite `isWallSticking=True`
+- Attempted code fixes: Timing delays, frame synchronization, force-transitions, state checking
+- Actual cause: Animator transition had `IsWallSliding` instead of `IsWallSticking`
+- Time wasted: ~2 hours of unnecessary code changes
+- Fix: 30 seconds to change one animator transition condition
+
 ### 1. Project Discovery
 
 **Explore the project structure:**
