@@ -11,7 +11,7 @@ using DG.Tweening;
 public class PlayerController : MonoBehaviour
 {
     [Header("Movement")]
-    public float runSpeed = 5f;
+    public float runSpeed = 4f;
     public int extraJumps = 1;
     public float wallSlideSpeed = 2f;
     public Vector2 wallJump = new(7f, 10f);
@@ -40,8 +40,8 @@ public class PlayerController : MonoBehaviour
     public int maxAirDashes = 2;
     
     [Header("Dash Jump")]
-    [SerializeField] public Vector2 dashJump = new(5f, 9f); // (horizontal, vertical) force
-    [SerializeField] public float dashJumpWindow = 0.2f; // Grace period after dash ends
+    [SerializeField] public Vector2 dashJump = new(5f, 11f); // (horizontal, vertical) force
+    [SerializeField] public float dashJumpWindow = 0.1f; // Grace period after dash ends
     
     [Header("Death Zone")]
     [SerializeField] private float deathZoneY = -20f; // Y position that triggers reset
@@ -49,7 +49,7 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private bool showDeathZone = true; // Show death zone in scene view
 
     [Header("Buffer Climbing")]
-    [SerializeField] private float climbingAssistanceOffset = 0.25f; // How far below platform edge to trigger assistance
+    [SerializeField] private float climbingAssistanceOffset = 0.06f; // How far below platform edge to trigger assistance
     [SerializeField] private float climbForce = 3f;
     [SerializeField] private float forwardBoost = 0f;
     
@@ -68,7 +68,7 @@ public class PlayerController : MonoBehaviour
     
     [Header("Slope Raycast Parameters")]
     [SerializeField] private bool enableSlopeVisualization = true; // Show raycast debug lines
-    [SerializeField] private float slopeRaycastDistance = 1.0f; // Distance for slope detection raycasts
+    [SerializeField] private float slopeRaycastDistance = 0.2f; // Distance for slope detection raycasts
     [SerializeField] private Vector2 raycastDirection1 = Vector2.down; // Direction 1: Straight down
     [SerializeField] private Vector2 raycastDirection2 = new Vector2(0.707f, -0.707f); // Direction 2: Down-right 45°
     [SerializeField] private Vector2 raycastDirection3 = new Vector2(-0.707f, -0.707f); // Direction 3: Down-left 45°

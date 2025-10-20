@@ -201,7 +201,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerController
   runSpeed: 4
-  jumpForce: 9
   extraJumps: 1
   wallSlideSpeed: 2
   wallJump: {x: 7, y: 10}
@@ -221,12 +220,10 @@ MonoBehaviour:
   enableCoyoteTime: 1
   coyoteTimeDuration: 0.12
   coyoteTimeDuringDashWindow: 0
-  showCoyoteTimeDebug: 0
   showClimbingGizmos: 1
   wallJumpCompensation: 1.2
   enableJumpCompensation: 1
   maxSlopeAngle: 60
-  slopeDetectionDistance: 1
   enableSlopeVisualization: 1
   slopeRaycastDistance: 0.2
   raycastDirection1: {x: 0, y: -1}
