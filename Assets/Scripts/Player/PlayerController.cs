@@ -76,8 +76,6 @@ public class PlayerController : MonoBehaviour
     
     [Header("Animation")]
     public float animationTransitionSpeed = 0.1f;
-    private HashSet<string> missingAnimatorParams = new HashSet<string>();
-    private bool hasLoggedAnimatorWarnings = false;
     
     
     [Header("Ground Check")]
@@ -255,9 +253,6 @@ public class PlayerController : MonoBehaviour
     
     void Start()
     {
-        // Validate animator parameters on start
-        ValidateAnimatorSetup();
-        
         // Ensure input is set up if InputManager is available
         if (InputManager.Instance != null && inputManager == null)
         {
@@ -446,56 +441,6 @@ public class PlayerController : MonoBehaviour
         if (bufferLayer == -1)
         {
             Debug.LogWarning("[PlayerController] 'LandingBuffer' layer is not defined. Edge detection may not work properly.");
-        }
-    }
-    
-    private void ValidateAnimatorSetup()
-    {
-        if (animator == null || animator.runtimeAnimatorController == null) return;
-        
-        // List of required animator parameters
-        string[] requiredBools = { "IsGrounded", "IsRunning", "IsJumping", "IsAttacking", 
-                                  "IsDashAttacking", "IsAirAttacking", "IsClimbing", 
-                                  "IsWallSliding", "IsFalling", "onWall" };
-        string[] requiredFloats = { "FacingDirection", "HorizontalInput", "VerticalInput" };
-        string[] requiredInts = { "AttackCombo" };
-        string[] requiredTriggers = { "Dash", "DoubleJump" };
-        
-        List<string> missingParams = new List<string>();
-        
-        // Check bools
-        foreach (var param in requiredBools)
-        {
-            if (!HasAnimatorParameter(param))
-                missingParams.Add($"{param} (Bool)");
-        }
-        
-        // Check floats
-        foreach (var param in requiredFloats)
-        {
-            if (!HasAnimatorParameter(param))
-                missingParams.Add($"{param} (Float)");
-        }
-        
-        // Check ints
-        foreach (var param in requiredInts)
-        {
-            if (!HasAnimatorParameter(param))
-                missingParams.Add($"{param} (Int)");
-        }
-        
-        // Check triggers
-        foreach (var param in requiredTriggers)
-        {
-            if (!HasAnimatorParameter(param))
-                missingParams.Add($"{param} (Trigger)");
-        }
-        
-        if (missingParams.Count > 0)
-        {
-            Debug.LogWarning($"[PlayerController] Animator Controller is missing parameters:\n" +
-                string.Join("\n", missingParams.Select(p => $"  â€¢ {p}")) +
-                "\n\nPlease add these parameters to your Animator Controller.");
         }
     }
     
@@ -710,7 +655,11 @@ public class PlayerController : MonoBehaviour
         jumpQueued = false;
 
         // Animation updates (sprite facing already done above)
-        UpdateAnimatorParameters();
+        animationController.UpdateAnimations(isGrounded, isRunning, isJumping, isDashing,
+                                             IsAttacking, IsDashAttacking, IsAirAttacking,
+                                             isClimbing, isWallSliding, isWallSticking, isFalling,
+                                             onWall, facingDirection, horizontalInput, verticalInput,
+                                             facingRight, combat?.AttackCombo ?? 0);
         
     }
     
@@ -760,7 +709,7 @@ public class PlayerController : MonoBehaviour
                 
                 if (showJumpDebug)
                 {
-                    Debug.Log($"[Wall Stick] EMERGENCY STOP - cancelled velocity {originalVelocity:F2} â†’ 0, dash momentum cleared");
+                    Debug.Log($"[Wall Stick] EMERGENCY STOP - cancelled velocity {originalVelocity:F2} â†?0, dash momentum cleared");
                 }
             }
             
@@ -825,115 +774,6 @@ public class PlayerController : MonoBehaviour
         wasWallSticking = isWallSticking;
     }
     
-    private void UpdateAnimatorParameters()
-    {
-        if (animator == null) return;
-
-        SafeSetBool("IsGrounded", isGrounded);
-        SafeSetBool("IsRunning", isRunning);
-        SafeSetBool("IsJumping", isJumping);
-        SafeSetBool("IsDashing", isDashing);
-        SafeSetBool("IsAttacking", IsAttacking);
-        SafeSetBool("IsDashAttacking", IsDashAttacking);
-        SafeSetBool("IsAirAttacking", IsAirAttacking);
-        SafeSetBool("IsClimbing", isClimbing);
-        SafeSetBool("IsWallSliding", isWallSliding);
-        SafeSetBool("IsWallSticking", isWallSticking);
-        SafeSetBool("IsFalling", isFalling);
-        SafeSetBool("onWall", onWall); // Use onWall physics state for animator (both stick and slide)
-        SafeSetFloat("FacingDirection", facingDirection);
-        SafeSetFloat("HorizontalInput", horizontalInput);
-        
-        // Combined parameter for wall land animation: use same threshold as onWall logic for consistency
-        bool pressingTowardWallStrong = (facingRight && horizontalInput > 0.1f) || (!facingRight && horizontalInput < -0.1f);
-        SafeSetBool("PressingTowardWall", pressingTowardWallStrong);
-        
-        SafeSetFloat("VerticalInput", verticalInput);
-        SafeSetInteger("AttackCombo", combat?.AttackCombo ?? 0);
-        
-        // Debug animator parameter updates when falling (commented out for performance)
-        // if (isFalling)
-        // {
-        //     Debug.Log($"Animator Update - IsFalling: {isFalling}, IsGrounded: {isGrounded}, isDashing: {IsDashAttacking}, velocity.y: {rb.linearVelocity.y:F2}");
-        // }
-        
-        // Log missing parameters once
-        if (!hasLoggedAnimatorWarnings && missingAnimatorParams.Count > 0)
-        {
-            hasLoggedAnimatorWarnings = true;
-            Debug.LogWarning($"[PlayerController] Animator is missing the following parameters: {string.Join(", ", missingAnimatorParams)}\n" +
-                "Please add these parameters to your Animator Controller or the animations may not work correctly.");
-        }
-    }
-    
-    private void SafeSetBool(string paramName, bool value)
-    {
-        if (HasAnimatorParameter(paramName))
-        {
-            // Debug critical animator parameters (commented out for performance)
-            // if (paramName == "IsGrounded" || paramName == "IsFalling")
-            // {
-            //     Debug.Log($"Setting Animator: {paramName} = {value}");
-            // }
-            animator.SetBool(paramName, value);
-        }
-        else
-        {
-            missingAnimatorParams.Add(paramName);
-        }
-    }
-    
-    private void SafeSetFloat(string paramName, float value)
-    {
-        if (HasAnimatorParameter(paramName))
-        {
-            animator.SetFloat(paramName, value);
-        }
-        else
-        {
-            missingAnimatorParams.Add(paramName);
-        }
-    }
-    
-    private void SafeSetInteger(string paramName, int value)
-    {
-        if (HasAnimatorParameter(paramName))
-        {
-            animator.SetInteger(paramName, value);
-        }
-        else
-        {
-            missingAnimatorParams.Add(paramName);
-        }
-    }
-    
-    private void SafeSetTrigger(string paramName)
-    {
-        if (HasAnimatorParameter(paramName))
-        {
-            animator.SetTrigger(paramName);
-        }
-        else
-        {
-            missingAnimatorParams.Add(paramName);
-            Debug.LogWarning($"[PlayerController] Animator trigger '{paramName}' not found in Animator Controller!");
-        }
-    }
-    
-    private bool HasAnimatorParameter(string paramName)
-    {
-        if (animator == null) return false;
-        
-        foreach (var param in animator.parameters)
-        {
-            if (param.name == paramName)
-            {
-                return true;
-            }
-        }
-        return false;
-    }
-    
     public void ConsumeAirDash()
     {
         airDashesRemaining--;
@@ -981,7 +821,7 @@ public class PlayerController : MonoBehaviour
         // Delegate to combat component - this is for backward compatibility
     }
 
-    /* â€” Input Event Handlers â€” */
+    /* â€?Input Event Handlers â€?*/
     private void OnMoveInput(Vector2 input)
     {
         moveInput = input;
