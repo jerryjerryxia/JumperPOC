@@ -537,14 +537,25 @@ public class PlayerCombat : MonoBehaviour
             animator.SetInteger("AttackCombo", 0);
             animator.Update(0);
 
-            // Force-transition combo attacks to idle immediately
-            // Air/dash attacks rely on animator transitions (configured in Inspector)
             AnimatorStateInfo currentState = animator.GetCurrentAnimatorStateInfo(0);
+
+            // Force-transition combo attacks to idle immediately (always grounded)
             if (currentState.IsName("PlayerSwordStab") ||
                 currentState.IsName("PlayerSwordChop") ||
                 currentState.IsName("PlayerSwordSwing3"))
             {
                 animator.CrossFade("DaggerIdle", 0f, 0);
+            }
+            // Force-transition air/dash attacks to idle ONLY if grounded for snappy feel
+            // If airborne, let animator naturally transition to jump/fall based on velocity
+            else if (currentState.IsName("PlayerAirSwordSwing") || currentState.IsName("DashAttack"))
+            {
+                bool isGrounded = playerController != null && playerController.IsGrounded;
+                if (isGrounded)
+                {
+                    animator.CrossFade("DaggerIdle", 0f, 0);
+                }
+                // If airborne, animator will transition naturally based on IsJumping/IsFalling parameters
             }
         }
 

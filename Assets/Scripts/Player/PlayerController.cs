@@ -970,7 +970,8 @@ public class PlayerController : MonoBehaviour
         // }
         
         // Handle attack movement overrides (allow reduced movement during attacks) - EXACTLY like original
-        if (IsAttacking && isGrounded && !IsDashAttacking && !IsAirAttacking)
+        // IMPORTANT: Skip attack movement when jump is queued to prevent movement freeze
+        if (IsAttacking && isGrounded && !IsDashAttacking && !IsAirAttacking && !jumpQueued)
         {
             float attackSpeedMultiplier = combat?.attackMovementSpeed ?? 0.3f;
             float attackHorizontalVelocity = moveInput.x * runSpeed * attackSpeedMultiplier;
