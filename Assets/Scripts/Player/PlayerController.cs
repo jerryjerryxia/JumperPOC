@@ -354,7 +354,7 @@ public class PlayerController : MonoBehaviour
 
         groundDetection.Initialize(rb, col, transform);
         wallDetection.Initialize(rb, col, transform, abilities);
-        movement.Initialize(rb, transform, groundDetection, wallDetection, combat);
+        movement.Initialize(rb, transform, animator, col, groundDetection, wallDetection, combat, jumpSystem);
         jumpSystem.Initialize(rb, transform, groundDetection, wallDetection, abilities, animator);
         animationController.Initialize(animator);
         respawnSystem.Initialize(transform, rb);
@@ -369,6 +369,11 @@ public class PlayerController : MonoBehaviour
 
         // Configure wall detection
         wallDetection.SetConfiguration(wallCheckDistance, wallRaycastTop, wallRaycastMiddle, wallRaycastBottom);
+
+        // Configure movement system
+        movement.SetConfiguration(runSpeed, wallSlideSpeed, climbingAssistanceOffset, climbForce, forwardBoost,
+                                 dashSpeed, dashTime, dashCooldown, maxDashes, maxAirDashes, dashJumpWindow,
+                                 wallCheckDistance, wallRaycastTop, wallRaycastMiddle, wallRaycastBottom);
 
         // Configure jump system
         jumpSystem.SetConfiguration(extraJumps, wallJump, enableVariableJump,
@@ -616,9 +621,44 @@ public class PlayerController : MonoBehaviour
         // Update movement states
         UpdateMovementStates();
 
-        // Handle movement
-        HandleMovement();
+        // CRITICAL: Update sprite facing BEFORE passing state to movement component
+        // This ensures dash uses the CURRENT facing direction, not the old one
+        if (moveInput.x != 0) facingRight = moveInput.x > 0;
+        transform.localScale = new Vector3(facingRight ? 1 : -1, 1, 1);
+
+        // Update movement component state (pass isJumping for slope physics)
+        movement.UpdateExternalState(facingRight, moveInput, isGrounded, onWall, wallStickAllowed,
+                                     isOnSlope, currentSlopeAngle, slopeNormal, isBufferClimbing,
+                                     isWallSliding, isWallSticking, IsAttacking, IsDashAttacking,
+                                     IsAirAttacking, jumpQueued, isJumping, dashJumpTime);
+
+        // Handle movement through movement component
+        movement.HandleMovement();
         
+        // Sync current dash state TO movement component before dashing
+        // This ensures movement has the latest air dash count
+        movement.SetDashState(dashesRemaining, airDashesUsed);
+
+        // Handle dashing through movement component
+        movement.HandleDash(dashQueued);
+        dashQueued = false;
+
+        // Apply dash velocity through movement component
+        movement.ApplyDashVelocity();
+
+        // Update dash cooldown
+        movement.UpdateDashCooldown();
+
+        // Sync movement state from movement component BEFORE jumping
+        // This ensures jump system sees if we just started dashing
+        isDashing = movement.IsDashing;
+        dashTimer = movement.DashTimer;
+        dashJumpTime = movement.DashJumpTime;
+        dashesRemaining = movement.DashesRemaining;
+        airDashesUsed = movement.AirDashesUsed;
+        dashCDTimer = movement.DashCDTimer;
+        lastDashEndTime = movement.LastDashEndTime;
+
         // Handle jumping
         int airDashOut, airDashUsedOut, dashesOut;
         float coyoteOut;
@@ -642,48 +682,15 @@ public class PlayerController : MonoBehaviour
                 isDashing = false;
                 lastDashEndTime = Time.time;
                 combat?.OnDashEnd();
+
+                // Update movement component that dash ended
+                movement.EndDash();
             }
         }
 
         jumpQueued = false;
 
-        // Handle dashing
-        HandleDashInput();
-        
-        // Apply dash velocity after other movement (to override it)
-        if (isDashing)
-        {
-            // Clear attack states during dash (like original)
-            if (combat != null && combat.IsAttacking && !combat.IsDashAttacking)
-            {
-                combat.ResetAttackSystem();
-            }
-            
-            // Check if dash should end early due to wall collision
-            bool dashEndedByWall = CheckDashWallCollision();
-            
-            rb.linearVelocity = new Vector2(facingRight ? dashSpeed : -dashSpeed, 0);
-            
-            // End dash if timer expires OR wall collision detected
-            if ((dashTimer += Time.fixedDeltaTime) >= dashTime || dashEndedByWall)
-            {
-                isDashing = false;
-                lastDashEndTime = Time.time;
-                combat?.OnDashEnd();
-                
-                if (dashEndedByWall)
-                {
-                    // Allow falling immediately after wall collision
-                    rb.linearVelocity = new Vector2(0, rb.linearVelocity.y);
-                }
-            }
-        }
-        
-        // Update dash cooldown
-        UpdateDashCooldown();
-        
-        // Sprite flip and animation updates
-        UpdateSpriteFacing();
+        // Animation updates (sprite facing already done above)
         UpdateAnimatorParameters();
         
     }
@@ -797,371 +804,6 @@ public class PlayerController : MonoBehaviour
         
         // Store previous wall sticking state for next frame
         wasWallSticking = isWallSticking;
-    }
-    
-    
-    private void HandleMovement()
-    {
-        // Buffer climbing assistance - provide upward and forward momentum
-        if (isBufferClimbing)
-        {
-            float horizontalVelocity = moveInput.x * runSpeed * forwardBoost;
-            
-            // CRITICAL FIX: Prevent horizontal movement when wall stick is disabled (even during ledge buffer)
-            if (PlayerAbilities.Instance != null && !PlayerAbilities.Instance.HasWallStick)
-            {
-                // Check if we're pushing against a wall when ability is disabled
-                Collider2D playerCollider = GetComponent<Collider2D>();
-                int groundLayer = LayerMask.NameToLayer("Ground");
-                int groundMask = 1 << groundLayer;
-                
-                Vector2 wallDirection = facingRight ? Vector2.right : Vector2.left;
-                Vector2 centerPoint = transform.position;
-                
-                RaycastHit2D wallHit = Physics2D.Raycast(centerPoint, wallDirection, wallCheckDistance, groundMask);
-                
-                if (wallHit.collider != null && wallHit.collider != playerCollider)
-                {
-                    bool isVerticalWall = Mathf.Abs(wallHit.normal.x) > 0.9f;
-                    bool pressingIntoWall = (facingRight && moveInput.x > 0.1f) || (!facingRight && moveInput.x < -0.1f);
-                    
-                    if (isVerticalWall && pressingIntoWall)
-                    {
-                        horizontalVelocity = 0f;
-                        // Debug.Log($"[WallStick] DISABLED - Preventing ledge buffer wall friction at platform bottom.");
-                    }
-                }
-            }
-            
-            // Apply upward assist to help climb over platform edge
-            if (rb.linearVelocity.y <= 0.5f) // Only if not already moving up significantly
-            {
-                Vector2 newVelocity = new Vector2(
-                    horizontalVelocity, 
-                    Mathf.Max(rb.linearVelocity.y, climbForce)
-                );
-                rb.linearVelocity = newVelocity;
-            }
-            else
-            {
-                // Just apply forward momentum if already moving up
-                Vector2 newVelocity = new Vector2(horizontalVelocity, rb.linearVelocity.y);
-                rb.linearVelocity = newVelocity;
-            }
-            
-            // Debug.Log($"[BUFFER CLIMBING ASSIST] Applied climbing force: upward={climbForce}, forward boost={forwardBoost}");
-            return; // Skip normal movement processing
-        }
-        
-        // Horizontal run (skip during dashing and dash jump momentum preservation)
-        // DESIGN CHANGE: Allow horizontal movement during air attacks and dash attacks
-        bool isDashJumpMomentumActive = dashJumpTime > 0 && Time.time - dashJumpTime <= dashJumpMomentumDuration;
-        if (isDashJumpMomentumActive && moveInput.x == 0)
-        {
-            // Debug log when momentum preservation is preventing movement override
-            // Debug.Log($"[DashJump] Momentum preservation active - keeping horizontal velocity: {rb.linearVelocity.x:F2}");
-        }
-
-        if (!isDashing && !isDashJumpMomentumActive)
-        {
-            float horizontalVelocity = moveInput.x * runSpeed;
-            
-            // Wall movement prevention logic
-            bool hasWallStickAbility = PlayerAbilities.Instance != null && PlayerAbilities.Instance.HasWallStick;
-            bool shouldCheckWallMovement = !isGrounded || isBufferClimbing;
-            
-            if (shouldCheckWallMovement)
-            {
-                // Perform wall detection using our 3 raycasts
-                Collider2D playerCollider = GetComponent<Collider2D>();
-                int groundLayer = LayerMask.NameToLayer("Ground");
-                int groundMask = 1 << groundLayer;
-                
-                Vector2 wallDirection = facingRight ? Vector2.right : Vector2.left;
-                Vector2[] checkPoints = {
-                    transform.position + Vector3.up * wallRaycastTop,    // Top (0.32)
-                    transform.position + Vector3.up * wallRaycastMiddle, // Middle (0.28)
-                    transform.position + Vector3.up * wallRaycastBottom  // Bottom (0.02)
-                };
-                
-                int wallHitCount = 0;
-                foreach (Vector2 point in checkPoints)
-                {
-                    RaycastHit2D wallHit = Physics2D.Raycast(point, wallDirection, wallCheckDistance, groundMask);
-                    
-                    if (wallHit.collider != null && wallHit.collider != playerCollider)
-                    {
-                        bool isVerticalWall = Mathf.Abs(wallHit.normal.x) > 0.9f;
-                        if (isVerticalWall)
-                        {
-                            wallHitCount++;
-                        }
-                    }
-                }
-                
-                bool pressingIntoWall = (facingRight && moveInput.x > 0.1f) || (!facingRight && moveInput.x < -0.1f);
-                
-                if (hasWallStickAbility)
-                {
-                    // Wall stick enabled: Need 2+ hits for wall stick, but prevent movement for 1 hit
-                    if (wallHitCount >= 1 && wallHitCount < 2 && pressingIntoWall)
-                    {
-                        // Not enough contact for wall stick - prevent movement to avoid getting stuck
-                        horizontalVelocity = 0f;
-                        // Debug.Log($"[WallStick] ENABLED - Preventing movement, insufficient contact for wall stick (hits: {wallHitCount}/3, need 2+)");
-                    }
-                    // If 2+ hits, allow normal movement for wall stick behavior
-                }
-                else
-                {
-                    // Wall stick disabled: Any raycast hit prevents horizontal movement
-                    if (wallHitCount >= 1 && pressingIntoWall)
-                    {
-                        horizontalVelocity = 0f;
-                        // Debug.Log($"[WallStick] DISABLED - Preventing wall movement (hits: {wallHitCount}/3)");
-                    }
-                }
-            }
-            
-            // SLOPE-AWARE MOVEMENT: When on slopes, move along the slope surface
-            if (isOnSlope && isGrounded && Mathf.Abs(moveInput.x) > 0.1f)
-            {
-                // Calculate movement along slope surface
-                Vector2 slopeDirection = new Vector2(slopeNormal.y, -slopeNormal.x).normalized;
-                
-                // Ensure we're moving in the right direction (down or up slope based on input)
-                if ((moveInput.x > 0 && slopeDirection.x < 0) || (moveInput.x < 0 && slopeDirection.x > 0))
-                {
-                    slopeDirection *= -1; // Flip direction if needed
-                }
-                
-                Vector2 slopeMovement = slopeDirection * Mathf.Abs(moveInput.x) * runSpeed;
-                rb.linearVelocity = new Vector2(slopeMovement.x, slopeMovement.y);
-                
-                // Debug.Log($"[SLOPE MOVEMENT] Moving along slope: angle={currentSlopeAngle:F1}°, velocity=({slopeMovement.x:F2}, {slopeMovement.y:F2})");
-            }
-            else
-            {
-                // Normal flat movement
-                rb.linearVelocity = new Vector2(horizontalVelocity, rb.linearVelocity.y);
-            }
-        }
-
-        // Wall slide slow-down - only if actually wall sliding (not just near wall)
-        if (isWallSliding)
-        {
-            rb.linearVelocity = new Vector2(rb.linearVelocity.x, -wallSlideSpeed);
-        }
-        
-        // Debug: Check if player is moving slowly near walls when ability is disabled
-        if (PlayerAbilities.Instance != null && !PlayerAbilities.Instance.HasWallStick && !isGrounded)
-        {
-            // Check if velocity is being affected when it shouldn't be
-            if (Mathf.Abs(rb.linearVelocity.y) < 3f && Mathf.Abs(rb.linearVelocity.y) > 0.1f)
-            {
-                // Debug.Log($"[WallStick] PHYSICS DEBUG: Velocity unexpectedly slow when ability disabled: velocity={rb.linearVelocity}, onWall={onWall}");
-            }
-        }
-        
-        // OLD FIX: Velocity override (no longer needed with improved wall detection)
-        // if (PlayerAbilities.Instance != null && !PlayerAbilities.Instance.HasWallStick)
-        // {
-        //     // This fix is disabled as the root cause is fixed in wall friction prevention
-        // }
-        
-        // Handle attack movement overrides (allow reduced movement during attacks) - EXACTLY like original
-        // IMPORTANT: Skip attack movement when jump is queued to prevent movement freeze
-        if (IsAttacking && isGrounded && !IsDashAttacking && !IsAirAttacking && !jumpQueued)
-        {
-            float attackSpeedMultiplier = combat?.attackMovementSpeed ?? 0.3f;
-            float attackHorizontalVelocity = moveInput.x * runSpeed * attackSpeedMultiplier;
-            
-            // Combat system respects wall movement rules
-            bool hasWallStickAbility = PlayerAbilities.Instance != null && PlayerAbilities.Instance.HasWallStick;
-            if (!hasWallStickAbility)
-            {
-                // Use simplified wall detection
-                Collider2D playerCollider = GetComponent<Collider2D>();
-                int groundLayer = LayerMask.NameToLayer("Ground");
-                int groundMask = 1 << groundLayer;
-                
-                Vector2 wallDirection = facingRight ? Vector2.right : Vector2.left;
-                Vector2[] checkPoints = {
-                    transform.position + Vector3.up * wallRaycastTop,
-                    transform.position + Vector3.up * wallRaycastMiddle,
-                    transform.position + Vector3.up * wallRaycastBottom
-                };
-                
-                bool hasAnyWallHit = false;
-                foreach (Vector2 point in checkPoints)
-                {
-                    RaycastHit2D wallHit = Physics2D.Raycast(point, wallDirection, wallCheckDistance, groundMask);
-                    if (wallHit.collider != null && wallHit.collider != playerCollider)
-                    {
-                        bool isVerticalWall = Mathf.Abs(wallHit.normal.x) > 0.9f;
-                        if (isVerticalWall)
-                        {
-                            hasAnyWallHit = true;
-                            break;
-                        }
-                    }
-                }
-                
-                bool pressingIntoWall = (facingRight && moveInput.x > 0.1f) || (!facingRight && moveInput.x < -0.1f);
-                
-                // When wall stick disabled, any hit prevents movement during combat
-                if (hasAnyWallHit && pressingIntoWall)
-                {
-                    attackHorizontalVelocity = 0f;
-                    // Debug.Log($"[WallStick] DISABLED - Combat system preventing wall movement.");
-                }
-            }
-            
-            rb.linearVelocity = new Vector2(attackHorizontalVelocity, rb.linearVelocity.y);
-        }
-        
-        // Let combat system handle air attack and dash attack movement
-        Vector2 combatMovement = combat?.GetAttackMovement() ?? Vector2.zero;
-        if (combatMovement != Vector2.zero && (IsDashAttacking || IsAirAttacking))
-        {
-            float combatHorizontalVelocity = combatMovement.x;
-            
-            // CRITICAL FIX: Combat movement must also respect wall stick prevention  
-            if (PlayerAbilities.Instance != null && !PlayerAbilities.Instance.HasWallStick)
-            {
-                // Check if combat movement would push against wall when ability is disabled
-                bool movingIntoWall = (facingRight && combatHorizontalVelocity > 0.1f) || (!facingRight && combatHorizontalVelocity < -0.1f);
-                
-                if (movingIntoWall)
-                {
-                    Collider2D playerCollider = GetComponent<Collider2D>();
-                    int groundLayer = LayerMask.NameToLayer("Ground");
-                    int groundMask = 1 << groundLayer;
-                    
-                    Vector2 wallDirection = facingRight ? Vector2.right : Vector2.left;
-                    Vector2 centerPoint = transform.position;
-                    
-                    RaycastHit2D wallHit = Physics2D.Raycast(centerPoint, wallDirection, wallCheckDistance, groundMask);
-                    
-                    if (wallHit.collider != null && wallHit.collider != playerCollider)
-                    {
-                        bool isVerticalWall = Mathf.Abs(wallHit.normal.x) > 0.9f;
-                        
-                        if (isVerticalWall)
-                        {
-                            combatHorizontalVelocity = 0f;
-                            // Debug.Log($"[WallStick] DISABLED - Combat movement respecting wall stick prevention.");
-                        }
-                    }
-                }
-            }
-            
-            rb.linearVelocity = new Vector2(combatHorizontalVelocity, combatMovement.y != 0 ? combatMovement.y : rb.linearVelocity.y);
-        }
-        
-        // SLOPE MOVEMENT: Prevent sliding down slopes + prevent upward drift
-        if (isOnSlope && isGrounded && !isJumping && !isDashing && !IsDashAttacking && !IsAirAttacking)
-        {
-            if (Mathf.Abs(moveInput.x) < 0.1f)
-            {
-                // Calculate anti-sliding force (original math was correct, application was wrong)
-                Vector2 gravity = Physics2D.gravity * rb.gravityScale;
-                Vector2 slopeDirection = new Vector2(slopeNormal.y, -slopeNormal.x).normalized;
-                float gravityAlongSlope = Vector2.Dot(gravity, slopeDirection);
-                
-                // Apply counterforce as actual force (not velocity!) to prevent sliding
-                Vector2 counterForce = -slopeDirection * gravityAlongSlope * rb.mass;
-                rb.AddForce(counterForce, ForceMode2D.Force);
-                
-                // Safety clamp to prevent upward drift (keeps our fix)
-                // Don't clamp during variable jump - it would kill the jump on slopes
-                if (rb.linearVelocity.y > 0.1f && !isVariableJumpActive)
-                {
-                    rb.linearVelocity = new Vector2(rb.linearVelocity.x, 0.1f);
-                }
-                
-                // Debug.Log($"[SLOPE PHYSICS] IDLE - Anti-slide force: {counterForce.magnitude:F3}, Y velocity: {rb.linearVelocity.y:F3}");
-            }
-            else
-            {
-                // Debug.Log($"[SLOPE PHYSICS] MOVING on {currentSlopeAngle:F1}° slope - Normal movement");
-                // When moving, let normal movement physics handle everything
-            }
-        }
-    }
-    
-    
-    private void HandleDashInput()
-    {
-        // Check if dash ability is unlocked
-        if (PlayerAbilities.Instance == null || !PlayerAbilities.Instance.HasDash)
-        {
-            dashQueued = false;
-            return;
-        }
-        
-        bool canDash = false;
-        if (isGrounded)
-        {
-            canDash = (dashesRemaining > 0) || (dashesRemaining <= 0 && dashCDTimer <= 0);
-        }
-        else
-        {
-            canDash = (airDashesUsed == 0);
-        }
-        
-        // Allow dash when jumping from wall (onWall may still be true but not in wall state)
-        bool actuallyOnWall = onWall && (isWallSticking || isWallSliding);
-        if (dashQueued && !isDashing && canDash && !actuallyOnWall)
-        {
-            if (isGrounded)
-            {
-                if (dashesRemaining > 0)
-                {
-                    dashesRemaining--;
-                    if (dashesRemaining <= 0)
-                    {
-                        dashCDTimer = dashCooldown;
-                    }
-                }
-                else
-                {
-                    dashesRemaining = maxDashes - 1;
-                    dashCDTimer = 0;
-                }
-            }
-            else
-            {
-                airDashesUsed = 1;
-            }
-            
-            combat?.OnDashStart();
-            isDashing = true;
-            dashTimer = 0;
-            wasGroundedBeforeDash = isGrounded;
-            
-            if (animator != null) SafeSetTrigger("Dash");
-            dashQueued = false;
-            lastDashInputTime = Time.time;
-        }
-        else
-        {
-            dashQueued = false;
-        }
-    }
-    
-    private void UpdateDashCooldown()
-    {
-        if (dashesRemaining <= 0)
-        {
-            dashCDTimer -= Time.fixedDeltaTime;
-        }
-    }
-    
-    private void UpdateSpriteFacing()
-    {
-        if (moveInput.x != 0) facingRight = moveInput.x > 0;
-        transform.localScale = new Vector3(facingRight ? 1 : -1, 1, 1);
     }
     
     private void UpdateAnimatorParameters()
@@ -1557,60 +1199,6 @@ public class PlayerController : MonoBehaviour
     }
 
     
-    
-    /// <summary>
-    /// Check if dash should end early due to wall collision
-    /// </summary>
-    private bool CheckDashWallCollision()
-    {
-        if (!isDashing) return false;
-
-        // Only check for wall collision when wall stick is disabled
-        // When wall stick is enabled, dashing into walls is expected behavior
-        if (PlayerAbilities.Instance != null && PlayerAbilities.Instance.HasWallStick)
-            return false;
-
-        // CRITICAL FIX: Only end dash if ACTIVELY COLLIDING with wall (very close distance)
-        // Don't end dash just because a wall is nearby - check if we're actually hitting it
-        Vector2 wallDirection = facingRight ? Vector2.right : Vector2.left;
-        int groundLayer = LayerMask.NameToLayer("Ground");
-        int groundMask = 1 << groundLayer;
-
-        // Use very short raycast distance to only detect actual collisions
-        float collisionCheckDistance = 0.15f; // Much shorter than wallCheckDistance
-
-        Vector2[] checkPoints = {
-            transform.position + Vector3.up * wallRaycastTop,
-            transform.position + Vector3.up * wallRaycastMiddle,
-            transform.position + Vector3.up * wallRaycastBottom
-        };
-
-        // Count how many raycasts hit - require at least 2 for solid collision
-        int hitCount = 0;
-
-        foreach (Vector2 point in checkPoints)
-        {
-            RaycastHit2D hit = Physics2D.Raycast(point, wallDirection, collisionCheckDistance, groundMask);
-
-            if (hit.collider != null)
-            {
-                // Check if it's a vertical wall (not a slope)
-                if (Mathf.Abs(hit.normal.x) > 0.9f)
-                {
-                    hitCount++;
-                }
-            }
-        }
-
-        // Only end dash if we hit wall with at least 2 raycasts (solid collision)
-        if (hitCount >= 2)
-        {
-            // Debug.Log($"[DashFix] Dash collision detected - hitCount: {hitCount}");
-            return true;
-        }
-
-        return false; // No solid wall collision, continue dash
-    }
     
     
     // Debug visualization for wall detection

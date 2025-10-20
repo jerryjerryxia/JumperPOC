@@ -181,11 +181,24 @@ public class PlayerCombat : MonoBehaviour
         // Check for air attack - prevent attack when actively wall sticking/sliding
         // Allow air attack when jumping from wall (OnWall may still be true but not in wall state)
         actuallyOnWall = playerController.OnWall && (playerController.IsWallSticking || playerController.IsWallSliding);
-        if (!actuallyOnWall && !playerController.IsGrounded && !isAttacking && !isDashAttacking && !playerController.IsDashing && !HasUsedAirAttack &&
+
+        // CRITICAL: Extra air attack limit check to prevent rapid-click exploits
+        // This catches edge cases where state hasn't fully updated
+        bool airAttackSlotAvailable = (airAttacksUsed < 1) || (airAttacksUsed == 1 && canUseSecondAirAttack);
+
+        if (!actuallyOnWall && !playerController.IsGrounded && !isAttacking && !isDashAttacking && !playerController.IsDashing &&
+            !HasUsedAirAttack && airAttackSlotAvailable &&
             PlayerAbilities.Instance != null && PlayerAbilities.Instance.HasAirAttack)
         {
+            // Debug.Log($"Air attack ALLOWED - airAttacksUsed={airAttacksUsed}, canUseSecondAirAttack={canUseSecondAirAttack}");
             StartAirAttack();
             return;
+        }
+        else if (!actuallyOnWall && !playerController.IsGrounded &&
+                 PlayerAbilities.Instance != null && PlayerAbilities.Instance.HasAirAttack &&
+                 (!HasUsedAirAttack || !airAttackSlotAvailable))
+        {
+            // Debug.Log($"Air attack BLOCKED - airAttacksUsed={airAttacksUsed}, canUseSecondAirAttack={canUseSecondAirAttack}, HasUsedAirAttack={HasUsedAirAttack}, airAttackSlotAvailable={airAttackSlotAvailable}");
         }
         
         // Check if we can execute the attack immediately
@@ -315,6 +328,16 @@ public class PlayerCombat : MonoBehaviour
     {
         // Enable second air attack after double jump
         canUseSecondAirAttack = true;
+
+        // CRITICAL FIX: If player double jumps without using first air attack slot, forfeit it
+        // This prevents exploiting the system to get 2 attacks after DJ
+        // Design: Slots are separated by DJ - if you don't use slot 1 before DJ, you lose it
+        if (airAttacksUsed == 0)
+        {
+            airAttacksUsed = 1; // Forfeit the unused "before DJ" slot
+            // Debug.Log("Double jump: First air attack slot forfeited (unused before DJ)");
+        }
+
         // Debug.Log($"Double jump performed - second air attack now enabled. AirAttacksUsed: {airAttacksUsed}");
     }
     
@@ -413,6 +436,22 @@ public class PlayerCombat : MonoBehaviour
     
     private void StartAirAttack()
     {
+        // SAFEGUARD: Prevent starting air attack if already attacking
+        // This prevents rapid-click double-attacks
+        if (isAirAttacking || isAttacking)
+        {
+            // Debug.Log("Air attack BLOCKED - already attacking");
+            return;
+        }
+
+        // SAFEGUARD: Double-check air attack limit before starting
+        // Belt-and-suspenders approach for rapid button mashing
+        if ((airAttacksUsed >= 1 && !canUseSecondAirAttack) || (airAttacksUsed >= 2))
+        {
+            // Debug.Log($"Air attack BLOCKED - limit reached (airAttacksUsed={airAttacksUsed}, canUseSecondAirAttack={canUseSecondAirAttack})");
+            return;
+        }
+
         isAirAttacking = true;
         isAttacking = true;
         airAttacksUsed++;
@@ -546,16 +585,36 @@ public class PlayerCombat : MonoBehaviour
             {
                 animator.CrossFade("DaggerIdle", 0f, 0);
             }
-            // Force-transition air/dash attacks to idle ONLY if grounded for snappy feel
-            // If airborne, let animator naturally transition to jump/fall based on velocity
+            // Force-transition air/dash attacks for snappy feel
+            // Check player state and force appropriate transition
             else if (currentState.IsName("PlayerAirSwordSwing") || currentState.IsName("DashAttack"))
             {
                 bool isGrounded = playerController != null && playerController.IsGrounded;
                 if (isGrounded)
                 {
+                    // Grounded: Force to idle
                     animator.CrossFade("DaggerIdle", 0f, 0);
                 }
-                // If airborne, animator will transition naturally based on IsJumping/IsFalling parameters
+                else
+                {
+                    // Airborne: Force to jump or fall state based on velocity
+                    bool isJumping = playerController != null && playerController.IsJumping;
+                    bool isFalling = playerController != null && playerController.IsFalling;
+
+                    if (isJumping)
+                    {
+                        animator.CrossFade("Jump", 0f, 0);
+                    }
+                    else if (isFalling)
+                    {
+                        animator.CrossFade("Fall", 0f, 0);
+                    }
+                    else
+                    {
+                        // Fallback: force to idle if state is unclear
+                        animator.CrossFade("DaggerIdle", 0f, 0);
+                    }
+                }
             }
         }
 
