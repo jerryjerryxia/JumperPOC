@@ -18,14 +18,14 @@ public class PlayerController : MonoBehaviour
     
     [Header("Variable Jump (Hollow Knight Style)")]
     [SerializeField] private bool enableVariableJump = true;
-    [SerializeField] private float minJumpVelocity = 4f; // Velocity for tap jump (lower = shorter)
+    [SerializeField] private float minJumpVelocity = 2f; // Velocity for tap jump (lower = shorter)
     [SerializeField] private float maxJumpVelocity = 4f; // Velocity for full hold jump (higher = taller)
     [SerializeField] private float jumpHoldDuration = 0.3f; // Max time to hold for variable height
     [SerializeField] private float jumpGravityReduction = 0f; // Gravity multiplier while holding (lower = floatier)
     
     [Header("Double Jump Settings")]
-    [SerializeField] private float minDoubleJumpVelocity = 4f; // Velocity for tap double jump
-    [SerializeField] private float maxDoubleJumpVelocity = 4f; // Velocity for full hold double jump
+    [SerializeField] private float minDoubleJumpVelocity = 1f; // Velocity for tap double jump
+    [SerializeField] private float maxDoubleJumpVelocity = 3f; // Velocity for full hold double jump
     [SerializeField] private float doubleJumpMinDelay = 0.2f; // Minimum time after first jump before double jump is available
     [SerializeField] private float forcedFallDuration = 0.1f; // How long to force fall before double jump when ascending
     [SerializeField] private float forcedFallVelocity = -2f; // Velocity during forced fall phase
@@ -54,10 +54,10 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private float forwardBoost = 0f;
     
     [Header("Coyote Time")]
-    [SerializeField] private bool enableCoyoteTime = true; // Enable coyote time feature
-    [SerializeField] private float coyoteTimeDuration = 0.12f; // Grace period after leaving ground
+    [SerializeField] private bool enableCoyoteTime = false; // Enable coyote time feature
+    [SerializeField] private float coyoteTimeDuration = 0.02f; // Grace period after leaving ground
     [SerializeField] private bool coyoteTimeDuringDashWindow = false; // Allow coyote time during dash jump window
-    public bool showClimbingGizmos = true;
+    public bool showClimbingGizmos = false;
     
     [Header("Jump Compensation")]
     [SerializeField] private float wallJumpCompensation = 1.2f; // Multiplier to counteract friction
@@ -129,10 +129,6 @@ public class PlayerController : MonoBehaviour
     // Dash jump momentum preservation
     private float dashJumpTime = 0f;
 
-    // Wall state sequence tracking
-    private bool wasWallSticking = false;
-    private bool hasEverWallStuck = false;
-    
     // Coyote time tracking
     private float coyoteTimeCounter = 0f;
     private bool leftGroundByJumping = false;
@@ -304,7 +300,6 @@ public class PlayerController : MonoBehaviour
         jumpSystem.Initialize(rb, transform, groundDetection, wallDetection, abilities, animator);
         animationController.Initialize(animator);
         respawnSystem.Initialize(transform, rb, combat);
-        stateTracker.Initialize(rb, groundDetection, wallDetection, movement, jumpSystem, combat);
         debugVisualizer.Initialize(this, rb, inputManager, respawnSystem);
 
         // Set up respawn callbacks for state reset
@@ -336,6 +331,9 @@ public class PlayerController : MonoBehaviour
 
         // Set up input handler callbacks
         SetupInputHandlerCallbacks();
+
+        // Set up state tracker callbacks
+        SetupStateTrackerCallbacks();
 
         // Configure ground detection with all necessary values
         groundDetection.SetConfiguration(groundCheckOffsetY, groundCheckRadius, maxSlopeAngle,
@@ -426,6 +424,47 @@ public class PlayerController : MonoBehaviour
             {
                 // Basic attack when PlayerCombat is not attached
                 StartCoroutine(BasicAttack());
+            }
+        };
+    }
+
+    /// <summary>
+    /// Subscribe to state tracker events for physics side effects
+    /// </summary>
+    private void SetupStateTrackerCallbacks()
+    {
+        if (stateTracker == null) return;
+
+        // Handle wall stick transition side effects
+        stateTracker.OnEnterWallStick += () =>
+        {
+            // IMMEDIATELY and AGGRESSIVELY cancel ALL upward velocity when entering wall stick
+            // This is critical for high-velocity dash jumps that would otherwise cause falling
+            if (rb.linearVelocity.y > 0f)
+            {
+                // Store original velocity for debugging
+                float originalVelocity = rb.linearVelocity.y;
+
+                // ZERO out vertical velocity immediately - no gradual transition
+                rb.linearVelocity = new Vector2(rb.linearVelocity.x, 0f);
+
+                // Clear any dash jump momentum that might interfere
+                if (dashJumpTime > 0f)
+                {
+                    dashJumpTime = 0f; // Stop dash jump momentum preservation
+                }
+
+                if (showJumpDebug)
+                {
+                    Debug.Log($"[Wall Stick] EMERGENCY STOP - cancelled velocity {originalVelocity:F2} → 0, dash momentum cleared");
+                }
+            }
+
+            // Clear coyote time when starting to wall stick
+            if (enableCoyoteTime)
+            {
+                coyoteTimeCounter = 0f;
+                leftGroundByJumping = false;
             }
         };
     }
@@ -549,8 +588,33 @@ public class PlayerController : MonoBehaviour
         onWall = wallDetection.OnWall;
         wallStickAllowed = wallDetection.WallStickAllowed;
 
-        // Update movement states
-        UpdateMovementStates();
+        // Update movement states through StateTracker
+        stateTracker.UpdateStates(
+            moveInput,
+            isGrounded,
+            onWall,
+            wallStickAllowed,
+            isDashing,
+            combat?.IsDashAttacking ?? false,
+            combat?.IsAirAttacking ?? false,
+            rb.linearVelocity,
+            isOnSlope,
+            facingRight,
+            wallSlideSpeed,
+            PlayerAbilities.Instance != null && PlayerAbilities.Instance.HasWallStick,
+            showJumpDebug
+        );
+
+        // Sync calculated states from StateTracker
+        isRunning = stateTracker.IsRunning;
+        isJumping = stateTracker.IsJumping;
+        isFalling = stateTracker.IsFalling;
+        isWallSticking = stateTracker.IsWallSticking;
+        isWallSliding = stateTracker.IsWallSliding;
+        isDashingAnim = stateTracker.IsDashingAnim;
+        horizontalInput = stateTracker.HorizontalInput;
+        verticalInput = stateTracker.VerticalInput;
+        facingDirection = stateTracker.FacingDirection;
 
         // CRITICAL: Update sprite facing BEFORE passing state to movement component
         // This ensures dash uses the CURRENT facing direction, not the old one
@@ -631,116 +695,10 @@ public class PlayerController : MonoBehaviour
     }
     
     
-    private void UpdateMovementStates()
-    {
-        // Store previous states for debugging
-        bool prevIsFalling = isFalling;
-        bool prevIsGrounded = isGrounded;
-        
-        // CRITICAL: Sequential wall state logic - stick must come before slide
-        // First, calculate if wall sticking conditions are met (requires wall stick ability)
-        bool canWallStick = wallStickAllowed && !isDashing && !IsDashAttacking && !IsAirAttacking &&
-                           PlayerAbilities.Instance != null && PlayerAbilities.Instance.HasWallStick;
-        isWallSticking = canWallStick;
-        
-        // Debug: Check if wall stick ability is disabled but onWall is somehow true
-        if (PlayerAbilities.Instance != null && !PlayerAbilities.Instance.HasWallStick && onWall)
-        {
-            // Debug.LogError($"[WallStick] BUG DETECTED! Wall stick disabled but onWall={onWall}. wallStickAllowed={wallStickAllowed}");
-        }
-        
-        // Comprehensive debug when ability is disabled
-        if (PlayerAbilities.Instance != null && !PlayerAbilities.Instance.HasWallStick && !isGrounded)
-        {
-            // Debug.Log($"[WallStick] DISABLED STATE: onWall={onWall}, isWallSticking={isWallSticking}, isWallSliding={isWallSliding}, velocity.y={rb.linearVelocity.y:F2}, wallStickAllowed={wallStickAllowed}");
-        }
-        
-        // Track wall stick history for sequential logic
-        if (!wasWallSticking && isWallSticking)
-        {
-            // IMMEDIATELY and AGGRESSIVELY cancel ALL upward velocity when entering wall stick
-            // This is critical for high-velocity dash jumps that would otherwise cause falling
-            if (rb.linearVelocity.y > 0f)
-            {
-                // Store original velocity for debugging
-                float originalVelocity = rb.linearVelocity.y;
-                
-                // ZERO out vertical velocity immediately - no gradual transition
-                rb.linearVelocity = new Vector2(rb.linearVelocity.x, 0f);
+    // UpdateMovementStates() extracted to PlayerStateTracker.UpdateStates()
+    // State calculation logic moved to PlayerStateTracker component for testability
+    // Side effects (physics manipulation) handled via stateTracker.OnEnterWallStick event
 
-                // Clear any dash jump momentum that might interfere
-                if (dashJumpTime > 0f)
-                {
-                    dashJumpTime = 0f; // Stop dash jump momentum preservation
-                }
-                
-                if (showJumpDebug)
-                {
-                    Debug.Log($"[Wall Stick] EMERGENCY STOP - cancelled velocity {originalVelocity:F2} �?0, dash momentum cleared");
-                }
-            }
-            
-            // Head stomp is always enabled (see CanHeadStomp property)
-            
-            // Clear coyote time when starting to wall stick
-            if (enableCoyoteTime)
-            {
-                coyoteTimeCounter = 0f;
-                leftGroundByJumping = false;
-            }
-        }
-        
-        if (isWallSticking)
-        {
-            hasEverWallStuck = true;
-        }
-        
-        // Wall slide can ONLY trigger if player has wall stuck during this wall contact session
-        bool canWallSlide = onWall && rb.linearVelocity.y < -wallSlideSpeed && !isDashing && !IsDashAttacking && !IsAirAttacking &&
-                           PlayerAbilities.Instance != null && PlayerAbilities.Instance.HasWallStick;
-        bool allowWallSlide = canWallSlide && hasEverWallStuck;
-        
-        // Only allow wall slide if player has been wall sticking first
-        isWallSliding = allowWallSlide;
-        
-        // Reset wall stick history when no longer on wall
-        if (!onWall)
-        {
-            hasEverWallStuck = false;
-        }
-        
-        // Update wall sticking state - can't be sticking while sliding
-        if (isWallSliding)
-        {
-            isWallSticking = false;
-        }
-        
-        // Then calculate running state (which depends on wall states)
-        // SLOPE FIX: Allow running on slopes even if wall detection is confused
-        bool allowRunningOnSlope = isOnSlope && isGrounded && Mathf.Abs(moveInput.x) > 0.1f;
-        bool wasRunning = isRunning;
-        isRunning = Mathf.Abs(moveInput.x) > 0.1f && !isDashing && !IsDashAttacking && !IsAirAttacking && 
-                   (!onWall || allowRunningOnSlope) && !isWallSticking;
-        
-        // Debug animation changes on slopes - ALWAYS LOG WHEN ON SLOPES
-        if (isOnSlope && isGrounded)
-        {
-            // Debug.Log($"[SLOPE ANIMATION] On slope: isRunning={isRunning}, onWall={onWall}, moveInput={moveInput.x:F2}, allowRunningOnSlope={allowRunningOnSlope}");
-        }
-        
-        isJumping = !isGrounded && !isWallSliding && !isWallSticking && !isClimbing && !isLedgeGrabbing && !isDashing && !IsDashAttacking && !IsAirAttacking && rb.linearVelocity.y > 0;
-        
-        isFalling = !isGrounded && !isWallSliding && !isWallSticking && !isClimbing && !isLedgeGrabbing && !IsDashAttacking && !IsAirAttacking && rb.linearVelocity.y < 0;
-        isDashingAnim = isDashing;
-
-        horizontalInput = moveInput.x;
-        verticalInput = moveInput.y;
-        facingDirection = facingRight ? 1f : -1f;
-        
-        // Store previous wall sticking state for next frame
-        wasWallSticking = isWallSticking;
-    }
-    
     public void ConsumeAirDash()
     {
         airDashesRemaining--;
@@ -771,11 +729,15 @@ public class PlayerController : MonoBehaviour
     public void SetClimbing(bool climbing)
     {
         isClimbing = climbing;
+        if (stateTracker != null)
+            stateTracker.IsClimbing = climbing;
     }
 
     public void SetLedgeGrabbing(bool ledgeGrabbing)
     {
         isLedgeGrabbing = ledgeGrabbing;
+        if (stateTracker != null)
+            stateTracker.IsLedgeGrabbing = ledgeGrabbing;
     }
 
     public void SetAttacking(bool attacking)
