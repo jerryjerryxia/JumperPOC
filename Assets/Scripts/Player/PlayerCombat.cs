@@ -535,6 +535,17 @@ public class PlayerCombat : MonoBehaviour
             animator.SetBool("IsDashAttacking", false);
             animator.SetBool("IsAirAttacking", false);
             animator.SetInteger("AttackCombo", 0);
+            animator.Update(0);
+
+            // Force-transition combo attacks to idle immediately
+            // Air/dash attacks rely on animator transitions (configured in Inspector)
+            AnimatorStateInfo currentState = animator.GetCurrentAnimatorStateInfo(0);
+            if (currentState.IsName("PlayerSwordStab") ||
+                currentState.IsName("PlayerSwordChop") ||
+                currentState.IsName("PlayerSwordSwing3"))
+            {
+                animator.CrossFade("DaggerIdle", 0f, 0);
+            }
         }
 
         if (AttackHitbox != null)
