@@ -510,6 +510,193 @@ namespace Tests.EditMode
 
         #endregion
 
+        #region Dash State Management Tests - STATE TRANSITION VERIFICATION
+
+        /// <summary>
+        /// TEST 13: Verify OnDashStart sets correct initial state
+        ///
+        /// INVARIANT: OnDashStart must set isDuringDash=true and allowDashAttack=true
+        /// BUG THIS CATCHES: Missing state initialization breaks dash attack system
+        /// </summary>
+        [Test]
+        public void OnDashStart_InitializesState_Correctly()
+        {
+            // ACT: Start dash
+            combat.OnDashStart();
+
+            // ASSERT: Can verify dash attack is allowed immediately after
+            // (OnDashEnd would set isDuringDash=false and trigger dash attack)
+            combat.OnDashEnd();
+
+            // If dash attack works after OnDashEnd, OnDashStart initialized correctly
+            PlayerTestHelper.UnlockAbility("dashattack");
+            combat.HandleAttackInput();
+
+            Assert.IsTrue(combat.IsDashAttacking,
+                "BUG: Dash attack should work after OnDashStart->OnDashEnd sequence");
+        }
+
+        /// <summary>
+        /// TEST 14: Verify OnDashStart cancels existing ground attacks
+        ///
+        /// INVARIANT: Starting a dash during ground attack should cancel the attack
+        /// BUG THIS CATCHES: Attack state contamination if not properly reset
+        /// CODE REFERENCE: OnDashStart() lines 244-250
+        /// </summary>
+        [Test]
+        [Ignore("Requires PlayerController.IsGrounded mock for ground attacks")]
+        public void OnDashStart_CancelsGroundAttack_InProgress()
+        {
+            // ARRANGE: Player performing ground attack
+            PlayerTestHelper.SetupGroundedPlayer(testGameObject);
+            // Start attack (requires IsGrounded mock)
+
+            // ACT: Dash during attack
+            combat.OnDashStart();
+
+            // ASSERT: Attack should be canceled
+            Assert.IsFalse(combat.IsAttacking,
+                "BUG: Ground attack not canceled when dash starts");
+
+            Assert.Pass("Ground attack test requires PlayerController.IsGrounded mock");
+        }
+
+        #endregion
+
+        #region Attack State Mutual Exclusivity Tests - INVARIANT VERIFICATION
+
+        /// <summary>
+        /// TEST 15: Verify ResetAttackSystem clears ALL attack states
+        ///
+        /// INVARIANT: ResetAttackSystem must clear IsAttacking, IsDashAttacking, IsAirAttacking
+        /// BUG THIS CATCHES: Forgotten state flags cause attack state contamination
+        /// </summary>
+        [Test]
+        public void ResetAttackSystem_ClearsAllFlags_Completely()
+        {
+            // ARRANGE: Player air attacking
+            PlayerTestHelper.SetupAirbornePlayer(testGameObject);
+            combat.HandleAttackInput();
+
+            Assert.IsTrue(combat.IsAirAttacking, "Setup: should be air attacking");
+            Assert.IsTrue(combat.IsAttacking, "Setup: IsAttacking should be true");
+
+            // ACT: Reset system
+            combat.ResetAttackSystem();
+
+            // ASSERT: ALL attack states cleared
+            Assert.IsFalse(combat.IsAttacking,
+                "BUG: IsAttacking not cleared by ResetAttackSystem");
+            Assert.IsFalse(combat.IsDashAttacking,
+                "BUG: IsDashAttacking not cleared by ResetAttackSystem");
+            Assert.IsFalse(combat.IsAirAttacking,
+                "BUG: IsAirAttacking not cleared by ResetAttackSystem");
+            Assert.AreEqual(0, combat.AttackCombo,
+                "BUG: AttackCombo not reset to 0");
+        }
+
+        /// <summary>
+        /// TEST 16: Verify air attack cannot start during existing air attack
+        ///
+        /// INVARIANT: Only ONE attack can be active at a time
+        /// BUG THIS CATCHES: Missing isAirAttacking check in StartAirAttack (line 441)
+        /// CODE REFERENCE: StartAirAttack() safeguard at lines 439-445
+        /// </summary>
+        [Test]
+        public void AirAttack_BlockedDuringExistingAirAttack()
+        {
+            // ARRANGE: Player air attacking
+            PlayerTestHelper.SetupAirbornePlayer(testGameObject);
+            combat.HandleAttackInput();
+
+            int attacksUsed = combat.AirAttacksUsed;
+            Assert.IsTrue(combat.IsAirAttacking, "Setup: first attack should be active");
+
+            // ACT: Try to start another air attack while first is still active
+            combat.HandleAttackInput();
+
+            // ASSERT: Counter should NOT increment (attack blocked)
+            Assert.AreEqual(attacksUsed, combat.AirAttacksUsed,
+                "BUG: Second air attack started during first (should be blocked)");
+        }
+
+        #endregion
+
+        #region Attack Counter Edge Cases - BOUNDARY TESTING
+
+        /// <summary>
+        /// TEST 17: Verify air attack counter handles double jump edge case
+        ///
+        /// EDGE CASE: Double jump at airAttacksUsed=0 should forfeit first slot
+        /// INVARIANT: airAttacksUsed should increment to 1 on DJ when unused
+        /// CODE REFERENCE: OnDoubleJump() lines 334-339
+        /// </summary>
+        [Test]
+        public void OnDoubleJump_IncrementsCounter_WhenFirstSlotUnused()
+        {
+            // ARRANGE: Player airborne with 0 attacks used
+            PlayerTestHelper.SetupAirbornePlayer(testGameObject, hasDoubleJump: true);
+            Assert.AreEqual(0, combat.AirAttacksUsed);
+
+            // ACT: Double jump without using first attack slot
+            combat.OnDoubleJump();
+
+            // ASSERT: Counter should increment to 1 (slot forfeited)
+            Assert.AreEqual(1, combat.AirAttacksUsed,
+                "BUG: OnDoubleJump should increment counter when first slot unused");
+        }
+
+        /// <summary>
+        /// TEST 18: Verify air attack counter preserved after double jump if slot was used
+        ///
+        /// EDGE CASE: Double jump at airAttacksUsed=1 should NOT forfeit (slot already used)
+        /// INVARIANT: airAttacksUsed should stay at 1
+        /// CODE REFERENCE: OnDoubleJump() forfeiture logic only triggers if airAttacksUsed==0
+        /// </summary>
+        [Test]
+        public void OnDoubleJump_PreservesCounter_WhenFirstSlotAlreadyUsed()
+        {
+            // ARRANGE: Player has used first air attack
+            PlayerTestHelper.SetupAirbornePlayer(testGameObject, hasDoubleJump: true);
+            combat.HandleAttackInput();
+            Assert.AreEqual(1, combat.AirAttacksUsed);
+
+            combat.ResetAttackSystem(); // Complete first attack
+
+            // ACT: Double jump after using first slot
+            combat.OnDoubleJump();
+
+            // ASSERT: Counter should STAY at 1 (no forfeiture)
+            Assert.AreEqual(1, combat.AirAttacksUsed,
+                "BUG: OnDoubleJump changed counter when first slot was already used");
+        }
+
+        /// <summary>
+        /// TEST 19: Verify OnLanding always resets counter regardless of attack state
+        ///
+        /// INVARIANT: Landing must ALWAYS reset airAttacksUsed to 0
+        /// BUG THIS CATCHES: Missing reset in edge case paths
+        /// CODE REFERENCE: OnLanding() lines 321-324 (unconditional reset)
+        /// </summary>
+        [Test]
+        public void OnLanding_ResetsCounter_EvenWhenAttackActive()
+        {
+            // ARRANGE: Player air attacking when landing
+            PlayerTestHelper.SetupAirbornePlayer(testGameObject);
+            combat.HandleAttackInput();
+            Assert.AreEqual(1, combat.AirAttacksUsed);
+            Assert.IsTrue(combat.IsAirAttacking);
+
+            // ACT: Land while attack animation still active
+            combat.OnLanding();
+
+            // ASSERT: Counter MUST reset to 0 even with attack still active
+            Assert.AreEqual(0, combat.AirAttacksUsed,
+                "BUG: OnLanding must reset counter even when attack is active");
+        }
+
+        #endregion
+
         #region Helper Methods for Future Tests
 
         /// <summary>
