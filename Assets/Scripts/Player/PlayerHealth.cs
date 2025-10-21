@@ -7,7 +7,7 @@ namespace Player
     {
     [Header("Health Settings")]
     [SerializeField] private float maxHealth = 100f;
-    [SerializeField] private float currentHealth;
+    [SerializeField] private float currentHealth = 100f; // Default to max health for EditMode tests
     
     [Header("Damage Settings")]
     [SerializeField] private float invincibilityDuration = 1f;
