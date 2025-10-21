@@ -70,6 +70,10 @@ public class PlayerMovement : MonoBehaviour
     private float facingDirection;
     private float horizontalInput;
 
+    // ===== MOVING PLATFORM STATE =====
+    private MovingPlatform currentPlatformTracked;
+    private Vector3 lastPlatformPosition;
+
     // ===== PUBLIC PROPERTIES =====
     public bool IsDashing => isDashing;
     public bool FacingRight => facingRight;
@@ -207,6 +211,43 @@ public class PlayerMovement : MonoBehaviour
     /// </summary>
     public void HandleMovement()
     {
+        // MOVING PLATFORM MOVEMENT INHERITANCE
+        // Apply platform movement FIRST, before any player movement code
+        // This ensures platform movement doesn't interfere with player input
+        MovingPlatform currentPlatform = groundDetection?.CurrentPlatform;
+
+        if (isGrounded && currentPlatform != null)
+        {
+            // Check if we just landed on a platform (new platform or first frame on platform)
+            if (currentPlatformTracked != currentPlatform)
+            {
+                // Store the platform's position when we first land
+                lastPlatformPosition = currentPlatform.transform.position;
+                currentPlatformTracked = currentPlatform;
+            }
+            else
+            {
+                // Calculate how much the platform moved this frame
+                Vector3 platformDelta = currentPlatform.transform.position - lastPlatformPosition;
+
+                // Move player by the same amount the platform moved
+                // Using transform.position for immediate, non-physics movement
+                // This happens BEFORE player input is processed
+                if (platformDelta.magnitude > 0.0001f) // Only if platform actually moved
+                {
+                    playerTransform.position += platformDelta;
+                }
+
+                // Update platform position for next frame
+                lastPlatformPosition = currentPlatform.transform.position;
+            }
+        }
+        else
+        {
+            // Not on platform anymore, clear tracking
+            currentPlatformTracked = null;
+        }
+
         // Buffer climbing assistance - provide upward and forward momentum
         if (isBufferClimbing)
         {

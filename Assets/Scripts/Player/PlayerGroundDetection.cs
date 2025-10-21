@@ -53,6 +53,9 @@ public class PlayerGroundDetection : MonoBehaviour
     public bool IsGroundedByBuffer { get; private set; }
     public bool IsBufferClimbing { get; private set; }
 
+    // Moving platform tracking
+    public MovingPlatform CurrentPlatform { get; private set; }
+
     // Internal state
     private bool groundedByBuffer;
     private bool pressingHorizontally;
@@ -124,8 +127,19 @@ public class PlayerGroundDetection : MonoBehaviour
         int platformMask = (1 << groundLayer);
         int bufferMask = (1 << bufferLayer);
 
-        bool groundedByPlatform = Physics2D.OverlapCircle(feetPos, groundCheckRadius, platformMask);
+        Collider2D groundCollider = Physics2D.OverlapCircle(feetPos, groundCheckRadius, platformMask);
+        bool groundedByPlatform = groundCollider != null;
         groundedByBuffer = Physics2D.OverlapCircle(feetPos, groundCheckRadius, bufferMask);
+
+        // Check if ground is a moving platform
+        if (groundedByPlatform && groundCollider != null)
+        {
+            CurrentPlatform = groundCollider.GetComponent<MovingPlatform>();
+        }
+        else
+        {
+            CurrentPlatform = null;
+        }
 
         // Only allow buffer grounding when moving downward or horizontally (prevent ghost jumps when jumping upward)
         if (groundedByBuffer && rb.linearVelocity.y > 0.1f)
@@ -244,6 +258,12 @@ public class PlayerGroundDetection : MonoBehaviour
             if (verticalDistance > maxVerticalGroundingDistance)
             {
                 return false; // Too far above slope surface to be grounded
+            }
+
+            // Check if this slope is a moving platform
+            if (CurrentPlatform == null)
+            {
+                CurrentPlatform = bestSlopeHit.collider.GetComponent<MovingPlatform>();
             }
 
             SlopeNormal = bestNormal;
