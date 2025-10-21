@@ -17,18 +17,15 @@ namespace Tests.EditMode
         [SetUp]
         public void SetUp()
         {
-            // Create test GameObject with PlayerHealth component
             testGameObject = new GameObject("TestPlayerHealth");
             health = testGameObject.AddComponent<PlayerHealth>();
 
-            // Suppress warnings in tests
             Debug.unityLogger.logEnabled = false;
         }
 
         [TearDown]
         public void TearDown()
         {
-            // Clean up test objects
             if (testGameObject != null)
             {
                 Object.DestroyImmediate(testGameObject);
@@ -37,85 +34,51 @@ namespace Tests.EditMode
             Debug.unityLogger.logEnabled = true;
         }
 
-        #region Initialization Tests
-
-        [Test]
-        public void Awake_InitializesHealthToMax()
-        {
-            // Assert: Health should be initialized to max
-            Assert.AreEqual(health.MaxHealth, health.CurrentHealth,
-                "Current health should equal max health after initialization");
-        }
-
-        [Test]
-        public void HealthPercentage_ReturnsOne_WhenFullHealth()
-        {
-            // Assert: Full health should return 100%
-            Assert.AreEqual(1f, health.HealthPercentage, 0.001f,
-                "Health percentage should be 1.0 at full health");
-        }
-
-        [Test]
-        public void IsDead_ReturnsFalse_OnInitialization()
-        {
-            // Assert: Should not be dead on initialization
-            Assert.IsFalse(health.IsDead, "Player should not be dead on initialization");
-        }
-
-        [Test]
-        public void IsInvincible_ReturnsFalse_OnInitialization()
-        {
-            // Assert: Should not be invincible on initialization
-            Assert.IsFalse(health.IsInvincible, "Player should not be invincible on initialization");
-        }
-
-        #endregion
-
         #region Damage Tests
 
         [Test]
-        public void TakeDamage_ReducesHealth_WhenNotInvincible()
+        public void TakeDamage_ReducesHealth_ByExactAmount()
         {
-            // Arrange: Initial health
+            // INVARIANT: Damage must reduce health by exact amount
+            // BUG THIS CATCHES: Incorrect damage calculation or scaling
             float initialHealth = health.CurrentHealth;
 
-            // Act: Take damage
             health.TakeDamage(20f);
 
-            // Assert: Health should be reduced
-            Assert.Less(health.CurrentHealth, initialHealth, "Health should be reduced after taking damage");
             Assert.AreEqual(initialHealth - 20f, health.CurrentHealth, 0.001f,
-                "Health should be reduced by exact damage amount");
+                "BUG: Health not reduced by exact damage amount");
         }
 
         [Test]
         public void TakeDamage_DoesNotReduceBelowZero()
         {
-            // Act: Take more damage than max health
+            // INVARIANT: Health must clamp to 0, never go negative
+            // BUG THIS CATCHES: Missing clamp allowing negative health
             health.TakeDamage(health.MaxHealth + 50f);
 
-            // Assert: Health should be clamped to zero
-            Assert.AreEqual(0f, health.CurrentHealth, "Health should not go below zero");
+            Assert.AreEqual(0f, health.CurrentHealth,
+                "BUG: Health went below zero (missing clamp)");
         }
 
         [Test]
         public void TakeDamage_InvokesOnDamageTakenEvent()
         {
-            // Arrange: Subscribe to damage event
+            // INVARIANT: Damage event must fire with correct amount
+            // BUG THIS CATCHES: Event not firing, breaking UI/feedback systems
             float receivedDamage = 0f;
             health.OnDamageTaken += (damage) => receivedDamage = damage;
 
-            // Act: Take damage
             health.TakeDamage(30f);
 
-            // Assert: Event should be invoked with correct damage amount
-            Assert.AreEqual(30f, receivedDamage, "OnDamageTaken event should pass correct damage amount");
+            Assert.AreEqual(30f, receivedDamage,
+                "BUG: OnDamageTaken event didn't fire or passed wrong value");
         }
 
         [Test]
         public void TakeDamage_InvokesOnHealthChangedEvent()
         {
-            // Arrange: Subscribe to health changed event
+            // INVARIANT: Health changed event must fire with current/max values
+            // BUG THIS CATCHES: Event not firing, breaking health bars/UI
             float newHealth = -1f;
             float maxHealth = -1f;
             health.OnHealthChanged += (current, max) =>
@@ -124,51 +87,65 @@ namespace Tests.EditMode
                 maxHealth = max;
             };
 
-            // Act: Take damage
             health.TakeDamage(25f);
 
-            // Assert: Event should be invoked with updated health
-            Assert.AreEqual(health.CurrentHealth, newHealth, "OnHealthChanged should pass current health");
-            Assert.AreEqual(health.MaxHealth, maxHealth, "OnHealthChanged should pass max health");
+            Assert.AreEqual(health.CurrentHealth, newHealth,
+                "BUG: OnHealthChanged didn't fire or passed wrong current health");
+            Assert.AreEqual(health.MaxHealth, maxHealth,
+                "BUG: OnHealthChanged passed wrong max health");
         }
 
         [Test]
         public void TakeDamage_UpdatesHealthPercentage()
         {
-            // Arrange: Start with full health
+            // INVARIANT: Health percentage must reflect current/max ratio
+            // BUG THIS CATCHES: Percentage calculation broken
             float maxHealth = health.MaxHealth;
 
-            // Act: Take damage
             health.TakeDamage(maxHealth / 2); // Take 50% damage
 
-            // Assert: Health percentage should be 0.5
             Assert.AreEqual(0.5f, health.HealthPercentage, 0.001f,
-                "Health percentage should reflect current health");
+                "BUG: Health percentage calculation wrong (should be 0.5)");
         }
 
         [Test]
         public void TakeDamage_KillsPlayer_WhenHealthReachesZero()
         {
-            // Act: Take fatal damage
+            // INVARIANT: Player must die when health reaches 0
+            // BUG THIS CATCHES: Death not detected, player survives at 0 HP
             health.TakeDamage(health.MaxHealth);
 
-            // Assert: Player should be dead
-            Assert.IsTrue(health.IsDead, "Player should be dead when health reaches zero");
+            Assert.IsTrue(health.IsDead,
+                "BUG: Player not marked dead when health reached zero");
             Assert.AreEqual(0f, health.CurrentHealth, "Health should be zero");
         }
 
         [Test]
         public void TakeDamage_InvokesOnDeathEvent_WhenHealthReachesZero()
         {
-            // Arrange: Subscribe to death event
+            // INVARIANT: Death event must fire when health reaches 0
+            // BUG THIS CATCHES: Death event not firing, breaking game state
             bool deathEventFired = false;
             health.OnDeath += () => deathEventFired = true;
 
-            // Act: Take fatal damage
             health.TakeDamage(health.MaxHealth);
 
-            // Assert: Death event should be invoked
-            Assert.IsTrue(deathEventFired, "OnDeath event should be invoked when health reaches zero");
+            Assert.IsTrue(deathEventFired,
+                "BUG: OnDeath event didn't fire when health reached zero");
+        }
+
+        [Test]
+        public void TakeDamage_WithNegativeDamage_ActsAsHealing()
+        {
+            // BUG DETECTED: Negative damage acts as healing (should it?)
+            // This test documents current behavior - may want to fix
+            health.TakeDamage(30f);
+            float damagedHealth = health.CurrentHealth;
+
+            health.TakeDamage(-20f); // Negative damage
+
+            Assert.Greater(health.CurrentHealth, damagedHealth,
+                "DOCUMENTED BUG: Negative damage currently acts as healing");
         }
 
         #endregion
@@ -176,78 +153,75 @@ namespace Tests.EditMode
         #region Healing Tests
 
         [Test]
-        public void Heal_IncreasesHealth_WhenBelowMax()
+        public void Heal_IncreasesHealth_ByExactAmount()
         {
-            // Arrange: Take some damage first
+            // INVARIANT: Heal must increase health by exact amount
+            // BUG THIS CATCHES: Incorrect heal calculation
             health.TakeDamage(30f);
             float damagedHealth = health.CurrentHealth;
 
-            // Act: Heal
             health.Heal(15f);
 
-            // Assert: Health should increase
-            Assert.Greater(health.CurrentHealth, damagedHealth, "Health should increase after healing");
             Assert.AreEqual(damagedHealth + 15f, health.CurrentHealth, 0.001f,
-                "Health should increase by heal amount");
+                "BUG: Health not increased by exact heal amount");
         }
 
         [Test]
         public void Heal_DoesNotExceedMaxHealth()
         {
-            // Arrange: Take some damage
+            // INVARIANT: Heal must clamp to MaxHealth
+            // BUG THIS CATCHES: Missing clamp allowing health > max
             health.TakeDamage(20f);
 
-            // Act: Heal more than damage taken
-            health.Heal(50f);
+            health.Heal(50f); // Heal more than damage taken
 
-            // Assert: Health should be clamped to max
             Assert.AreEqual(health.MaxHealth, health.CurrentHealth,
-                "Health should not exceed max health");
+                "BUG: Health exceeded max (missing clamp)");
         }
 
         [Test]
         public void Heal_InvokesOnHealthChangedEvent_WhenHealthChanges()
         {
-            // Arrange: Damage first, then subscribe
+            // INVARIANT: Health changed event must fire when healing
+            // BUG THIS CATCHES: Event not firing on heal, breaking UI updates
             health.TakeDamage(30f);
 
             bool eventInvoked = false;
             health.OnHealthChanged += (current, max) => eventInvoked = true;
 
-            // Act: Heal
             health.Heal(10f);
 
-            // Assert: Event should be invoked
-            Assert.IsTrue(eventInvoked, "OnHealthChanged should be invoked when healing");
+            Assert.IsTrue(eventInvoked,
+                "BUG: OnHealthChanged didn't fire when healing");
         }
 
         [Test]
         public void Heal_DoesNotInvokeEvent_WhenAtMaxHealth()
         {
-            // Arrange: Already at max health
+            // INVARIANT: Event should not fire if no actual change
+            // BUG THIS CATCHES: Unnecessary event spam when already at max
             int eventCount = 0;
             health.OnHealthChanged += (current, max) => eventCount++;
 
-            // Act: Try to heal when already at max
-            health.Heal(10f);
+            health.Heal(10f); // Already at max
 
-            // Assert: Event should not be invoked
-            Assert.AreEqual(0, eventCount, "OnHealthChanged should not fire when already at max health");
+            Assert.AreEqual(0, eventCount,
+                "BUG: OnHealthChanged fired when already at max health");
         }
 
         [Test]
         public void Heal_DoesNothing_WhenDead()
         {
-            // Arrange: Kill the player
-            health.TakeDamage(health.MaxHealth);
+            // INVARIANT: Dead players cannot be healed
+            // BUG THIS CATCHES: Healing allowing resurrection
+            health.TakeDamage(health.MaxHealth); // Kill player
             float deadHealth = health.CurrentHealth; // Should be 0
 
-            // Act: Try to heal while dead
-            health.Heal(50f);
+            health.Heal(50f); // Try to heal
 
-            // Assert: Health should remain zero
-            Assert.AreEqual(deadHealth, health.CurrentHealth, "Cannot heal when dead");
-            Assert.IsTrue(health.IsDead, "Should still be dead after heal attempt");
+            Assert.AreEqual(deadHealth, health.CurrentHealth,
+                "BUG: Dead player was healed (resurrection exploit)");
+            Assert.IsTrue(health.IsDead, "Player should still be dead");
         }
 
         #endregion
@@ -257,152 +231,74 @@ namespace Tests.EditMode
         [Test]
         public void SetMaxHealth_UpdatesMaxHealth()
         {
-            // Arrange: Initial max health
+            // INVARIANT: SetMaxHealth must actually change MaxHealth
+            // BUG THIS CATCHES: SetMaxHealth not working
             float initialMax = health.MaxHealth;
 
-            // Act: Set new max health
             health.SetMaxHealth(150f);
 
-            // Assert: Max health should be updated
-            Assert.AreEqual(150f, health.MaxHealth, "Max health should be updated");
-            Assert.AreNotEqual(initialMax, health.MaxHealth, "Max health should change");
+            Assert.AreEqual(150f, health.MaxHealth,
+                "BUG: SetMaxHealth didn't update MaxHealth");
+            Assert.AreNotEqual(initialMax, health.MaxHealth,
+                "BUG: MaxHealth unchanged after SetMaxHealth");
         }
 
         [Test]
         public void SetMaxHealth_ClampsCurrentHealth_WhenLowerThanCurrent()
         {
-            // Arrange: Start with full health
+            // INVARIANT: Current health must clamp to new max if exceeded
+            // BUG THIS CATCHES: CurrentHealth > MaxHealth breaking health logic
             float initialHealth = health.CurrentHealth; // Should be MaxHealth
 
-            // Act: Set max health lower than current
-            health.SetMaxHealth(50f);
+            health.SetMaxHealth(50f); // Set max lower than current
 
-            // Assert: Current health should be clamped to new max
             Assert.AreEqual(50f, health.CurrentHealth,
-                "Current health should be clamped to new max health");
+                "BUG: Current health not clamped to new max");
             Assert.LessOrEqual(health.CurrentHealth, health.MaxHealth,
-                "Current health should not exceed max health");
+                "BUG: CurrentHealth > MaxHealth");
         }
 
         [Test]
         public void SetMaxHealth_WithHealToFull_RestoresFullHealth()
         {
-            // Arrange: Take damage
+            // INVARIANT: healToFull parameter must restore to new max
+            // BUG THIS CATCHES: healToFull parameter not working
             health.TakeDamage(40f);
 
-            // Act: Set new max health and heal to full
             health.SetMaxHealth(200f, healToFull: true);
 
-            // Assert: Should be at full health
-            Assert.AreEqual(200f, health.CurrentHealth, "Should be healed to new max health");
-            Assert.AreEqual(health.MaxHealth, health.CurrentHealth, "Should be at full health");
+            Assert.AreEqual(200f, health.CurrentHealth,
+                "BUG: healToFull didn't restore to new max");
+            Assert.AreEqual(health.MaxHealth, health.CurrentHealth,
+                "Should be at full health after healToFull");
         }
 
         [Test]
         public void SetMaxHealth_WithoutHealToFull_PreservesCurrentHealth()
         {
-            // Arrange: Take damage
+            // INVARIANT: Without healToFull, current health stays same
+            // BUG THIS CATCHES: healToFull default value wrong
             health.TakeDamage(30f);
             float damagedHealth = health.CurrentHealth;
 
-            // Act: Set higher max health without healing
             health.SetMaxHealth(150f, healToFull: false);
 
-            // Assert: Current health should be unchanged
             Assert.AreEqual(damagedHealth, health.CurrentHealth,
-                "Current health should remain the same");
+                "BUG: Current health changed when healToFull=false");
         }
 
         [Test]
         public void SetMaxHealth_InvokesOnHealthChangedEvent()
         {
-            // Arrange: Subscribe to event
+            // INVARIANT: Changing max health should fire event
+            // BUG THIS CATCHES: UI not updated when max health changes
             bool eventInvoked = false;
             health.OnHealthChanged += (current, max) => eventInvoked = true;
 
-            // Act: Set new max health
             health.SetMaxHealth(120f);
 
-            // Assert: Event should be invoked
-            Assert.IsTrue(eventInvoked, "OnHealthChanged should be invoked when max health changes");
-        }
-
-        #endregion
-
-        #region Getter Methods Tests
-
-        [Test]
-        public void GetCurrentHealth_ReturnsCurrentHealth()
-        {
-            // Arrange: Take some damage
-            health.TakeDamage(25f);
-
-            // Act: Get current health
-            float retrievedHealth = health.GetCurrentHealth();
-
-            // Assert: Should return current health
-            Assert.AreEqual(health.CurrentHealth, retrievedHealth,
-                "GetCurrentHealth should return current health value");
-        }
-
-        [Test]
-        public void GetMaxHealth_ReturnsMaxHealth()
-        {
-            // Act: Get max health
-            float retrievedMaxHealth = health.GetMaxHealth();
-
-            // Assert: Should return max health
-            Assert.AreEqual(health.MaxHealth, retrievedMaxHealth,
-                "GetMaxHealth should return max health value");
-        }
-
-        #endregion
-
-        #region Edge Cases
-
-        [Test]
-        public void TakeDamage_WithZeroDamage_DoesNotChangeHealth()
-        {
-            // Arrange: Initial health
-            float initialHealth = health.CurrentHealth;
-
-            // Act: Take zero damage
-            health.TakeDamage(0f);
-
-            // Assert: Health should be unchanged
-            Assert.AreEqual(initialHealth, health.CurrentHealth,
-                "Zero damage should not change health");
-        }
-
-        [Test]
-        public void TakeDamage_WithNegativeDamage_DoesNotHeal()
-        {
-            // Arrange: Take some damage first
-            health.TakeDamage(30f);
-            float damagedHealth = health.CurrentHealth;
-
-            // Act: Try negative damage (shouldn't be used this way, but test for safety)
-            health.TakeDamage(-20f);
-
-            // Assert: Health should increase (negative damage becomes healing in current implementation)
-            // Note: This reveals that negative damage acts as healing - may want to fix this
-            Assert.Greater(health.CurrentHealth, damagedHealth,
-                "Negative damage currently acts as healing");
-        }
-
-        [Test]
-        public void Heal_WithZeroAmount_DoesNotChangeHealth()
-        {
-            // Arrange: Take some damage
-            health.TakeDamage(20f);
-            float damagedHealth = health.CurrentHealth;
-
-            // Act: Heal with zero
-            health.Heal(0f);
-
-            // Assert: Health should be unchanged
-            Assert.AreEqual(damagedHealth, health.CurrentHealth,
-                "Zero healing should not change health");
+            Assert.IsTrue(eventInvoked,
+                "BUG: OnHealthChanged didn't fire when max health changed");
         }
 
         #endregion

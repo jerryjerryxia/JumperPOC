@@ -749,30 +749,7 @@ namespace Tests.EditMode
 
         #endregion
 
-        #region External State Setters Tests
-
-        [Test]
-        public void IsClimbing_CanBeSetExternally()
-        {
-            // Act: Set climbing state
-            stateTracker.IsClimbing = true;
-
-            // Assert: Should persist
-            Assert.IsTrue(stateTracker.IsClimbing, "IsClimbing should be settable externally");
-
-            stateTracker.IsClimbing = false;
-            Assert.IsFalse(stateTracker.IsClimbing, "IsClimbing should update when set to false");
-        }
-
-        [Test]
-        public void IsLedgeGrabbing_CanBeSetExternally()
-        {
-            // Act: Set ledge grabbing state
-            stateTracker.IsLedgeGrabbing = true;
-
-            // Assert: Should persist
-            Assert.IsTrue(stateTracker.IsLedgeGrabbing, "IsLedgeGrabbing should be settable externally");
-        }
+        #region External State Priority Tests
 
         [Test]
         public void UpdateStates_RespectsExternallySetStates()

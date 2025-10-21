@@ -122,6 +122,40 @@ public class PlayerMovement : MonoBehaviour
         airDashesRemaining = maxAirDashes;
     }
 
+#if UNITY_EDITOR || UNITY_INCLUDE_TESTS
+    /// <summary>
+    /// Initialize for EditMode testing - sets component references and dash state
+    /// Accepts configurable parameters to test behavior with different values
+    ///
+    /// NOTE: Animator is set to NULL to avoid animator.parameters exceptions in EditMode.
+    /// This means tests verify COUNTER LOGIC only, not animator integration.
+    /// </summary>
+    public void InitializeForTesting(Rigidbody2D rigidbody, Transform transform, Animator playerAnimator, Collider2D collider,
+                                     int testMaxDashes = 2, int testMaxAirDashes = 2, float testDashCooldown = 0.4f)
+    {
+        // Set component references
+        rb = rigidbody;
+        playerTransform = transform;
+        animator = null;  // CRITICAL: Set to null to avoid animator.parameters exceptions in EditMode
+        col = collider;
+        groundDetection = null;
+        wallDetection = null;
+        combat = null;
+        jumpSystem = null;
+
+        // Set configurable test parameters (instead of hardcoding)
+        maxDashes = testMaxDashes;
+        maxAirDashes = testMaxAirDashes;
+        dashCooldown = testDashCooldown;
+
+        // Initialize dash state based on configured values
+        facingRight = true;
+        dashesRemaining = maxDashes;
+        airDashesRemaining = maxAirDashes;
+        airDashesUsed = 0;
+    }
+#endif
+
     /// <summary>
     /// Update external state - called before HandleMovement
     /// </summary>
