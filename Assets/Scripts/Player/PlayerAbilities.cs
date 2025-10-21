@@ -73,6 +73,19 @@ public class PlayerAbilities : MonoBehaviour
             // Debug.LogError("[PlayerAbilities] PlayerController component not found!");
         }
     }
+
+    #if UNITY_EDITOR || UNITY_INCLUDE_TESTS
+    /// <summary>
+    /// Initialize singleton for testing - EditMode tests don't call Awake() automatically
+    /// </summary>
+    public void InitializeForTesting()
+    {
+        if (Instance == null)
+        {
+            Instance = this;
+        }
+    }
+    #endif
     
     void Start()
     {

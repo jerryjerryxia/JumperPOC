@@ -68,15 +68,35 @@ public class PlayerCombat : MonoBehaviour
         playerController = GetComponent<PlayerController>();
         rb = GetComponent<Rigidbody2D>();
         animator = GetComponent<Animator>();
-        
+
         // PlayerController may be disabled in new component system, that's OK
         if (playerController == null)
         {
             // Debug.LogWarning("PlayerCombat: PlayerController not found - some features may be limited");
         }
-        
-        originalGravityScale = rb.gravityScale;
+
+        if (rb != null)
+        {
+            originalGravityScale = rb.gravityScale;
+        }
     }
+
+    #if UNITY_EDITOR || UNITY_INCLUDE_TESTS
+    /// <summary>
+    /// Initialize for testing - allows tests to work without full GameObject setup
+    /// </summary>
+    public void InitializeForTesting(Rigidbody2D testRb, Animator testAnimator, PlayerController testController = null)
+    {
+        rb = testRb;
+        animator = testAnimator;
+        playerController = testController;
+
+        if (rb != null)
+        {
+            originalGravityScale = rb.gravityScale;
+        }
+    }
+    #endif
     
     void OnEnable()
     {
@@ -160,7 +180,7 @@ public class PlayerCombat : MonoBehaviour
         
         // Check for dash attack in grace period after dash - prevent when actively wall sticking/sliding
         // Allow dash attack when jumping from wall (OnWall may still be true but not in wall state)
-        bool actuallyOnWall = playerController.OnWall && (playerController.IsWallSticking || playerController.IsWallSliding);
+        bool actuallyOnWall = playerController != null && playerController.OnWall && (playerController.IsWallSticking || playerController.IsWallSliding);
         if (!actuallyOnWall && !isDuringDash && !isAttacking && dashEndTime > 0 && Time.time - dashEndTime <= dashAttackInputWindow && !dashAttackConsumed &&
             PlayerAbilities.Instance != null && PlayerAbilities.Instance.HasDashAttack)
         {
@@ -180,13 +200,16 @@ public class PlayerCombat : MonoBehaviour
         
         // Check for air attack - prevent attack when actively wall sticking/sliding
         // Allow air attack when jumping from wall (OnWall may still be true but not in wall state)
-        actuallyOnWall = playerController.OnWall && (playerController.IsWallSticking || playerController.IsWallSliding);
+        actuallyOnWall = playerController != null && playerController.OnWall && (playerController.IsWallSticking || playerController.IsWallSliding);
 
         // CRITICAL: Extra air attack limit check to prevent rapid-click exploits
         // This catches edge cases where state hasn't fully updated
         bool airAttackSlotAvailable = (airAttacksUsed < 1) || (airAttacksUsed == 1 && canUseSecondAirAttack);
 
-        if (!actuallyOnWall && !playerController.IsGrounded && !isAttacking && !isDashAttacking && !playerController.IsDashing &&
+        bool isGrounded = playerController != null && playerController.IsGrounded;
+        bool isDashing = playerController != null && playerController.IsDashing;
+
+        if (!actuallyOnWall && !isGrounded && !isAttacking && !isDashAttacking && !isDashing &&
             !HasUsedAirAttack && airAttackSlotAvailable &&
             PlayerAbilities.Instance != null && PlayerAbilities.Instance.HasAirAttack)
         {
@@ -194,7 +217,7 @@ public class PlayerCombat : MonoBehaviour
             StartAirAttack();
             return;
         }
-        else if (!actuallyOnWall && !playerController.IsGrounded &&
+        else if (!actuallyOnWall && !isGrounded &&
                  PlayerAbilities.Instance != null && PlayerAbilities.Instance.HasAirAttack &&
                  (!HasUsedAirAttack || !airAttackSlotAvailable))
         {
@@ -202,14 +225,14 @@ public class PlayerCombat : MonoBehaviour
         }
         
         // Check if we can execute the attack immediately
-        if (!isAttacking && !isDashAttacking && !playerController.IsDashing)
+        if (!isAttacking && !isDashAttacking && !isDashing)
         {
             if (dashEndTime > 0 && Time.time - dashEndTime > dashAttackInputWindow)
             {
                 dashEndTime = 0f;
             }
             
-            if (playerController.IsGrounded && dashEndTime == 0)
+            if (isGrounded && dashEndTime == 0)
             {
                 // Debug.Log("Attack executing immediately - not buffered");
                 StartAttackCombo();
@@ -261,13 +284,14 @@ public class PlayerCombat : MonoBehaviour
         // Debug.Log($"OnDashEnd - isDuringDash={isDuringDash}, dashAttackQueued={dashAttackQueued}, allowDashAttack={allowDashAttack}, isDashAttacking={isDashAttacking}");
         
         // Execute queued dash attack if we have one - prevent when on wall
-        if (!playerController.OnWall && dashAttackQueued && allowDashAttack && !dashAttackConsumed)
+        bool onWall = playerController != null && playerController.OnWall;
+        if (!onWall && dashAttackQueued && allowDashAttack && !dashAttackConsumed)
         {
             // Debug.Log("Executing queued dash attack on dash end");
             dashAttackConsumed = true;
             StartDashAttack();
         }
-        else if (playerController.OnWall && dashAttackQueued)
+        else if (onWall && dashAttackQueued)
         {
             // Debug.Log("Dash attack blocked - player is on wall");
             dashAttackQueued = false;
@@ -284,7 +308,8 @@ public class PlayerCombat : MonoBehaviour
     public void CheckBufferedDashAttack()
     {
         // Check if we have a buffered attack input that should become a dash attack - prevent when on wall
-        if (!playerController.OnWall && !isDuringDash && !isAttacking && dashEndTime > 0 && Time.time - dashEndTime <= dashAttackInputWindow && allowDashAttack && !dashAttackConsumed &&
+        bool onWall = playerController != null && playerController.OnWall;
+        if (!onWall && !isDuringDash && !isAttacking && dashEndTime > 0 && Time.time - dashEndTime <= dashAttackInputWindow && allowDashAttack && !dashAttackConsumed &&
             PlayerAbilities.Instance != null && PlayerAbilities.Instance.HasDashAttack)
         {
             if (attackInputBuffered && inputBufferTimer > 0)
@@ -376,7 +401,8 @@ public class PlayerCombat : MonoBehaviour
     
     private void StartDashAttack()
     {
-        isAirDashAttacking = !playerController.IsGrounded;
+        bool isGrounded = playerController != null && playerController.IsGrounded;
+        isAirDashAttacking = !isGrounded;
         
         // Debug.Log($"StartDashAttack called - isAirDashAttacking: {isAirDashAttacking}");
         
@@ -404,7 +430,8 @@ public class PlayerCombat : MonoBehaviour
         comboWindowTimer = 0f;
         lastAttackTime = Time.time;
 
-        dashAttackDirection = playerController.FacingRight ? Vector2.right : Vector2.left;
+        bool facingRight = playerController == null || playerController.FacingRight;
+        dashAttackDirection = facingRight ? Vector2.right : Vector2.left;
         dashEndTime = 0f;
 
         // DESIGN CHANGE: No movement interruption for dash attacks

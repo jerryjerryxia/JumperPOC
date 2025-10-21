@@ -1,7 +1,9 @@
 {
     "name": "TestHelpers",
-    "rootNamespace": "Tests.TestHelpers",
-    "references": [],
+    "rootNamespace": "Tests.Helpers",
+    "references": [
+        "JumperGame"
+    ],
     "includePlatforms": [],
     "excludePlatforms": [],
     "allowUnsafeCode": false,
