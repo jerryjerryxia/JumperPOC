@@ -8,6 +8,11 @@ using System.Collections;
 /// </summary>
 public class PlayerRespawnSystem : MonoBehaviour
 {
+    [Header("Death Zone")]
+    [SerializeField] private float deathZoneY = -20f; // Y position that triggers reset
+    [SerializeField] private float deathZoneWidth = 100f; // Width of death zone visualization
+    [SerializeField] private bool showDeathZone = true; // Show death zone in scene view
+
     // Component references
     private Transform playerTransform;
     private Rigidbody2D rb;
@@ -17,6 +22,11 @@ public class PlayerRespawnSystem : MonoBehaviour
     public Vector3 RespawnPosition { get; private set; }
     public Vector3 InitialPosition { get; private set; }
     public bool HasRespawnPoint { get; private set; }
+
+    // Public properties for external access
+    public float DeathZoneY => deathZoneY;
+    public float DeathZoneWidth => deathZoneWidth;
+    public bool ShowDeathZone => showDeathZone;
 
     // External state references (passed from PlayerController)
     private System.Action<float, float, float> onResetDashState;
@@ -62,7 +72,7 @@ public class PlayerRespawnSystem : MonoBehaviour
     /// <summary>
     /// Check if player has fallen below death zone
     /// </summary>
-    public bool IsInDeathZone(float deathZoneY)
+    public bool IsInDeathZone()
     {
         return playerTransform.position.y < deathZoneY;
     }

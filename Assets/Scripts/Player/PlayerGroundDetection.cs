@@ -8,25 +8,33 @@ using UnityEngine;
 [RequireComponent(typeof(Collider2D))]
 public class PlayerGroundDetection : MonoBehaviour
 {
+    [Header("Ground Check")]
+    [SerializeField] private float groundCheckOffsetY = -0.02f;
+    [SerializeField] private float groundCheckRadius = 0.03f;
+
+    [Header("Slope Movement")]
+    [SerializeField] private float maxSlopeAngle = 60f; // Maximum walkable slope angle
+
+    [Header("Slope Raycast Parameters")]
+    [SerializeField] private bool enableSlopeVisualization = true; // Show raycast debug lines
+    [SerializeField] private float slopeRaycastDistance = 0.2f; // Distance for slope detection raycasts
+    [SerializeField] private Vector2 raycastDirection1 = Vector2.down; // Direction 1: Straight down
+    [SerializeField] private Vector2 raycastDirection2 = new Vector2(0.707f, -0.707f); // Direction 2: Down-right 45°
+    [SerializeField] private Vector2 raycastDirection3 = new Vector2(-0.707f, -0.707f); // Direction 3: Down-left 45°
+    [SerializeField] private float debugLineDuration = 0.1f; // How long debug lines stay visible
+
+    [Header("Buffer Climbing")]
+    [SerializeField] private float climbingAssistanceOffset = 0.06f; // How far below platform edge to trigger assistance
+
+    [Header("Coyote Time")]
+    [SerializeField] private bool enableCoyoteTime = false; // Enable coyote time feature (Phase 1 fixed)
+    [SerializeField] private float coyoteTimeDuration = 0.02f; // Grace period after leaving ground (Phase 1 fixed)
+
     // Component references (injected by PlayerController)
     private Rigidbody2D rb;
     private Collider2D col;
     private Transform playerTransform;
     private PlayerCombat combat;
-
-    // Configuration (injected from PlayerController)
-    private float groundCheckOffsetY;
-    private float groundCheckRadius;
-    private float maxSlopeAngle;
-    private bool enableSlopeVisualization;
-    private float slopeRaycastDistance;
-    private Vector2 raycastDirection1;
-    private Vector2 raycastDirection2;
-    private Vector2 raycastDirection3;
-    private float debugLineDuration;
-    private bool enableCoyoteTime;
-    private float coyoteTimeDuration;
-    private float climbingAssistanceOffset;
 
     // External state dependencies
     private Vector2 moveInput;
@@ -59,6 +67,9 @@ public class PlayerGroundDetection : MonoBehaviour
     public int DashesRemaining { get; set; }
     public float LastLandTime { get; set; }
 
+    // Public properties for shared parameters (used by PlayerMovement)
+    public float ClimbingAssistanceOffset => climbingAssistanceOffset;
+
     /// <summary>
     /// Initialize component references and configuration from PlayerController
     /// </summary>
@@ -71,6 +82,7 @@ public class PlayerGroundDetection : MonoBehaviour
 
     /// <summary>
     /// Set configuration values from PlayerController
+    /// DEPRECATED: Most parameters are now owned by this component
     /// </summary>
     public void SetConfiguration(float _groundCheckOffsetY, float _groundCheckRadius, float _maxSlopeAngle,
                                 bool _enableSlopeVisualization, float _slopeRaycastDistance,
@@ -78,18 +90,8 @@ public class PlayerGroundDetection : MonoBehaviour
                                 float _debugLineDuration, bool _enableCoyoteTime, float _coyoteTimeDuration,
                                 float _climbingAssistanceOffset, int _maxAirDashes, int _maxDashes, PlayerCombat _combat)
     {
-        groundCheckOffsetY = _groundCheckOffsetY;
-        groundCheckRadius = _groundCheckRadius;
-        maxSlopeAngle = _maxSlopeAngle;
-        enableSlopeVisualization = _enableSlopeVisualization;
-        slopeRaycastDistance = _slopeRaycastDistance;
-        raycastDirection1 = _raycastDirection1;
-        raycastDirection2 = _raycastDirection2;
-        raycastDirection3 = _raycastDirection3;
-        debugLineDuration = _debugLineDuration;
-        enableCoyoteTime = _enableCoyoteTime;
-        coyoteTimeDuration = _coyoteTimeDuration;
-        climbingAssistanceOffset = _climbingAssistanceOffset;
+        // Most parameters are now [SerializeField] in this component
+        // Only set the ones still passed from PlayerController
         maxAirDashes = _maxAirDashes;
         maxDashes = _maxDashes;
         combat = _combat;

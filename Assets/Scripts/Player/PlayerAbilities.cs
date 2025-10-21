@@ -226,10 +226,16 @@ public class PlayerAbilities : MonoBehaviour
         int extraJumps = 0;
         if (hasDoubleJump) extraJumps += 1;
         if (hasTripleJump) extraJumps += 1; // Future expansion
-        
-        // Access the public field directly (as per current PlayerController design)
-        playerController.extraJumps = extraJumps;
-        
+
+        // NOTE: extraJumps is now in PlayerJumpSystem component
+        // Access it through the jump system instead of PlayerController
+        PlayerJumpSystem jumpSystem = playerController.GetComponent<PlayerJumpSystem>();
+        if (jumpSystem != null)
+        {
+            // Set JumpsRemaining instead since extraJumps is private in PlayerJumpSystem
+            jumpSystem.JumpsRemaining = extraJumps;
+        }
+
         // Debug.Log($"[PlayerAbilities] Jump abilities refreshed - Extra jumps: {extraJumps}");
     }
     

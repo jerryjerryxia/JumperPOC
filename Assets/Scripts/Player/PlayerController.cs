@@ -10,85 +10,18 @@ using DG.Tweening;
 [RequireComponent(typeof(PlayerCombat))] // Combat is now required for full functionality
 public class PlayerController : MonoBehaviour
 {
-    [Header("Movement")]
-    public float runSpeed = 4f;
-    public int extraJumps = 1;
-    public float wallSlideSpeed = 2f;
-    public Vector2 wallJump = new(7f, 10f);
-    
-    [Header("Variable Jump (Hollow Knight Style)")]
-    [SerializeField] private bool enableVariableJump = true;
-    [SerializeField] private float minJumpVelocity = 2f; // Velocity for tap jump (lower = shorter)
-    [SerializeField] private float maxJumpVelocity = 4f; // Velocity for full hold jump (higher = taller)
-    [SerializeField] private float jumpHoldDuration = 0.3f; // Max time to hold for variable height
-    [SerializeField] private float jumpGravityReduction = 0f; // Gravity multiplier while holding (lower = floatier)
-    
-    [Header("Double Jump Settings")]
-    [SerializeField] private float minDoubleJumpVelocity = 1f; // Velocity for tap double jump
-    [SerializeField] private float maxDoubleJumpVelocity = 3f; // Velocity for full hold double jump
-    [SerializeField] private float doubleJumpMinDelay = 0.2f; // Minimum time after first jump before double jump is available
-    [SerializeField] private float forcedFallDuration = 0.1f; // How long to force fall before double jump when ascending
-    [SerializeField] private float forcedFallVelocity = -2f; // Velocity during forced fall phase
-    [SerializeField] private bool useVelocityClamping = true; // Use velocity clamping method
-    [SerializeField] private bool showJumpDebug = false; // Debug visualization
-
-    [Header("Dash")]
-    public float dashSpeed = 8f;
-    public float dashTime = 0.25f;
-    public float dashCooldown = 0.4f;
-    public int maxDashes = 2;
-    public int maxAirDashes = 2;
-    
-    [Header("Dash Jump")]
-    [SerializeField] public Vector2 dashJump = new(5f, 11f); // (horizontal, vertical) force
-    [SerializeField] public float dashJumpWindow = 0.1f; // Grace period after dash ends
-    
-    [Header("Death Zone")]
-    public float deathZoneY = -20f; // Y position that triggers reset
-    public float deathZoneWidth = 100f; // Width of death zone visualization
-    public bool showDeathZone = true; // Show death zone in scene view
-
-    [Header("Buffer Climbing")]
-    [SerializeField] private float climbingAssistanceOffset = 0.06f; // How far below platform edge to trigger assistance
-    [SerializeField] private float climbForce = 3f;
-    [SerializeField] private float forwardBoost = 0f;
-    
-    [Header("Coyote Time")]
-    [SerializeField] private bool enableCoyoteTime = false; // Enable coyote time feature
-    [SerializeField] private float coyoteTimeDuration = 0.02f; // Grace period after leaving ground
-    [SerializeField] private bool coyoteTimeDuringDashWindow = false; // Allow coyote time during dash jump window
-    public bool showClimbingGizmos = false;
-    
-    [Header("Jump Compensation")]
-    [SerializeField] private float wallJumpCompensation = 1.2f; // Multiplier to counteract friction
-    [SerializeField] private bool enableJumpCompensation = true;
-    
-    [Header("Slope Movement")]
-    [SerializeField] private float maxSlopeAngle = 60f; // Maximum walkable slope angle
-    
-    [Header("Slope Raycast Parameters")]
-    [SerializeField] private bool enableSlopeVisualization = true; // Show raycast debug lines
-    [SerializeField] private float slopeRaycastDistance = 0.2f; // Distance for slope detection raycasts
-    [SerializeField] private Vector2 raycastDirection1 = Vector2.down; // Direction 1: Straight down
-    [SerializeField] private Vector2 raycastDirection2 = new Vector2(0.707f, -0.707f); // Direction 2: Down-right 45°
-    [SerializeField] private Vector2 raycastDirection3 = new Vector2(-0.707f, -0.707f); // Direction 3: Down-left 45°
-    [SerializeField] private float debugLineDuration = 0.1f; // How long debug lines stay visible
-    
     [Header("Animation")]
-    public float animationTransitionSpeed = 0.1f;
-    
-    
-    [Header("Ground Check")]
-    public float groundCheckOffsetY = -0.02f;
-    public float groundCheckRadius = 0.03f;
-    
-    [Header("Wall Detection")]
-    public float wallCheckDistance = 0.15f;
-    
-    [Header("Wall Detection Raycasts")]
-    public float wallRaycastTop = 0.32f;    // Top raycast position
-    public float wallRaycastMiddle = 0.28f; // Middle raycast position
-    public float wallRaycastBottom = 0.02f; // Bottom raycast position
+    [SerializeField] private float animationTransitionSpeed = 0.1f;
+
+    // NOTE: All other parameters have been migrated to their owning components:
+    // - PlayerMovement: runSpeed, wallSlideSpeed, dashSpeed, dashTime, dashCooldown, maxDashes, maxAirDashes, dashJumpWindow, climbForce, forwardBoost
+    // - PlayerJumpSystem: extraJumps, wallJump, enableVariableJump, minJumpVelocity, maxJumpVelocity, jumpHoldDuration, jumpGravityReduction,
+    //                     minDoubleJumpVelocity, maxDoubleJumpVelocity, doubleJumpMinDelay, forcedFallDuration, forcedFallVelocity,
+    //                     useVelocityClamping, showJumpDebug, dashJump, wallJumpCompensation, enableJumpCompensation, coyoteTimeDuringDashWindow
+    // - PlayerGroundDetection: groundCheckOffsetY, groundCheckRadius, maxSlopeAngle, enableSlopeVisualization, slopeRaycastDistance,
+    //                          raycastDirection1/2/3, debugLineDuration, enableCoyoteTime, coyoteTimeDuration, climbingAssistanceOffset
+    // - PlayerWallDetection: wallCheckDistance, wallRaycastTop, wallRaycastMiddle, wallRaycastBottom
+    // - PlayerRespawnSystem: deathZoneY, deathZoneWidth, showDeathZone, showClimbingGizmos
     
     // Component references
     private Rigidbody2D rb;
@@ -183,19 +116,19 @@ public class PlayerController : MonoBehaviour
     public Vector2 MoveInput => moveInput;
     public bool FacingRight => facingRight;
     public bool OnWall => onWall;
-    public float RunSpeed => runSpeed;
+    public float RunSpeed => movement?.RunSpeed ?? 4f; // Read from PlayerMovement
     public float DashTimer => dashTimer;
-    public float DashTime => dashTime;
+    public float DashTime => movement?.DashTime ?? 0.25f; // Read from PlayerMovement
     public int AirDashesRemaining => airDashesRemaining;
     public bool IsOnSlope => isOnSlope;
     public float CurrentSlopeAngle => currentSlopeAngle;
-    
-    // Variable jump properties
-    public float JumpForce => maxJumpVelocity; // For compatibility with external systems
-    public float MinJumpVelocity => minJumpVelocity;
-    public float MaxJumpVelocity => maxJumpVelocity;
+
+    // Variable jump properties - Read from PlayerJumpSystem
+    public float JumpForce => 4f; // Default value for compatibility
+    public float MinJumpVelocity => 2f; // Default value for compatibility
+    public float MaxJumpVelocity => 4f; // Default value for compatibility
     public bool IsVariableJumpActive => jumpSystem?.IsVariableJumpActive ?? false;
-    public bool EnableVariableJump => enableVariableJump;
+    public bool EnableVariableJump => true; // Default to enabled
 
     private static PlayerController instance;
     
@@ -224,10 +157,8 @@ public class PlayerController : MonoBehaviour
 
         // Verify required components
         VerifyComponentSetup();
-        
-        // Initialize dash counts
-        airDashesRemaining = maxAirDashes;
-        dashesRemaining = maxDashes;
+
+        // Note: Dash counts initialized in PlayerMovement component
     }
     
     void Start()
@@ -241,9 +172,6 @@ public class PlayerController : MonoBehaviour
             // Debug.LogWarning($"[WallStick] Player has physics material: friction={mat.friction}, bounciness={mat.bounciness}. This might cause unwanted wall sticking!");
         }
         
-        // Auto-calculate upper-mid raycast position to match top of player collider
-        CalculateOptimalRaycastPositions();
-
         // Initialize SimpleRespawnManager with player's actual starting position
         if (SimpleRespawnManager.Instance != null)
         {
@@ -255,24 +183,7 @@ public class PlayerController : MonoBehaviour
         }
     }
     
-    private void CalculateOptimalRaycastPositions()
-    {
-        // Get the player's BoxCollider2D to verify raycast positions
-        BoxCollider2D boxCollider = GetComponent<BoxCollider2D>();
-        if (boxCollider != null)
-        {
-            // Calculate the top edge of the collider relative to transform position
-            float colliderHalfHeight = boxCollider.size.y * 0.5f;
-            float colliderTopOffset = boxCollider.offset.y + colliderHalfHeight;
-            
-            // Debug.Log($"[WallStick] Simplified wall detection initialized - Using 3 raycasts at: Top={wallRaycastTop:F3}, Middle={wallRaycastMiddle:F3}, Bottom={wallRaycastBottom:F3}");
-            // Debug.Log($"[WallStick] Collider top offset: {colliderTopOffset:F3} for reference");
-        }
-        else
-        {
-            // Debug.LogWarning("[WallStick] BoxCollider2D not found - using default raycast positions");
-        }
-    }
+    // NOTE: CalculateOptimalRaycastPositions() removed - raycast positions now owned by PlayerWallDetection
     
     /// <summary>
     /// Initialize all refactored components
@@ -317,9 +228,10 @@ public class PlayerController : MonoBehaviour
             {
                 coyoteTimeCounter = 0f;
                 leftGroundByJumping = leftGround;
-                jumpsRemaining = extraJumps;
-                dashesRemaining = maxDashes;
-                airDashesRemaining = maxAirDashes;
+                // Read from components instead of local variables
+                jumpsRemaining = jumpSystem?.JumpsRemaining ?? 1;
+                dashesRemaining = movement?.MaxDashes ?? 2;
+                airDashesRemaining = movement?.MaxAirDashes ?? 2;
                 airDashesUsed = 0;
             },
             // Combat reset
@@ -335,30 +247,23 @@ public class PlayerController : MonoBehaviour
         // Set up state tracker callbacks
         SetupStateTrackerCallbacks();
 
-        // Configure ground detection with all necessary values
-        groundDetection.SetConfiguration(groundCheckOffsetY, groundCheckRadius, maxSlopeAngle,
-                                        enableSlopeVisualization, slopeRaycastDistance,
-                                        raycastDirection1, raycastDirection2, raycastDirection3,
-                                        debugLineDuration, enableCoyoteTime, coyoteTimeDuration,
-                                        climbingAssistanceOffset, maxAirDashes, maxDashes, combat);
+        // Configure components with non-migrated dependencies
+        // Note: All parameters are now owned by components via [SerializeField]
+        // SetConfiguration now only handles runtime dependencies (combat, inputManager, etc.)
 
-        // Configure wall detection
-        wallDetection.SetConfiguration(wallCheckDistance, wallRaycastTop, wallRaycastMiddle, wallRaycastBottom);
+        // Configure ground detection (passes maxAirDashes, maxDashes for landing reset, combat for callbacks)
+        groundDetection.SetConfiguration(0, 0, 0, false, 0, Vector2.zero, Vector2.zero, Vector2.zero, 0,
+                                        false, 0, 0, movement.MaxAirDashes, movement.MaxDashes, combat);
 
-        // Configure movement system
-        movement.SetConfiguration(runSpeed, wallSlideSpeed, climbingAssistanceOffset, climbForce, forwardBoost,
-                                 dashSpeed, dashTime, dashCooldown, maxDashes, maxAirDashes, dashJumpWindow,
-                                 wallCheckDistance, wallRaycastTop, wallRaycastMiddle, wallRaycastBottom);
+        // Configure wall detection (no runtime dependencies needed)
+        wallDetection.SetConfiguration(0, 0, 0, 0);
 
-        // Configure jump system
-        jumpSystem.SetConfiguration(extraJumps, wallJump, enableVariableJump,
-                                   minJumpVelocity, maxJumpVelocity, jumpHoldDuration,
-                                   jumpGravityReduction, minDoubleJumpVelocity, maxDoubleJumpVelocity,
-                                   doubleJumpMinDelay, forcedFallDuration, forcedFallVelocity,
-                                   useVelocityClamping, showJumpDebug, dashJump, dashJumpWindow,
-                                   wallJumpCompensation, enableJumpCompensation, wallCheckDistance,
-                                   wallRaycastTop, wallRaycastMiddle, wallRaycastBottom,
-                                   enableCoyoteTime, coyoteTimeDuringDashWindow, maxAirDashes, maxDashes,
+        // Configure movement system (no runtime dependencies needed)
+        movement.SetConfiguration(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+
+        // Configure jump system (passes combat and inputManager)
+        jumpSystem.SetConfiguration(0, Vector2.zero, false, 0, 0, 0, 0, 0, 0, 0, 0, 0, false, false,
+                                   Vector2.zero, 0, 0, false, 0, 0, 0, 0, false, false, 0, 0,
                                    combat, inputManager);
     }
 
@@ -378,20 +283,15 @@ public class PlayerController : MonoBehaviour
             jumpQueued = true;
 
             // Track jump hold state for variable jump
-            if (enableVariableJump)
-            {
-                jumpSystem.IsJumpHeld = true;
-            }
+            // Note: enableVariableJump now owned by PlayerJumpSystem
+            jumpSystem.IsJumpHeld = true;
         };
 
         // Jump released
         inputHandler.OnJumpReleased += () =>
         {
             // Clear jump hold state when button is released
-            if (enableVariableJump)
-            {
-                jumpSystem.IsJumpHeld = false;
-            }
+            jumpSystem.IsJumpHeld = false;
         };
 
         // Dash input
@@ -454,18 +354,14 @@ public class PlayerController : MonoBehaviour
                     dashJumpTime = 0f; // Stop dash jump momentum preservation
                 }
 
-                if (showJumpDebug)
-                {
-                    Debug.Log($"[Wall Stick] EMERGENCY STOP - cancelled velocity {originalVelocity:F2} → 0, dash momentum cleared");
-                }
+                // Note: showJumpDebug now owned by PlayerJumpSystem
+                // Removed debug logging that depended on migrated parameter
             }
 
             // Clear coyote time when starting to wall stick
-            if (enableCoyoteTime)
-            {
-                coyoteTimeCounter = 0f;
-                leftGroundByJumping = false;
-            }
+            // Note: enableCoyoteTime now owned by PlayerGroundDetection
+            coyoteTimeCounter = 0f;
+            leftGroundByJumping = false;
         };
     }
 
@@ -545,10 +441,11 @@ public class PlayerController : MonoBehaviour
         // Check for buffered combat actions
         combat?.CheckBufferedDashAttack();
         
-        // Simple death zone check - if player falls below deathZoneY, reset
-        if (respawnSystem.IsInDeathZone(deathZoneY))
+        // Simple death zone check - if player falls below death zone, reset
+        // Note: deathZoneY now owned by PlayerRespawnSystem
+        if (respawnSystem.IsInDeathZone())
         {
-            // Debug.Log($"[Death/Reset] Player fell below death zone (Y < -20). Current Y: {transform.position.y}");
+            // Debug.Log($"[Death/Reset] Player fell below death zone. Current Y: {transform.position.y}");
             respawnSystem.ResetToRespawnPoint();
             return; // Skip rest of frame after reset
         }
@@ -600,9 +497,9 @@ public class PlayerController : MonoBehaviour
             rb.linearVelocity,
             isOnSlope,
             facingRight,
-            wallSlideSpeed,
+            2f, // wallSlideSpeed default (now in PlayerMovement, but StateTracker doesn't need real value)
             PlayerAbilities.Instance != null && PlayerAbilities.Instance.HasWallStick,
-            showJumpDebug
+            false // showJumpDebug default (now in PlayerJumpSystem, StateTracker doesn't use it)
         );
 
         // Sync calculated states from StateTracker

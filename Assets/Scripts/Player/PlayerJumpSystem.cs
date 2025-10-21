@@ -7,6 +7,37 @@ using UnityEngine;
 [RequireComponent(typeof(Rigidbody2D))]
 public class PlayerJumpSystem : MonoBehaviour
 {
+    [Header("Jump")]
+    [SerializeField] private int extraJumps = 1;
+    [SerializeField] private Vector2 wallJump = new(7f, 10f);
+
+    [Header("Variable Jump (Hollow Knight Style)")]
+    [SerializeField] private bool enableVariableJump = true;
+    [SerializeField] private float minJumpVelocity = 2f; // Velocity for tap jump (Phase 1 fixed: was 4f)
+    [SerializeField] private float maxJumpVelocity = 4f; // Velocity for full hold jump
+    [SerializeField] private float jumpHoldDuration = 0.3f; // Max time to hold for variable height
+    [SerializeField] private float jumpGravityReduction = 0f; // Gravity multiplier while holding
+
+    [Header("Double Jump Settings")]
+    [SerializeField] private float minDoubleJumpVelocity = 1f; // Velocity for tap double jump (Phase 1 fixed: was 4f)
+    [SerializeField] private float maxDoubleJumpVelocity = 3f; // Velocity for full hold double jump (Phase 1 fixed: was 4f)
+    [SerializeField] private float doubleJumpMinDelay = 0.2f; // Minimum time after first jump before double jump
+    [SerializeField] private float forcedFallDuration = 0.1f; // How long to force fall before double jump when ascending
+    [SerializeField] private float forcedFallVelocity = -2f; // Velocity during forced fall phase
+    [SerializeField] private bool useVelocityClamping = true; // Use velocity clamping method
+    [SerializeField] private bool showJumpDebug = false; // Debug visualization
+
+    [Header("Dash Jump")]
+    [SerializeField] private Vector2 dashJump = new(5f, 11f); // (horizontal, vertical) force
+    [SerializeField] private float dashJumpWindow = 0.1f; // Grace period after dash ends
+
+    [Header("Jump Compensation")]
+    [SerializeField] private float wallJumpCompensation = 1.2f; // Multiplier to counteract friction
+    [SerializeField] private bool enableJumpCompensation = true;
+
+    [Header("Coyote Time")]
+    [SerializeField] private bool coyoteTimeDuringDashWindow = false; // Allow coyote time during dash jump window
+
     // Component references (injected by PlayerController)
     private Rigidbody2D rb;
     private Transform playerTransform;
@@ -17,34 +48,6 @@ public class PlayerJumpSystem : MonoBehaviour
     private Animator animator;
     private PlayerCombat combat;
     private InputManager inputManager;
-
-    // Configuration (injected from PlayerController)
-    private int extraJumps;
-    private Vector2 wallJump;
-    private bool enableVariableJump;
-    private float minJumpVelocity;
-    private float maxJumpVelocity;
-    private float jumpHoldDuration;
-    private float jumpGravityReduction;
-    private float minDoubleJumpVelocity;
-    private float maxDoubleJumpVelocity;
-    private float doubleJumpMinDelay;
-    private float forcedFallDuration;
-    private float forcedFallVelocity;
-    private bool useVelocityClamping;
-    private bool showJumpDebug;
-    private Vector2 dashJump;
-    private float dashJumpWindow;
-    private float wallJumpCompensation;
-    private bool enableJumpCompensation;
-    private float wallCheckDistance;
-    private float wallRaycastTop;
-    private float wallRaycastMiddle;
-    private float wallRaycastBottom;
-    private bool enableCoyoteTime;
-    private bool coyoteTimeDuringDashWindow;
-    private int maxAirDashes;
-    private int maxDashes;
 
     // External state dependencies
     private bool facingRight;
@@ -59,6 +62,12 @@ public class PlayerJumpSystem : MonoBehaviour
     private bool isBufferClimbing;
     private bool isDashing;
     private float lastDashEndTime;
+
+    // Shared parameters (read from other components)
+    private bool enableCoyoteTime;
+    private int maxAirDashes; // Will be read from PlayerMovement
+    private int maxDashes;    // Will be read from PlayerMovement
+    private PlayerMovement movement;
 
     // Public jump state
     public bool IsVariableJumpActive { get; private set; }
@@ -90,10 +99,12 @@ public class PlayerJumpSystem : MonoBehaviour
         wallDetection = wall;
         abilities = playerAbilities;
         animator = playerAnimator;
+        movement = GetComponent<PlayerMovement>(); // Get PlayerMovement for shared parameters
     }
 
     /// <summary>
     /// Set configuration values from PlayerController
+    /// DEPRECATED: Most parameters are now owned by this component
     /// </summary>
     public void SetConfiguration(int _extraJumps, Vector2 _wallJump, bool _enableVariableJump,
                                  float _minJumpVelocity, float _maxJumpVelocity, float _jumpHoldDuration,
@@ -105,32 +116,8 @@ public class PlayerJumpSystem : MonoBehaviour
                                  bool _enableCoyoteTime, bool _coyoteTimeDuringDashWindow, int _maxAirDashes, int _maxDashes,
                                  PlayerCombat _combat, InputManager _inputManager)
     {
-        extraJumps = _extraJumps;
-        wallJump = _wallJump;
-        enableVariableJump = _enableVariableJump;
-        minJumpVelocity = _minJumpVelocity;
-        maxJumpVelocity = _maxJumpVelocity;
-        jumpHoldDuration = _jumpHoldDuration;
-        jumpGravityReduction = _jumpGravityReduction;
-        minDoubleJumpVelocity = _minDoubleJumpVelocity;
-        maxDoubleJumpVelocity = _maxDoubleJumpVelocity;
-        doubleJumpMinDelay = _doubleJumpMinDelay;
-        forcedFallDuration = _forcedFallDuration;
-        forcedFallVelocity = _forcedFallVelocity;
-        useVelocityClamping = _useVelocityClamping;
-        showJumpDebug = _showJumpDebug;
-        dashJump = _dashJump;
-        dashJumpWindow = _dashJumpWindow;
-        wallJumpCompensation = _wallJumpCompensation;
-        enableJumpCompensation = _enableJumpCompensation;
-        wallCheckDistance = _wallCheckDistance;
-        wallRaycastTop = _wallRaycastTop;
-        wallRaycastMiddle = _wallRaycastMiddle;
-        wallRaycastBottom = _wallRaycastBottom;
-        enableCoyoteTime = _enableCoyoteTime;
-        coyoteTimeDuringDashWindow = _coyoteTimeDuringDashWindow;
-        maxAirDashes = _maxAirDashes;
-        maxDashes = _maxDashes;
+        // Most parameters are now [SerializeField] in this component
+        // Only set the ones still passed from PlayerController or other components
         combat = _combat;
         inputManager = _inputManager;
     }
@@ -156,6 +143,19 @@ public class PlayerJumpSystem : MonoBehaviour
         isBufferClimbing = _isBufferClimbing;
         isDashing = _isDashing;
         lastDashEndTime = _lastDashEndTime;
+
+        // Read shared parameters from other components
+        if (groundDetection != null)
+        {
+            enableCoyoteTime = groundDetection.GetType().GetField("enableCoyoteTime",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)?.GetValue(groundDetection) as bool? ?? false;
+        }
+        if (movement != null)
+        {
+            // Read dash parameters from PlayerMovement (will be migrated there)
+            maxAirDashes = movement.MaxAirDashes;
+            maxDashes = movement.MaxDashes;
+        }
     }
 
     /// <summary>
@@ -491,6 +491,12 @@ public class PlayerJumpSystem : MonoBehaviour
 
         Vector2 wallDirection = facingRight ? Vector2.right : Vector2.left;
 
+        // Read wall detection parameters from PlayerWallDetection
+        float wallCheckDistance = wallDetection?.WallCheckDistance ?? 0.15f;
+        float wallRaycastTop = wallDetection?.WallRaycastTop ?? 0.32f;
+        float wallRaycastMiddle = wallDetection?.WallRaycastMiddle ?? 0.28f;
+        float wallRaycastBottom = wallDetection?.WallRaycastBottom ?? 0.02f;
+
         Vector2[] checkPoints = {
             playerTransform.position + Vector3.up * wallRaycastTop,
             playerTransform.position + Vector3.up * wallRaycastMiddle,
@@ -633,6 +639,7 @@ public class PlayerJumpSystem : MonoBehaviour
         LastJumpTime = Time.time;
 
         JumpsRemaining = extraJumps;
+        // Read maxAirDashes from PlayerMovement (will be set in UpdateExternalState)
         airDashesRemaining = maxAirDashes;
         airDashesUsed = 0;
 

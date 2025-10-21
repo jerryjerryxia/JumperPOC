@@ -8,17 +8,19 @@ using UnityEngine;
 [RequireComponent(typeof(Collider2D))]
 public class PlayerWallDetection : MonoBehaviour
 {
+    [Header("Wall Detection")]
+    [SerializeField] private float wallCheckDistance = 0.15f;
+
+    [Header("Wall Detection Raycasts")]
+    [SerializeField] private float wallRaycastTop = 0.32f;    // Top raycast position
+    [SerializeField] private float wallRaycastMiddle = 0.28f; // Middle raycast position
+    [SerializeField] private float wallRaycastBottom = 0.02f; // Bottom raycast position
+
     // Component references (injected by PlayerController)
     private Rigidbody2D rb;
     private Collider2D col;
     private Transform playerTransform;
     private PlayerAbilities abilities;
-
-    // Configuration (injected from PlayerController)
-    private float wallCheckDistance;
-    private float wallRaycastTop;
-    private float wallRaycastMiddle;
-    private float wallRaycastBottom;
 
     // External state dependencies
     private bool facingRight;
@@ -29,6 +31,12 @@ public class PlayerWallDetection : MonoBehaviour
     // Public wall state
     public bool OnWall { get; private set; }
     public bool WallStickAllowed { get; private set; }
+
+    // Public properties for shared parameters (used by PlayerMovement and PlayerJumpSystem)
+    public float WallCheckDistance => wallCheckDistance;
+    public float WallRaycastTop => wallRaycastTop;
+    public float WallRaycastMiddle => wallRaycastMiddle;
+    public float WallRaycastBottom => wallRaycastBottom;
 
     /// <summary>
     /// Initialize component references from PlayerController
@@ -43,13 +51,12 @@ public class PlayerWallDetection : MonoBehaviour
 
     /// <summary>
     /// Set configuration values from PlayerController
+    /// DEPRECATED: Parameters are now owned by this component
     /// </summary>
     public void SetConfiguration(float _wallCheckDistance, float _wallRaycastTop, float _wallRaycastMiddle, float _wallRaycastBottom)
     {
-        wallCheckDistance = _wallCheckDistance;
-        wallRaycastTop = _wallRaycastTop;
-        wallRaycastMiddle = _wallRaycastMiddle;
-        wallRaycastBottom = _wallRaycastBottom;
+        // No-op: Parameters are now [SerializeField] in this component
+        // This method kept temporarily for backward compatibility during migration
     }
 
     /// <summary>

@@ -8,29 +8,23 @@ using UnityEngine;
 [RequireComponent(typeof(Rigidbody2D))]
 public class PlayerMovement : MonoBehaviour
 {
-    // ===== CONFIGURATION (injected by PlayerController) =====
     [Header("Movement")]
-    private float runSpeed;
-    private float wallSlideSpeed;
+    [SerializeField] private float runSpeed = 4f;
+    [SerializeField] private float wallSlideSpeed = 2f;
 
     [Header("Buffer Climbing")]
-    private float climbingAssistanceOffset;
-    private float climbForce;
-    private float forwardBoost;
+    [SerializeField] private float climbForce = 3f;
+    [SerializeField] private float forwardBoost = 0f;
 
     [Header("Dash")]
-    private float dashSpeed;
-    private float dashTime;
-    private float dashCooldown;
-    private int maxDashes;
-    private int maxAirDashes;
-    private float dashJumpWindow;
+    [SerializeField] private float dashSpeed = 8f;
+    [SerializeField] private float dashTime = 0.25f;
+    [SerializeField] private float dashCooldown = 0.4f;
+    [SerializeField] private int maxDashes = 2;
+    [SerializeField] private int maxAirDashes = 2;
 
-    [Header("Wall Detection - For Movement Prevention")]
-    private float wallCheckDistance;
-    private float wallRaycastTop;
-    private float wallRaycastMiddle;
-    private float wallRaycastBottom;
+    [Header("Dash Jump")]
+    [SerializeField] private float dashJumpWindow = 0.1f;
 
     // ===== COMPONENT REFERENCES (injected by PlayerController) =====
     private Rigidbody2D rb;
@@ -93,6 +87,10 @@ public class PlayerMovement : MonoBehaviour
     public float HorizontalInput => horizontalInput;
     public float RunSpeed => runSpeed;
 
+    // Public properties for shared parameters (used by PlayerJumpSystem and PlayerGroundDetection)
+    public int MaxAirDashes => maxAirDashes;
+    public int MaxDashes => maxDashes;
+
     /// <summary>
     /// Initialize component references from PlayerController
     /// </summary>
@@ -111,29 +109,15 @@ public class PlayerMovement : MonoBehaviour
 
     /// <summary>
     /// Set configuration values from PlayerController
+    /// DEPRECATED: Parameters are now owned by this component
     /// </summary>
     public void SetConfiguration(float _runSpeed, float _wallSlideSpeed, float _climbingAssistanceOffset,
                                 float _climbForce, float _forwardBoost, float _dashSpeed, float _dashTime,
                                 float _dashCooldown, int _maxDashes, int _maxAirDashes, float _dashJumpWindow,
                                 float _wallCheckDistance, float _wallRaycastTop, float _wallRaycastMiddle, float _wallRaycastBottom)
     {
-        runSpeed = _runSpeed;
-        wallSlideSpeed = _wallSlideSpeed;
-        climbingAssistanceOffset = _climbingAssistanceOffset;
-        climbForce = _climbForce;
-        forwardBoost = _forwardBoost;
-        dashSpeed = _dashSpeed;
-        dashTime = _dashTime;
-        dashCooldown = _dashCooldown;
-        maxDashes = _maxDashes;
-        maxAirDashes = _maxAirDashes;
-        dashJumpWindow = _dashJumpWindow;
-        wallCheckDistance = _wallCheckDistance;
-        wallRaycastTop = _wallRaycastTop;
-        wallRaycastMiddle = _wallRaycastMiddle;
-        wallRaycastBottom = _wallRaycastBottom;
-
-        // Initialize dash state
+        // No-op: Parameters are now [SerializeField] in this component
+        // Initialize dash state with our own parameters
         dashesRemaining = maxDashes;
         airDashesRemaining = maxAirDashes;
     }
@@ -192,6 +176,8 @@ public class PlayerMovement : MonoBehaviour
         // Buffer climbing assistance - provide upward and forward momentum
         if (isBufferClimbing)
         {
+            // Read climbingAssistanceOffset from PlayerGroundDetection
+            float climbingAssistanceOffset = groundDetection?.ClimbingAssistanceOffset ?? 0.06f;
             float horizontalVelocity = moveInput.x * runSpeed * forwardBoost;
 
             // CRITICAL FIX: Prevent horizontal movement when wall stick is disabled (even during ledge buffer)
@@ -201,6 +187,9 @@ public class PlayerMovement : MonoBehaviour
                 Collider2D playerCollider = col;
                 int groundLayer = LayerMask.NameToLayer("Ground");
                 int groundMask = 1 << groundLayer;
+
+                // Read wall detection parameters from PlayerWallDetection
+                float wallCheckDistance = wallDetection?.WallCheckDistance ?? 0.15f;
 
                 Vector2 wallDirection = facingRight ? Vector2.right : Vector2.left;
                 Vector2 centerPoint = playerTransform.position;
@@ -263,6 +252,12 @@ public class PlayerMovement : MonoBehaviour
                 Collider2D playerCollider = col;
                 int groundLayer = LayerMask.NameToLayer("Ground");
                 int groundMask = 1 << groundLayer;
+
+                // Read wall detection parameters from PlayerWallDetection
+                float wallCheckDistance = wallDetection?.WallCheckDistance ?? 0.15f;
+                float wallRaycastTop = wallDetection?.WallRaycastTop ?? 0.32f;
+                float wallRaycastMiddle = wallDetection?.WallRaycastMiddle ?? 0.28f;
+                float wallRaycastBottom = wallDetection?.WallRaycastBottom ?? 0.02f;
 
                 Vector2 wallDirection = facingRight ? Vector2.right : Vector2.left;
                 Vector2[] checkPoints = {
@@ -376,6 +371,12 @@ public class PlayerMovement : MonoBehaviour
                 int groundLayer = LayerMask.NameToLayer("Ground");
                 int groundMask = 1 << groundLayer;
 
+                // Read wall detection parameters from PlayerWallDetection
+                float wallCheckDistance = wallDetection?.WallCheckDistance ?? 0.15f;
+                float wallRaycastTop = wallDetection?.WallRaycastTop ?? 0.32f;
+                float wallRaycastMiddle = wallDetection?.WallRaycastMiddle ?? 0.28f;
+                float wallRaycastBottom = wallDetection?.WallRaycastBottom ?? 0.02f;
+
                 Vector2 wallDirection = facingRight ? Vector2.right : Vector2.left;
                 Vector2[] checkPoints = {
                     playerTransform.position + Vector3.up * wallRaycastTop,
@@ -428,6 +429,9 @@ public class PlayerMovement : MonoBehaviour
                     Collider2D playerCollider = col;
                     int groundLayer = LayerMask.NameToLayer("Ground");
                     int groundMask = 1 << groundLayer;
+
+                    // Read wall detection parameters from PlayerWallDetection
+                    float wallCheckDistance = wallDetection?.WallCheckDistance ?? 0.15f;
 
                     Vector2 wallDirection = facingRight ? Vector2.right : Vector2.left;
                     Vector2 centerPoint = playerTransform.position;
@@ -619,6 +623,11 @@ public class PlayerMovement : MonoBehaviour
 
         // Use very short raycast distance to only detect actual collisions
         float collisionCheckDistance = 0.15f; // Much shorter than wallCheckDistance
+
+        // Read wall detection parameters from PlayerWallDetection
+        float wallRaycastTop = wallDetection?.WallRaycastTop ?? 0.32f;
+        float wallRaycastMiddle = wallDetection?.WallRaycastMiddle ?? 0.28f;
+        float wallRaycastBottom = wallDetection?.WallRaycastBottom ?? 0.02f;
 
         Vector2[] checkPoints = {
             playerTransform.position + Vector3.up * wallRaycastTop,
