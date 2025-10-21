@@ -143,7 +143,7 @@ public class PlayerAnimationController : MonoBehaviour
     /// </summary>
     private bool HasAnimatorParameter(string paramName)
     {
-        if (animator == null) return false;
+        if (animator == null || animator.runtimeAnimatorController == null) return false;
 
         foreach (var param in animator.parameters)
         {
