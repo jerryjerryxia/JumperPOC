@@ -88,3 +88,7 @@ claude-flow
 claude-flow.bat
 claude-flow.ps1
 hive-mind-prompt-*.txt
+
+# Windows/Unix shell compatibility issue - prevent nul files from being committed
+nul
+**/nul

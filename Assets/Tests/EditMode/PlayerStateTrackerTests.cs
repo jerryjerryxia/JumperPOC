@@ -333,7 +333,7 @@ namespace Tests.EditMode
         {
             // Arrange: Subscribe to wall stick event
             bool eventFired = false;
-            stateTracker.OnEnterWallStick = () => eventFired = true;
+            stateTracker.OnEnterWallStick += () => eventFired = true;
 
             // First frame - not wall sticking
             stateTracker.UpdateStates(
@@ -395,7 +395,7 @@ namespace Tests.EditMode
 
             // Subscribe to event after already sticking
             bool eventFired = false;
-            stateTracker.OnEnterWallStick = () => eventFired = true;
+            stateTracker.OnEnterWallStick += () => eventFired = true;
 
             // Act: Update again while still sticking
             stateTracker.UpdateStates(
