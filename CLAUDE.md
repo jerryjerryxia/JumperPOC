@@ -28,242 +28,6 @@
 
 ## Project Overview
 
-This project uses SPARC (Specification, Pseudocode, Architecture, Refinement, Completion) methodology with Claude-Flow orchestration for systematic Test-Driven Development.
-
-## SPARC Commands
-
-### Core Commands
-- `npx claude-flow sparc modes` - List available modes
-- `npx claude-flow sparc run <mode> "<task>"` - Execute specific mode
-- `npx claude-flow sparc tdd "<feature>"` - Run complete TDD workflow
-- `npx claude-flow sparc info <mode>` - Get mode details
-
-### Batchtools Commands
-- `npx claude-flow sparc batch <modes> "<task>"` - Parallel execution
-- `npx claude-flow sparc pipeline "<task>"` - Full pipeline processing
-- `npx claude-flow sparc concurrent <mode> "<tasks-file>"` - Multi-task processing
-
-### Build Commands
-- `npm run build` - Build project
-- `npm run test` - Run tests
-- `npm run lint` - Linting
-- `npm run typecheck` - Type checking
-
-## SPARC Workflow Phases
-
-1. **Specification** - Requirements analysis (`sparc run spec-pseudocode`)
-2. **Pseudocode** - Algorithm design (`sparc run spec-pseudocode`)
-3. **Architecture** - System design (`sparc run architect`)
-4. **Refinement** - TDD implementation (`sparc tdd`)
-5. **Completion** - Integration (`sparc run integration`)
-
-## Code Style & Best Practices
-
-- **Modular Design**: Files under 500 lines
-- **Environment Safety**: Never hardcode secrets
-- **Test-First**: Write tests before implementation
-- **Clean Architecture**: Separate concerns
-- **Documentation**: Keep updated
-
-## 🚀 Available Agents (54 Total)
-
-### Core Development
-`coder`, `reviewer`, `tester`, `planner`, `researcher`
-
-### Swarm Coordination
-`hierarchical-coordinator`, `mesh-coordinator`, `adaptive-coordinator`, `collective-intelligence-coordinator`, `swarm-memory-manager`
-
-### Consensus & Distributed
-`byzantine-coordinator`, `raft-manager`, `gossip-coordinator`, `consensus-builder`, `crdt-synchronizer`, `quorum-manager`, `security-manager`
-
-### Performance & Optimization
-`perf-analyzer`, `performance-benchmarker`, `task-orchestrator`, `memory-coordinator`, `smart-agent`
-
-### GitHub & Repository
-`github-modes`, `pr-manager`, `code-review-swarm`, `issue-tracker`, `release-manager`, `workflow-automation`, `project-board-sync`, `repo-architect`, `multi-repo-swarm`
-
-### SPARC Methodology
-`sparc-coord`, `sparc-coder`, `specification`, `pseudocode`, `architecture`, `refinement`
-
-### Specialized Development
-`backend-dev`, `mobile-dev`, `ml-developer`, `cicd-engineer`, `api-docs`, `system-architect`, `code-analyzer`, `base-template-generator`
-
-### Testing & Validation
-`tdd-london-swarm`, `production-validator`
-
-### Migration & Planning
-`migration-planner`, `swarm-init`
-
-## 🎯 Claude Code vs MCP Tools
-
-### Claude Code Handles ALL:
-- File operations (Read, Write, Edit, MultiEdit, Glob, Grep)
-- Code generation and programming
-- Bash commands and system operations
-- Implementation work
-- Project navigation and analysis
-- TodoWrite and task management
-- Git operations
-- Package management
-- Testing and debugging
-
-### MCP Tools ONLY:
-- Coordination and planning
-- Memory management
-- Neural features
-- Performance tracking
-- Swarm orchestration
-- GitHub integration
-
-**KEY**: MCP coordinates, Claude Code executes.
-
-## 🚀 Quick Setup
-
-```bash
-# Add Claude Flow MCP server
-claude mcp add claude-flow npx claude-flow@alpha mcp start
-```
-
-## MCP Tool Categories
-
-### Coordination
-`swarm_init`, `agent_spawn`, `task_orchestrate`
-
-### Monitoring
-`swarm_status`, `agent_list`, `agent_metrics`, `task_status`, `task_results`
-
-### Memory & Neural
-`memory_usage`, `neural_status`, `neural_train`, `neural_patterns`
-
-### GitHub Integration
-`github_swarm`, `repo_analyze`, `pr_enhance`, `issue_triage`, `code_review`
-
-### System
-`benchmark_run`, `features_detect`, `swarm_monitor`
-
-## 📋 Agent Coordination Protocol
-
-### Every Agent MUST:
-
-**1️⃣ BEFORE Work:**
-```bash
-npx claude-flow@alpha hooks pre-task --description "[task]"
-npx claude-flow@alpha hooks session-restore --session-id "swarm-[id]"
-```
-
-**2️⃣ DURING Work:**
-```bash
-npx claude-flow@alpha hooks post-edit --file "[file]" --memory-key "swarm/[agent]/[step]"
-npx claude-flow@alpha hooks notify --message "[what was done]"
-```
-
-**3️⃣ AFTER Work:**
-```bash
-npx claude-flow@alpha hooks post-task --task-id "[task]"
-npx claude-flow@alpha hooks session-end --export-metrics true
-```
-
-## 🎯 Concurrent Execution Examples
-
-### ✅ CORRECT (Single Message):
-```javascript
-[BatchTool]:
-  // Initialize swarm
-  mcp__claude-flow__swarm_init { topology: "mesh", maxAgents: 6 }
-  mcp__claude-flow__agent_spawn { type: "researcher" }
-  mcp__claude-flow__agent_spawn { type: "coder" }
-  mcp__claude-flow__agent_spawn { type: "tester" }
-  
-  // Spawn agents with Task tool
-  Task("Research agent: Analyze requirements...")
-  Task("Coder agent: Implement features...")
-  Task("Tester agent: Create test suite...")
-  
-  // Batch todos
-  TodoWrite { todos: [
-    {id: "1", content: "Research", status: "in_progress", priority: "high"},
-    {id: "2", content: "Design", status: "pending", priority: "high"},
-    {id: "3", content: "Implement", status: "pending", priority: "high"},
-    {id: "4", content: "Test", status: "pending", priority: "medium"},
-    {id: "5", content: "Document", status: "pending", priority: "low"}
-  ]}
-  
-  // File operations
-  Bash "mkdir -p app/{src,tests,docs}"
-  Write "app/src/index.js"
-  Write "app/tests/index.test.js"
-  Write "app/docs/README.md"
-```
-
-### ❌ WRONG (Multiple Messages):
-```javascript
-Message 1: mcp__claude-flow__swarm_init
-Message 2: Task("agent 1")
-Message 3: TodoWrite { todos: [single todo] }
-Message 4: Write "file.js"
-// This breaks parallel coordination!
-```
-
-## Performance Benefits
-
-- **84.8% SWE-Bench solve rate**
-- **32.3% token reduction**
-- **2.8-4.4x speed improvement**
-- **27+ neural models**
-
-## Hooks Integration
-
-### Pre-Operation
-- Auto-assign agents by file type
-- Validate commands for safety
-- Prepare resources automatically
-- Optimize topology by complexity
-- Cache searches
-
-### Post-Operation
-- Auto-format code
-- Train neural patterns
-- Update memory
-- Analyze performance
-- Track token usage
-
-### Session Management
-- Generate summaries
-- Persist state
-- Track metrics
-- Restore context
-- Export workflows
-
-## Advanced Features (v2.0.0)
-
-- 🚀 Automatic Topology Selection
-- ⚡ Parallel Execution (2.8-4.4x speed)
-- 🧠 Neural Training
-- 📊 Bottleneck Analysis
-- 🤖 Smart Auto-Spawning
-- 🛡️ Self-Healing Workflows
-- 💾 Cross-Session Memory
-- 🔗 GitHub Integration
-
-## Integration Tips
-
-1. Start with basic swarm init
-2. Scale agents gradually
-3. Use memory for context
-4. Monitor progress regularly
-5. Train patterns from success
-6. Enable hooks automation
-7. Use GitHub tools first
-
-## Support
-
-- Documentation: https://github.com/ruvnet/claude-flow
-- Issues: https://github.com/ruvnet/claude-flow/issues
-
----
-
-Remember: **Claude Flow coordinates, Claude Code creates!**
-
 # important-instruction-reminders
 Do what has been asked; nothing more, nothing less.
 NEVER create files unless they're absolutely necessary for achieving your goal.
@@ -273,7 +37,131 @@ Never save working files, text/mds and tests to the root folder.
 
 ## Project Overview
 
-This is a Unity 2D platformer Metroidvania proof-of-concept (POC) game built with Unity 6000.1.4f1. The project features advanced movement mechanics including wall sliding, dashing, ledge grabbing, and a 3-hit combo system. The ultimate goal of this project is to build a vertical Metroidvania that features rich movement ability progression and extensive map exploration and backtracking. The vertical map design is inspired by Dark Souls 1 and the smooth and extremely polished movement feel is inspired by ENDER LILIES: Quietus of the Knights. The combat is inspired by Ori and the Blind Forest, where defeating an enemy is not the player's only goal: they can also use enemies as leverage to reach otherwise unreachable platforms. More of the game design elements will be updated here once they become clear, but use the aforementioned games as guidelines for development for now. 
+This is a Unity 2D platformer Metroidvania proof-of-concept (POC) game built with Unity 6000.1.4f1. The project features advanced movement mechanics including wall sliding, dashing, ledge grabbing, and a 3-hit combo system. The ultimate goal of this project is to build a vertical Metroidvania that features rich movement ability progression and extensive map exploration and backtracking. The vertical map design is inspired by Dark Souls 1 and the smooth and extremely polished movement feel is inspired by ENDER LILIES: Quietus of the Knights. The combat is inspired by Ori and the Blind Forest, where defeating an enemy is not the player's only goal: they can also use enemies as leverage to reach otherwise unreachable platforms. More of the game design elements will be updated here once they become clear, but use the aforementioned games as guidelines for development for now.
+
+## 🎯 Core Development Philosophy
+
+**MISSION:** Ship a playable, fun, stable game as fast as possible.
+
+**PRINCIPLE:** Good enough code that ships beats perfect code that doesn't.
+
+### The Iron Rules
+
+1. **Ship First, Perfect Later**
+   - Does it work in PlayMode? ✅ → Good enough
+   - Can I add features? ✅ → Good enough
+   - Can I fix bugs in <30 min? ✅ → Good enough
+   - Is the code "perfect"? ← **Don't care until v2.0**
+
+2. **Players Don't See Code**
+   - Focus 80% effort on what players experience (movement feel, visuals, level design)
+   - Focus 20% effort on code quality (tests, architecture, refactoring)
+   - Players experience: jump height, dash distance, animations, combat satisfaction
+   - Players DON'T experience: code architecture, test coverage, design patterns
+
+3. **If It Works, Don't Touch It**
+   - Current 11-component player system? ✅ **KEEP IT. IT WORKS.**
+   - Bad reasons to refactor: "This file is 600 lines", "Could be more modular", "Best practices say X"
+   - Good reasons to refactor: "Cannot add feature X without rewriting", "Every bug takes >2 hours to find"
+   - **Only refactor when actively blocked by current architecture**
+
+### The Three-Strike Refactoring Rule
+
+**Only refactor when ALL THREE are true:**
+1. ✅ Clear pain point - "I cannot add feature X" or "Every bug takes hours"
+2. ✅ Specific solution - "Merging A and B will fix it" (not "maybe refactor will help")
+3. ✅ Time-boxed - "12 hours max" (not "refactor until perfect")
+
+**If even ONE is false → Don't refactor.**
+
+### The 30-70 Testing Strategy
+
+**NOT pure TDD. NOT zero tests. Strategic testing.**
+
+- **30% of code** has unit tests (logic, state, rules, critical game mechanics)
+- **70% of code** tested via PlayMode (feel, visuals, UX, game balance)
+
+**Write tests when:**
+- ✅ Stuck debugging >15 minutes (write failing test, then fix)
+- ✅ Adding complex logic (combo systems, AI state machines, ability unlocks)
+- ✅ Refactoring working code (tests catch regressions)
+- ✅ Critical game rules (air attack limits, dash cooldown, coyote time)
+
+**DON'T write tests for:**
+- ❌ Game feel / tuning (jump height, dash distance, wall slide speed)
+- ❌ Visual systems (animations, sprites, VFX, UI layout)
+- ❌ Systems that work (don't test until they break)
+- ❌ Simple getters/setters
+
+**Target: 20-30% code coverage** (not 80%)
+
+### Acceptable vs. Unacceptable Technical Debt
+
+**Acceptable for v1.0:**
+- ✅ Large files (600-800 lines)
+- ✅ Some code duplication
+- ✅ TODOs and commented code
+- ✅ Untested systems that work
+- ✅ Non-optimal architecture
+- ✅ Debug logs left in code
+
+**Unacceptable (Fix Before Shipping):**
+- ❌ Game-breaking bugs
+- ❌ Cannot add new features
+- ❌ Cannot find/fix bugs
+- ❌ Performance issues affecting gameplay
+
+### The Three Questions (For ANY Decision)
+
+When facing ANY development decision, ask:
+
+1. **"Does this get me closer to shipping?"**
+   - YES → Do it
+   - NO → Skip it
+
+2. **"Will players experience this?"**
+   - YES → High priority
+   - NO → Low priority
+
+3. **"Am I actually blocked, or just uncomfortable with imperfect code?"**
+   - Blocked → Fix the blocker
+   - Uncomfortable → Ship anyway
+
+### Time Allocation (Solo Dev)
+
+```
+40% - Building features (movement, combat, abilities)
+30% - Creating content (levels, enemies, bosses)
+15% - Polish (feel, VFX, sound, juice)
+10% - Playtesting and iteration
+5%  - Code quality (refactoring, tests, cleanup)
+
+NOT:
+50% - Code quality ← TRAP
+20% - Architecture planning ← TRAP
+10% - Learning new tools ← TRAP
+```
+
+### Red Flags (You're Off Track)
+
+**Stop and re-evaluate if:**
+- ⚠️ Haven't added player-facing feature in >1 week
+- ⚠️ Spending >20% time on refactoring
+- ⚠️ Writing more tests than game code
+- ⚠️ Researching architecture patterns instead of building
+- ⚠️ Rewriting working code to be "better"
+- ⚠️ Adding features players won't see (dev tools, debug systems)
+
+**Get back on track:** Focus on shippable features.
+
+### Success Metric
+
+- ✅ **Game shipped in 3-6 months**
+- ❌ **Perfect code that never releases**
+
+**Full details:** See `docs/DEVELOPMENT_PHILOSOPHY.md`
+
+---
 
 ## Interaction with the user
 
@@ -289,128 +177,74 @@ Version control is essential. After a version of the code base is fully tested a
 - Email: jerryjerryxia@gmail.com
 - Name: jerryjerryxia
 
+---
 
-## Unity C# Development Guidelines
+## Unity Quick Reference
 
-  You are an expert in C#, Unity, and scalable game development.
+**Unity Version:** 6000.2.0b9 (Unity 6 Beta)
 
-  Key Principles
-  - Write clear, technical responses with precise C# and Unity examples.
-  - Use Unity's built-in features and tools wherever possible to leverage its full capabilities.
-  - Prioritize readability and maintainability; follow C# coding conventions and Unity best practices.
-  - Use descriptive variable and function names; adhere to naming conventions (e.g., PascalCase for public members, camelCase for private members).
-  - Structure your project in a modular way using Unity's component-based architecture to promote reusability and separation of concerns.
+**Run Tests:**
+- Unity Editor: Window → General → Test Runner → EditMode → Run All
+- Command Line: `Unity.exe -runTests -batchmode -projectPath . -testPlatform EditMode`
+- **Current Suite:** ~98 tests across 6 files (PlayerAbilities, PlayerStateTracker, PlayerMovement, PlayerHealth, PlayerJumpSystem, PlayerCombat)
+- **Docs:** `docs/How_To_Run_Tests.md`, `docs/Testing_Guide.md`
 
-  C#/Unity
-  - Use MonoBehaviour for script components attached to GameObjects; prefer ScriptableObjects for data containers and shared resources.
-  - Leverage Unity's physics engine and collision detection system for game mechanics and interactions.
-  - Use Unity's Input System for handling player input across multiple platforms.
-  - Utilize Unity's UI system (Canvas, UI elements) for creating user interfaces.
-  - Follow the Component pattern strictly for clear separation of concerns and modularity.
-  - Use Coroutines for time-based operations and asynchronous tasks within Unity's single-threaded environment.
-
-  Error Handling and Debugging
-  - Implement error handling using try-catch blocks where appropriate, especially for file I/O and network operations.
-  - Use Unity's Debug class for logging and debugging (e.g., Debug.Log, Debug.LogWarning, Debug.LogError).
-  - Utilize Unity's profiler and frame debugger to identify and resolve performance issues.
-  - Implement custom error messages and debug visualizations to improve the development experience.
-  - Use Unity's assertion system (Debug.Assert) to catch logical errors during development.
-
-  Dependencies
-  - Unity Engine
-  - .NET Framework (version compatible with your Unity version)
-  - Unity Asset Store packages (as needed for specific functionality)
-  - Third-party plugins (carefully vetted for compatibility and performance)
-
-  Unity-Specific Guidelines
-  - Use Prefabs for reusable game objects and UI elements.
-  - Keep game logic in scripts; use the Unity Editor for scene composition and initial setup.
-  - Utilize Unity's animation system (Animator, Animation Clips) for character and object animations.
-  - Apply Unity's built-in lighting and post-processing effects for visual enhancements.
-  - Use Unity's built-in testing framework for unit testing and integration testing.
-  - Leverage Unity's asset bundle system for efficient resource management and loading.
-  - Use Unity's tag and layer system for object categorization and collision filtering.
-
-  Performance Optimization
-  - Use object pooling for frequently instantiated and destroyed objects.
-  - Optimize draw calls by batching materials and using atlases for sprites and UI elements.
-  - Implement level of detail (LOD) systems for complex 3D models to improve rendering performance.
-  - Use Unity's Job System and Burst Compiler for CPU-intensive operations.
-  - Optimize physics performance by using simplified collision meshes and adjusting fixed timestep.
-
-  Key Conventions
-  1. Follow Unity's component-based architecture for modular and reusable game elements.
-  2. Prioritize performance optimization and memory management in every stage of development.
-  3. Maintain a clear and logical project structure to enhance readability and asset management.
-  
-  Refer to Unity documentation and C# programming guides for best practices in scripting, game architecture, and performance optimization.
-
-  
-
-
-## Unity Development Commands
-
-### Building the Project
-Unity projects are typically built through the Unity Editor GUI. For command-line builds:
-```bash
-# Windows example (adjust path to your Unity installation)
-"C:\Program Files\Unity\Hub\Editor\6000.1.4f1\Editor\Unity.exe" -batchmode -quit -projectPath . -buildTarget StandaloneWindows64 -buildWindows64Player builds/JumperPOC.exe
-```
-
-### Running Tests
-The project includes Unity Test Framework but no tests are currently implemented. To run tests when added:
-```bash
-# Run EditMode tests
-Unity -batchmode -projectPath . -runTests -testPlatform EditMode -testResults results.xml
-
-# Run PlayMode tests
-Unity -batchmode -projectPath . -runTests -testPlatform PlayMode -testResults results.xml
-```
-
-### Opening in Unity Editor
-```bash
-# Open project in Unity Editor
-Unity -projectPath .
-```
+**Build Project:**
+- Prefer Unity Editor GUI: File → Build Settings
+- Command Line: `"C:\Program Files\Unity\Hub\Editor\6000.2.0b9\Editor\Unity.exe" -batchmode -quit -projectPath . -buildTarget StandaloneWindows64`
 
 ## Architecture Overview
 
-### Core Systems
+**Current Approach:** 15-Component Player System (~6,907 lines) + Simplified Enemy System
 
-1. **Player Movement System** (`Assets/Scripts/PlayerController.cs`)
-   - Implements physics-based movement with Rigidbody2D
-   - Features: running, jumping (with double jump), wall sliding/jumping, dashing
-   - Uses Unity's new Input System with action mappings
-   - Complex state management for different movement states
+### Player System (15 Components)
 
-2. **Interaction System** (`Assets/Scripts/PlayerInteractionDetector.cs`)
-   - Handles ledge detection and grabbing
-   - Manages interaction prompts and UI feedback
-   - Works in conjunction with PlayerController for movement states
+**Orchestrator:**
+- `PlayerController.cs` (688 lines) - Central coordination hub
 
-3. **Input System** (`Assets/Settings/Controls.inputactions`)
-   - Modern Unity Input System configuration
-   - Action maps for gameplay controls (WASD movement, Space jump, Shift dash, etc.)
-   - Supports gamepad and keyboard input
+**Movement & Physics (4 components, 2,143 lines):**
+- `PlayerMovement.cs` (791 lines) - Running, dashing, wall sliding, climbing
+- `PlayerJumpSystem.cs` (687 lines) - Variable jump, double jump, wall jump, coyote time
+- `PlayerGroundDetection.cs` (363 lines) - Slope detection, landing buffer
+- `PlayerWallDetection.cs` (139 lines) - Wall detection with triple raycast
 
-4. **Animation System**
-   - Complex Animator Controller with multiple blend trees
-   - States: Idle, Run, Jump, Fall, WallSlide, Dash, Attack combos, Ledge interactions
-   - Smooth transitions using animation parameters
+**Combat & Interaction (4 components, 1,370 lines):**
+- `PlayerCombat.cs` (733 lines) - 3-hit combo, air attacks, dash attack, head stomp
+- `PlayerAbilities.cs` (360 lines) - Ability unlock system (double jump, dash, wall jump)
+- `PlayerInteractionDetector.cs` (346 lines) - Ledge detection and grabbing
+- `AttackHitbox.cs` (291 lines) - Attack collision and damage
 
-5. **Enemy System** (`Assets/Scripts/Enemies/`)
-   - Modular enemy AI with patrol and chase behaviors
-   - Platform-aware movement with edge detection
-   - Player detection and combat capabilities
+**State & Animation (3 components, 490 lines):**
+- `PlayerAnimationController.cs` (157 lines) - Animation state machine
+- `PlayerStateTracker.cs` (130 lines) - Centralized state tracking
+- `PlayerHealth.cs` (203 lines) - Health system with damage/death
 
-### Editor Tools (`Assets/Editor/`)
-- `SceneSetupHelper.cs` - Quickly set up test scenes with platforms and player
-- `AnimatorSetupHelper.cs` - Helper for setting up animation states
-- `BatchSpriteAnimatorSetup.cs` - Batch processing for sprite animations
-- `AddLandingBuffersToTilemap.cs` - Adds landing buffer colliders to prevent edge-falling
+**Support (3 components, 846 lines):**
+- `PlayerInputHandler.cs` (138 lines) - Input routing from Unity Input System
+- `PlayerRespawnSystem.cs` (197 lines) - Death zones and checkpoints
+- `PlayerDebugVisualizer.cs` (308 lines) - Debug gizmos for raycasts
+
+### Other Systems
+
+**Enemy:** `SimpleEnemy.cs` (patrol/chase/attack AI), head stomp interaction
+**UI:** Health bars (player overlay + enemy floating bars)
+**Input:** `Controls.inputactions` (WASD, Space, Shift, Left Click)
+**Levels:** 2 scenes (Level1_ThePit, Level2_CommercialArea), checkpoint system
+**Tilemap:** Custom collider generation, tile offset handling
 
 ### Key Dependencies
-- **Universal Render Pipeline (URP)** - Modern rendering pipeline
-- **Cinemachine** - Camera system for smooth following
-- **DOTween Pro** - Animation tweening library
-- **TextMeshPro** - Advanced text rendering
+
+**Unity Packages:** Test Framework 1.5.1, Input System 1.14.0, Cinemachine 3.1.3, URP 17.2.0, 2D Animation 12.0.2
+**Third-Party:** DOTween Pro (Demigiant), Unity MCP
+
+### Architecture Status
+
+✅ **KEEP IT. IT WORKS.** (See Core Development Philosophy)
+
+- Each component has single responsibility
+- Parameters owned by components (not Inspector)
+- Direct component references for fast communication
+- `PlayerController` orchestrates high-level coordination
+- Scales well for new abilities
+
+**Detailed breakdown:** See `docs/ARCHITECTURE_GUIDELINES.md`

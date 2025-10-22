@@ -11,26 +11,32 @@ This project uses **Unity Test Framework** for comprehensive unit and integratio
 Assets/Tests/
 ├── EditMode/                          # Unit tests (no Unity runtime needed)
 │   ├── Tests.EditMode.asmdef
-│   ├── PlayerAbilitiesTests.cs        (19 tests)
-│   ├── PlayerStateTrackerTests.cs     (26 tests)
-│   └── PlayerInputHandlerTests.cs     (16 tests)
+│   ├── PlayerAbilitiesTests.cs        (~19 tests)
+│   ├── PlayerStateTrackerTests.cs     (~26 tests)
+│   ├── PlayerMovementTests.cs         (~23 tests)
+│   ├── PlayerHealthTests.cs           (~34 tests)
+│   ├── PlayerJumpSystemTests.cs       (Variable)
+│   └── PlayerCombatTests.cs           (12 tests, 8 active)
 ├── PlayMode/                          # Integration tests (Unity runtime required)
 │   └── Tests.PlayMode.asmdef
-└── TestHelpers/                       # Shared test utilities
-    ├── TestHelpers.asmdef
-    ├── AssertExtensions.cs            # Custom assertions
-    └── MockInputManager.cs            # Mock input system
+├── TestHelpers/                       # Shared test utilities
+│   ├── TestHelpers.asmdef
+│   └── PlayerTestHelper.cs            # Player setup utilities
+└── TEST_SUMMARY.md                    # Latest test results and metrics
 ```
 
 ### Test Coverage
 
-**Total Tests: 61** (as of Phase 1 completion)
+**Total Tests: ~98** (as of latest cleanup - October 2025)
 
 | Component | Tests | Coverage | Priority |
 |-----------|-------|----------|----------|
-| PlayerAbilities | 19 | Ability unlock system, events, dictionary ops | ✅ Complete |
-| PlayerStateTracker | 26 | Movement states, wall mechanics, edge cases | ✅ Complete |
-| PlayerInputHandler | 16 | Event routing, subscriptions, null safety | ✅ Complete |
+| PlayerAbilities | ~19 | Ability unlock system, events, dictionary ops | ✅ Complete |
+| PlayerStateTracker | ~26 | Movement states, wall mechanics, edge cases | ✅ Complete |
+| PlayerMovement | ~23 | Physics movement, dash mechanics | ✅ Complete |
+| PlayerHealth | ~34 | Health system, damage handling | ✅ Complete |
+| PlayerJumpSystem | Variable | Jump mechanics, wall jump, double jump | ✅ Complete |
+| PlayerCombat | 12 (8 active) | Combat system, air attacks, combo system | ✅ Complete |
 
 ## Running Tests
 
@@ -42,7 +48,8 @@ Assets/Tests/
 2. **Run EditMode Tests:**
    - Click "EditMode" tab
    - Click "Run All" button
-   - All 61 tests should pass (✅ green)
+   - All ~98 tests should pass (✅ green)
+   - Note: Some tests may be ignored (marked with ⏭️) - these require PlayMode
 
 3. **Run Specific Test:**
    - Expand test hierarchy
@@ -149,13 +156,16 @@ namespace Tests.EditMode
 
 - ✅ **PlayerAbilities** - Ability unlock system
 - ✅ **PlayerStateTracker** - Movement state calculations
-- ✅ **PlayerInputHandler** - Input event routing
+- ✅ **PlayerMovement** - Physics-based movement logic
+- ✅ **PlayerHealth** - Health and damage system
+- ✅ **PlayerJumpSystem** - Jump mechanics and calculations
+- ✅ **PlayerCombat** - Combat system, air attacks, combos (8 active, 4 PlayMode-deferred)
 
 **Characteristics:**
-- Fast execution (<5 seconds for all tests)
-- No physics simulation needed
-- Value-type inputs only
-- Deterministic results
+- Fast execution (<10 seconds for all tests)
+- Minimal physics simulation for most tests
+- Value-type inputs where possible
+- Deterministic results for core logic
 
 ### Integration Tests (PlayMode) - FUTURE
 
@@ -267,10 +277,11 @@ public void UpdateStates_HandlesZeroVelocity()
 
 ### Test Coverage Goals
 
-**Current Status (Phase 1):**
-- ✅ Pure logic components: 100% coverage (PlayerAbilities, PlayerStateTracker, PlayerInputHandler)
-- ⏳ Physics components: 0% coverage (future Phase 2)
-- ⏳ Integration: 0% coverage (future Phase 3)
+**Current Status (October 2025):**
+- ✅ Pure logic components: ~100% coverage (PlayerAbilities, PlayerStateTracker)
+- ✅ Gameplay systems: ~80% coverage (PlayerMovement, PlayerHealth, PlayerJumpSystem, PlayerCombat)
+- ⏳ Physics integration: Partial (some tests deferred to PlayMode)
+- ⏳ Integration: 0% coverage (future phase)
 
 **Target (Phase 2-3):**
 - All critical gameplay systems: >80% coverage
@@ -352,6 +363,7 @@ public void UpdateStates_HandlesZeroVelocity()
 
 ---
 
-**Last Updated:** 2025-10-20
-**Test Count:** 61 tests (Phase 1 complete)
-**Next Review:** After Phase 2 (Physics Integration)
+**Last Updated:** 2025-10-21
+**Test Count:** ~98 tests (EditMode suite substantially complete)
+**Test Summary:** See `Assets/Tests/TEST_SUMMARY.md` for latest results
+**Next Review:** After PlayMode test implementation
