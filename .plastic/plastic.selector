@@ -1,4 +1,0 @@
-repository "JumperPOC/JumperPOC@20067485911537@cloud"
-  path "/"
-    br "/main"
-    co "/main"
