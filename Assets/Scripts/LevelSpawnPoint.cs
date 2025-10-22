@@ -53,19 +53,20 @@ public class LevelSpawnPoint : MonoBehaviour
             Debug.Log($"[LevelSpawnPoint] Physics state cleared");
         }
 
+        // Update save system FIRST (before calling ResetToRespawnPoint)
+        // This ensures SimpleRespawnManager has the correct position
+        if (setAsRespawnPoint && SimpleRespawnManager.Instance != null)
+        {
+            SimpleRespawnManager.Instance.SetRespawnPoint(spawnPosition, spawnPointId);
+            Debug.Log($"[LevelSpawnPoint] Updated respawn point to: {spawnPosition}");
+        }
+
         // Reset player state via controller's respawn system
         player.SetRespawnPoint(spawnPosition);
         player.ResetToRespawnPoint();
         Debug.Log($"[LevelSpawnPoint] Player state reset via PlayerController");
 
         Debug.Log($"[LevelSpawnPoint] AFTER SPAWN - Player position: {player.transform.position}");
-
-        // Update save system if configured
-        if (setAsRespawnPoint && SimpleRespawnManager.Instance != null)
-        {
-            SimpleRespawnManager.Instance.SetRespawnPoint(spawnPosition, spawnPointId);
-            Debug.Log($"[LevelSpawnPoint] Updated respawn point to: {spawnPosition}");
-        }
 
         Debug.Log($"[LevelSpawnPoint] Player spawned at '{spawnPointId}' - Position: {spawnPosition}");
 

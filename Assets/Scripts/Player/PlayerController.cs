@@ -143,7 +143,7 @@ public class PlayerController : MonoBehaviour
     private Vector3 initialPosition;
     private Vector3 respawnPosition;
     private bool hasRespawnPoint = false;
-    
+
     // Wall state sequence tracking
     private bool wasWallSticking = false;
     private bool hasEverWallStuck = false;
@@ -2686,14 +2686,11 @@ public class PlayerController : MonoBehaviour
         }
     }
     
-    void OnCollisionEnter2D(Collision2D other)
-    {
-        if (other.gameObject.CompareTag("Camera Bounder"))
-        {
-            // Debug.Log("[Death/Reset] Camera Bounder detected! Resetting...");
-            ResetToRespawnPoint();
-        }
-    }
+    // Camera Bounder collision detection removed - Camera Bounder is only for camera constraints, not death zones
+    // void OnCollisionEnter2D(Collision2D other)
+    // {
+    //     // Removed: Camera Bounder respawn trigger
+    // }
     
     // Manual reset for testing - add this as a public method you can call from inspector
     [ContextMenu("Test Reset")]
@@ -2755,15 +2752,15 @@ public class PlayerController : MonoBehaviour
     private void ResetToPosition(Vector3 targetPosition)
     {
         // Debug.Log($"[Death/Reset] BEFORE RESET - Current: {transform.position}, Target: {targetPosition}");
-        
+
         // Reset physics FIRST to prevent interference
         rb.linearVelocity = Vector2.zero;
         rb.angularVelocity = 0f;
-        
+
         // Force position through both transform and rigidbody
         transform.position = targetPosition;
         rb.position = targetPosition;
-        
+
         // Force physics update
         Physics2D.SyncTransforms();
         
