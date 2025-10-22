@@ -125,8 +125,9 @@ public class PlayerRespawnSystem : MonoBehaviour
 
     /// <summary>
     /// Core reset method that handles position reset and state cleanup
+    /// PUBLIC: Can be called by external systems like LevelSpawnPoint for scene transitions
     /// </summary>
-    private void ResetToPosition(Vector3 targetPosition)
+    public void ResetToPosition(Vector3 targetPosition)
     {
         // Debug.Log($"[Death/Reset] BEFORE RESET - Current: {playerTransform.position}, Target: {targetPosition}");
 

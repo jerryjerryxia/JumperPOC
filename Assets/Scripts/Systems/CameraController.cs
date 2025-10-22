@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using Unity.Cinemachine;
 
 /// <summary>
@@ -60,7 +61,7 @@ public class CameraController : MonoBehaviour
             currentVerticalOffset = baseFollowOffset.y;
             targetVerticalOffset = baseFollowOffset.y;
         }
-        
+
         // Setup input manager connection
         if (InputManager.Instance != null)
         {
@@ -71,9 +72,46 @@ public class CameraController : MonoBehaviour
         {
             Debug.LogWarning("[CameraController] InputManager not found! Camera adjustment will not work.");
         }
-        
+
+        // Subscribe to scene loaded events to re-find player on transitions
+        SceneManager.sceneLoaded += OnSceneLoaded;
+
         // Validate setup
         ValidateSetup();
+    }
+
+    private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+    {
+        Debug.Log($"[CameraController] Scene loaded: {scene.name}, re-validating player target");
+
+        // Small delay to ensure LevelSpawnPoint has positioned the player
+        StartCoroutine(RevalidatePlayerTarget());
+    }
+
+    private System.Collections.IEnumerator RevalidatePlayerTarget()
+    {
+        // Wait for LevelSpawnPoint.Start() to execute and position player
+        yield return new WaitForEndOfFrame();
+
+        // Re-find and re-target the player
+        PlayerController player = FindFirstObjectByType<PlayerController>();
+        if (player != null && cinemachineCamera != null)
+        {
+            cinemachineCamera.Target.TrackingTarget = player.transform;
+            Debug.Log($"[CameraController] Re-targeted player at position: {player.transform.position}");
+
+            // Force camera to snap to player (no smooth transition)
+            // This prevents the camera from being stuck at the old scene position
+            if (followComponent != null)
+            {
+                // Reset camera offset to prevent weird initial state
+                ResetCameraOffset();
+            }
+        }
+        else
+        {
+            Debug.LogWarning("[CameraController] Could not re-find player after scene load!");
+        }
     }
     
     void OnDestroy()
@@ -83,6 +121,9 @@ public class CameraController : MonoBehaviour
         {
             inputManager.OnMoveInput -= OnMoveInput;
         }
+
+        // Unsubscribe from scene events
+        SceneManager.sceneLoaded -= OnSceneLoaded;
     }
     
     void Update()

@@ -32,26 +32,76 @@ public class LevelSpawnPoint : MonoBehaviour
     private void SpawnPlayerHere()
     {
         Vector3 spawnPosition = transform.position + spawnOffset;
-        
-        // Find player
+
+        // Find player (including DontDestroyOnLoad objects)
         var player = FindFirstObjectByType<PlayerController>();
         if (player == null)
         {
             Debug.LogError($"LevelSpawnPoint '{spawnPointId}': Player not found in scene!");
             return;
         }
-        
-        // Simply position the player
-        player.transform.position = spawnPosition;
-        
+
+        Debug.Log($"[LevelSpawnPoint] BEFORE SPAWN - Player position: {player.transform.position}");
+
+        // Get Rigidbody2D and clear all physics state
+        var rb = player.GetComponent<Rigidbody2D>();
+        if (rb != null)
+        {
+            Debug.Log($"[LevelSpawnPoint] BEFORE SPAWN - Player velocity: {rb.linearVelocity}");
+            rb.linearVelocity = Vector2.zero;
+            rb.angularVelocity = 0f;
+            Debug.Log($"[LevelSpawnPoint] Physics state cleared");
+        }
+
+        // Reset player state via respawn system (clears dash, jump, combat state)
+        var respawnSystem = player.GetComponent<PlayerRespawnSystem>();
+        if (respawnSystem != null)
+        {
+            respawnSystem.ResetToPosition(spawnPosition);
+            Debug.Log($"[LevelSpawnPoint] Player state reset via RespawnSystem");
+        }
+        else
+        {
+            // Fallback: just set position
+            player.transform.position = spawnPosition;
+            Debug.Log($"[LevelSpawnPoint] Player position set directly (no RespawnSystem)");
+        }
+
+        Debug.Log($"[LevelSpawnPoint] AFTER SPAWN - Player position: {player.transform.position}");
+
         // Update save system if configured
         if (setAsRespawnPoint && SimpleRespawnManager.Instance != null)
         {
             SimpleRespawnManager.Instance.SetRespawnPoint(spawnPosition, spawnPointId);
             Debug.Log($"[LevelSpawnPoint] Updated respawn point to: {spawnPosition}");
         }
-        
+
         Debug.Log($"[LevelSpawnPoint] Player spawned at '{spawnPointId}' - Position: {spawnPosition}");
+
+        // Force position update on next frame to ensure it sticks
+        StartCoroutine(VerifySpawnPosition(player, spawnPosition));
+    }
+
+    private IEnumerator VerifySpawnPosition(PlayerController player, Vector3 expectedPosition)
+    {
+        yield return new WaitForFixedUpdate();
+
+        if (Vector3.Distance(player.transform.position, expectedPosition) > 0.1f)
+        {
+            Debug.LogWarning($"[LevelSpawnPoint] Player position drifted! Expected: {expectedPosition}, Actual: {player.transform.position}. Re-applying position.");
+            player.transform.position = expectedPosition;
+
+            var rb = player.GetComponent<Rigidbody2D>();
+            if (rb != null)
+            {
+                rb.linearVelocity = Vector2.zero;
+                rb.angularVelocity = 0f;
+            }
+        }
+        else
+        {
+            Debug.Log($"[LevelSpawnPoint] Spawn position verified: {player.transform.position}");
+        }
     }
     
     // Manual activation method for testing or other uses

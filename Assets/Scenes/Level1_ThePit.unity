@@ -325,21 +325,13 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
-  m_Color:
-    r: 0.2
-    g: 0.2
-    b: 0.2
-    a: 0.8
+  m_Color: {r: 0.2, g: 0.2, b: 0.2, a: 0.8}
   m_RaycastTarget: 1
-  m_RaycastTargetCache: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
-  <useLegacyMeshGeneration>k__BackingField: 0
   m_Maskable: 1
-  m_IsMaskingGraphic: 0
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-    m_CallsDirty: 1
   m_Sprite: {fileID: 0}
   m_Type: 0
   m_PreserveAspect: 0
@@ -348,12 +340,8 @@ MonoBehaviour:
   m_FillAmount: 1
   m_FillClockwise: 1
   m_FillOrigin: 0
-  m_AlphaHitTestMinimumThreshold: 0
-  m_Tracked: 0
   m_UseSpriteMesh: 0
   m_PixelsPerUnitMultiplier: 1
-  m_CachedReferencePixelsPerUnit: 100
-  m_SecondaryTextures: []
 --- !u!222 &43986367
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -734,7 +722,6 @@ MonoBehaviour:
   m_FallbackScreenDPI: 96
   m_DefaultSpriteDPI: 96
   m_DynamicPixelsPerUnit: 10
-  m_Canvas: {fileID: 115840607}
   m_PresetInfoIsWorld: 1
 --- !u!223 &115840607
 Canvas:
@@ -873,14 +860,7 @@ MonoBehaviour:
   requiredDirection: {x: 1, y: 0}
   directionThreshold: 0.1
   showGizmos: 1
-  gizmoColor:
-    r: 0
-    g: 1
-    b: 1
-    a: 1
-  isTransitioning: 0
-  transitionCooldown: 1
-  lastTransitionTime: -999
+  gizmoColor: {r: 0, g: 1, b: 1, a: 1}
 --- !u!61 &117717709
 BoxCollider2D:
   m_ObjectHideFlags: 0
@@ -1236,7 +1216,6 @@ MonoBehaviour:
   m_FallbackScreenDPI: 96
   m_DefaultSpriteDPI: 96
   m_DynamicPixelsPerUnit: 10
-  m_Canvas: {fileID: 134932845}
   m_PresetInfoIsWorld: 1
 --- !u!223 &134932845
 Canvas:
@@ -1404,7 +1383,6 @@ MonoBehaviour:
   m_FallbackScreenDPI: 96
   m_DefaultSpriteDPI: 96
   m_DynamicPixelsPerUnit: 10
-  m_Canvas: {fileID: 156301153}
   m_PresetInfoIsWorld: 1
 --- !u!223 &156301153
 Canvas:
@@ -4906,21 +4884,12 @@ MonoBehaviour:
   triggerPosition: {x: 0, y: 0.55}
   triggerSize: {x: 0.2, y: 0.01}
   playerLayer:
+    serializedVersion: 2
     m_Bits: 1025
   showDebugGizmos: 1
   enableDebugLogging: 1
-  gizmoColor:
-    r: 0
-    g: 1
-    b: 0
-    a: 1
-  hitColor:
-    r: 1
-    g: 0
-    b: 0
-    a: 1
-  enemyCollider: {fileID: 0}
-  lastFrameHit: 0
+  gizmoColor: {r: 0, g: 1, b: 0, a: 1}
+  hitColor: {r: 1, g: 0, b: 0, a: 1}
 --- !u!114 &412763966
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -4939,6 +4908,7 @@ MonoBehaviour:
   detectionRange: 2.5
   chaseExitDelay: 5
   playerLayer:
+    serializedVersion: 2
     m_Bits: 1
   attackRange: 0.5
   attackCooldownMin: 3
@@ -4949,26 +4919,9 @@ MonoBehaviour:
   maxEdgeOffset: 0.8
   wallDetectionMultiplier: 1
   groundLayer:
+    serializedVersion: 2
     m_Bits: 64
   maxHealth: 100
-  currentState: 0
-  rb: {fileID: 0}
-  animator: {fileID: 0}
-  spriteRenderer: {fileID: 0}
-  col: {fileID: 0}
-  hitbox: {fileID: 0}
-  moveDirection: 1
-  facingRight: 1
-  currentEdgeOffset: 0
-  waitTimer: 0
-  isWaiting: 0
-  currentHealth: 0
-  lastAttackTime: 0
-  currentAttackCooldown: 0
-  player: {fileID: 0}
-  playerLostTime: 0
-  playerLost: 0
-  isDead: 0
 --- !u!61 &412763967
 BoxCollider2D:
   m_ObjectHideFlags: 0
@@ -5345,21 +5298,13 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
-  m_Color:
-    r: 0
-    g: 1
-    b: 0
-    a: 1
+  m_Color: {r: 0, g: 1, b: 0, a: 1}
   m_RaycastTarget: 1
-  m_RaycastTargetCache: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
-  <useLegacyMeshGeneration>k__BackingField: 0
   m_Maskable: 1
-  m_IsMaskingGraphic: 0
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-    m_CallsDirty: 1
   m_Sprite: {fileID: 0}
   m_Type: 0
   m_PreserveAspect: 0
@@ -5368,12 +5313,8 @@ MonoBehaviour:
   m_FillAmount: 1
   m_FillClockwise: 1
   m_FillOrigin: 0
-  m_AlphaHitTestMinimumThreshold: 0
-  m_Tracked: 0
   m_UseSpriteMesh: 0
   m_PixelsPerUnitMultiplier: 1
-  m_CachedReferencePixelsPerUnit: 100
-  m_SecondaryTextures: []
 --- !u!222 &422843738
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -6401,6 +6342,7 @@ MonoBehaviour:
   m_Cameras: []
   m_RendererIndex: -1
   m_VolumeLayerMask:
+    serializedVersion: 2
     m_Bits: 1
   m_VolumeTrigger: {fileID: 0}
   m_VolumeFrameworkUpdateModeOption: 2
@@ -6517,14 +6459,12 @@ MonoBehaviour:
     Style: 1
     Time: 2
     CustomCurve:
+      serializedVersion: 2
       m_Curve: []
       m_PreInfinity: 2
       m_PostInfinity: 2
       m_RotationOrder: 4
   CustomBlends: {fileID: 0}
-  m_OutputCamera: {fileID: 519420031}
-  m_TargetOverride: {fileID: 0}
-  m_LastFrameUpdated: 13
 --- !u!1 &530091643
 GameObject:
   m_ObjectHideFlags: 0
@@ -6736,21 +6676,13 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
-  m_Color:
-    r: 0.2
-    g: 0.2
-    b: 0.2
-    a: 0.8
+  m_Color: {r: 0.2, g: 0.2, b: 0.2, a: 0.8}
   m_RaycastTarget: 1
-  m_RaycastTargetCache: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
-  <useLegacyMeshGeneration>k__BackingField: 0
   m_Maskable: 1
-  m_IsMaskingGraphic: 0
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-    m_CallsDirty: 1
   m_Sprite: {fileID: 0}
   m_Type: 0
   m_PreserveAspect: 0
@@ -6759,12 +6691,8 @@ MonoBehaviour:
   m_FillAmount: 1
   m_FillClockwise: 1
   m_FillOrigin: 0
-  m_AlphaHitTestMinimumThreshold: 0
-  m_Tracked: 0
   m_UseSpriteMesh: 0
   m_PixelsPerUnitMultiplier: 1
-  m_CachedReferencePixelsPerUnit: 100
-  m_SecondaryTextures: []
 --- !u!222 &542621695
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -7356,11 +7284,7 @@ MonoBehaviour:
   m_LightType: 4
   m_BlendStyleIndex: 0
   m_FalloffIntensity: 0.5
-  m_Color:
-    r: 1
-    g: 1
-    b: 1
-    a: 1
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_Intensity: 1
   m_LightVolumeIntensity: 1
   m_LightVolumeEnabled: 0
@@ -7379,14 +7303,9 @@ MonoBehaviour:
   m_ShadowSoftnessFalloffIntensity: 0.5
   m_ShadowVolumeIntensityEnabled: 0
   m_ShadowVolumeIntensity: 0.75
-  m_Mesh: {fileID: 0}
-  m_PreviousLightCookieSprite: 0
-  m_CachedPosition: {x: 0, y: 0, z: 0}
-  m_BatchSlotIndex: 0
   m_LocalBounds:
     m_Center: {x: 0, y: -0.00000011920929, z: 0}
     m_Extent: {x: 0.9985302, y: 0.99853027, z: 0}
-  forceUpdate: 0
   m_PointLightInnerAngle: 360
   m_PointLightOuterAngle: 360
   m_PointLightInnerRadius: 0
@@ -7401,12 +7320,6 @@ MonoBehaviour:
   - {x: 0.5, y: -0.5, z: 0}
   - {x: 0.5, y: 0.5, z: 0}
   - {x: -0.5, y: 0.5, z: 0}
-  m_PreviousShapeLightFalloffSize: -1
-  m_PreviousShapeLightParametricSides: -1
-  m_PreviousShapeLightParametricAngleOffset: -1
-  m_PreviousShapeLightParametricRadius: -1
-  m_PreviousShapePathHash: -1
-  m_PreviousLightType: 0
 --- !u!4 &619394802
 Transform:
   m_ObjectHideFlags: 0
@@ -12556,9 +12469,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CustomCompositeColliderGenerator
   physicsMaterial: {fileID: 0}
-  tilemap: {fileID: 0}
-  tilemapCollider: {fileID: 0}
-  compositeCollider: {fileID: 0}
 --- !u!1 &626620664
 GameObject:
   m_ObjectHideFlags: 0
@@ -17035,9 +16945,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CustomCompositeColliderGenerator
   physicsMaterial: {fileID: 0}
-  tilemap: {fileID: 0}
-  tilemapCollider: {fileID: 0}
-  compositeCollider: {fileID: 0}
 --- !u!1 &733129817
 GameObject:
   m_ObjectHideFlags: 0
@@ -17155,21 +17062,12 @@ MonoBehaviour:
   triggerPosition: {x: 0, y: 0.55}
   triggerSize: {x: 0.2, y: 0.01}
   playerLayer:
+    serializedVersion: 2
     m_Bits: 1
   showDebugGizmos: 1
   enableDebugLogging: 1
-  gizmoColor:
-    r: 0
-    g: 1
-    b: 0
-    a: 1
-  hitColor:
-    r: 1
-    g: 0
-    b: 0
-    a: 1
-  enemyCollider: {fileID: 0}
-  lastFrameHit: 0
+  gizmoColor: {r: 0, g: 1, b: 0, a: 1}
+  hitColor: {r: 1, g: 0, b: 0, a: 1}
 --- !u!114 &748527878
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -17188,6 +17086,7 @@ MonoBehaviour:
   detectionRange: 1
   chaseExitDelay: 5
   playerLayer:
+    serializedVersion: 2
     m_Bits: 1
   attackRange: 0.5
   attackCooldownMin: 3
@@ -17198,26 +17097,9 @@ MonoBehaviour:
   maxEdgeOffset: 0.8
   wallDetectionMultiplier: 1
   groundLayer:
+    serializedVersion: 2
     m_Bits: 64
   maxHealth: 100
-  currentState: 0
-  rb: {fileID: 0}
-  animator: {fileID: 0}
-  spriteRenderer: {fileID: 0}
-  col: {fileID: 0}
-  hitbox: {fileID: 0}
-  moveDirection: 1
-  facingRight: 1
-  currentEdgeOffset: 0
-  waitTimer: 0
-  isWaiting: 0
-  currentHealth: 0
-  lastAttackTime: 0
-  currentAttackCooldown: 0
-  player: {fileID: 0}
-  playerLostTime: 0
-  playerLost: 0
-  isDead: 0
 --- !u!61 &748527879
 BoxCollider2D:
   m_ObjectHideFlags: 0
@@ -17599,12 +17481,6 @@ MonoBehaviour:
   showOnStart: 0
   alwaysVisible: 0
   healthBarSize: {x: 100, y: 20}
-  enemyTransform: {fileID: 806046880}
-  enemySprite: {fileID: 806046878}
-  mainCamera: {fileID: 519420031}
-  hideTimer: 0
-  isVisible: 0
-  dynamicOffset: {x: 0, y: 0.35, z: 0}
 --- !u!1 &765594238
 GameObject:
   m_ObjectHideFlags: 0
@@ -18351,21 +18227,12 @@ MonoBehaviour:
   triggerPosition: {x: 0, y: 0.55}
   triggerSize: {x: 0.2, y: 0.01}
   playerLayer:
+    serializedVersion: 2
     m_Bits: 1
   showDebugGizmos: 1
   enableDebugLogging: 1
-  gizmoColor:
-    r: 0
-    g: 1
-    b: 0
-    a: 1
-  hitColor:
-    r: 1
-    g: 0
-    b: 0
-    a: 1
-  enemyCollider: {fileID: 0}
-  lastFrameHit: 0
+  gizmoColor: {r: 0, g: 1, b: 0, a: 1}
+  hitColor: {r: 1, g: 0, b: 0, a: 1}
 --- !u!114 &806046875
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -18384,6 +18251,7 @@ MonoBehaviour:
   detectionRange: 5
   chaseExitDelay: 5
   playerLayer:
+    serializedVersion: 2
     m_Bits: 1
   attackRange: 0.5
   attackCooldownMin: 3
@@ -18394,26 +18262,9 @@ MonoBehaviour:
   maxEdgeOffset: 0.8
   wallDetectionMultiplier: 1
   groundLayer:
+    serializedVersion: 2
     m_Bits: 64
   maxHealth: 100
-  currentState: 0
-  rb: {fileID: 0}
-  animator: {fileID: 0}
-  spriteRenderer: {fileID: 0}
-  col: {fileID: 0}
-  hitbox: {fileID: 0}
-  moveDirection: 1
-  facingRight: 1
-  currentEdgeOffset: 0
-  waitTimer: 0
-  isWaiting: 0
-  currentHealth: 0
-  lastAttackTime: 0
-  currentAttackCooldown: 0
-  player: {fileID: 0}
-  playerLostTime: 0
-  playerLost: 0
-  isDead: 0
 --- !u!61 &806046876
 BoxCollider2D:
   m_ObjectHideFlags: 0
@@ -18717,12 +18568,6 @@ MonoBehaviour:
   showOnStart: 0
   alwaysVisible: 0
   healthBarSize: {x: 100, y: 20}
-  enemyTransform: {fileID: 748527883}
-  enemySprite: {fileID: 748527881}
-  mainCamera: {fileID: 519420031}
-  hideTimer: 0
-  isVisible: 0
-  dynamicOffset: {x: 0, y: 0.35, z: 0}
 --- !u!1 &817096767
 GameObject:
   m_ObjectHideFlags: 0
@@ -21226,23 +21071,26 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Text
   m_Material: {fileID: 0}
-  m_Color:
-    r: 1
-    g: 1
-    b: 1
-    a: 1
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_RaycastTarget: 1
-  m_RaycastTargetCache: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
-  <useLegacyMeshGeneration>k__BackingField: 0
   m_Maskable: 1
-  m_IsMaskingGraphic: 0
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-    m_CallsDirty: 1
-  m_FontData: {m_Font: {fileID: 10102, guid: 0000000000000000e000000000000000, type: 0}, m_FontSize: 14, m_FontStyle: 0, m_BestFit: 0, m_MinSize: 10, m_MaxSize: 40, m_Alignment: 4, m_AlignByGeometry: 0, m_RichText: 1, m_HorizontalOverflow: 0, m_VerticalOverflow: 0, m_LineSpacing: 1}
-  m_LastTrackedFont: {fileID: 0}
+  m_FontData:
+    m_Font: {fileID: 10102, guid: 0000000000000000e000000000000000, type: 0}
+    m_FontSize: 14
+    m_FontStyle: 0
+    m_BestFit: 0
+    m_MinSize: 10
+    m_MaxSize: 40
+    m_Alignment: 4
+    m_AlignByGeometry: 0
+    m_RichText: 1
+    m_HorizontalOverflow: 0
+    m_VerticalOverflow: 0
+    m_LineSpacing: 1
   m_Text: 0/100
 --- !u!222 &1055893444
 CanvasRenderer:
@@ -21302,21 +21150,13 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
-  m_Color:
-    r: 0
-    g: 1
-    b: 0
-    a: 1
+  m_Color: {r: 0, g: 1, b: 0, a: 1}
   m_RaycastTarget: 1
-  m_RaycastTargetCache: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
-  <useLegacyMeshGeneration>k__BackingField: 0
   m_Maskable: 1
-  m_IsMaskingGraphic: 0
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-    m_CallsDirty: 1
   m_Sprite: {fileID: 0}
   m_Type: 0
   m_PreserveAspect: 0
@@ -21325,12 +21165,8 @@ MonoBehaviour:
   m_FillAmount: 1
   m_FillClockwise: 1
   m_FillOrigin: 0
-  m_AlphaHitTestMinimumThreshold: 0
-  m_Tracked: 0
   m_UseSpriteMesh: 0
   m_PixelsPerUnitMultiplier: 1
-  m_CachedReferencePixelsPerUnit: 100
-  m_SecondaryTextures: []
 --- !u!222 &1069179764
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -21783,7 +21619,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 67db9e8f0e2ae9c40bc1e2b64352a6b4, type: 3}
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Slider
-  m_EnableCalled: 0
   m_Navigation:
     m_Mode: 3
     m_WrapAround: 0
@@ -21793,34 +21628,18 @@ MonoBehaviour:
     m_SelectOnRight: {fileID: 0}
   m_Transition: 1
   m_Colors:
-    m_NormalColor:
-      r: 1
-      g: 1
-      b: 1
-      a: 1
-    m_HighlightedColor:
-      r: 0.9607843
-      g: 0.9607843
-      b: 0.9607843
-      a: 1
-    m_PressedColor:
-      r: 0.78431374
-      g: 0.78431374
-      b: 0.78431374
-      a: 1
-    m_SelectedColor:
-      r: 0.9607843
-      g: 0.9607843
-      b: 0.9607843
-      a: 1
-    m_DisabledColor:
-      r: 0.78431374
-      g: 0.78431374
-      b: 0.78431374
-      a: 0.5019608
+    m_NormalColor: {r: 1, g: 1, b: 1, a: 1}
+    m_HighlightedColor: {r: 0.9607843, g: 0.9607843, b: 0.9607843, a: 1}
+    m_PressedColor: {r: 0.78431374, g: 0.78431374, b: 0.78431374, a: 1}
+    m_SelectedColor: {r: 0.9607843, g: 0.9607843, b: 0.9607843, a: 1}
+    m_DisabledColor: {r: 0.78431374, g: 0.78431374, b: 0.78431374, a: 0.5019608}
     m_ColorMultiplier: 1
     m_FadeDuration: 0.1
-  m_SpriteState: {m_HighlightedSprite: {fileID: 0}, m_PressedSprite: {fileID: 0}, m_SelectedSprite: {fileID: 0}, m_DisabledSprite: {fileID: 0}}
+  m_SpriteState:
+    m_HighlightedSprite: {fileID: 0}
+    m_PressedSprite: {fileID: 0}
+    m_SelectedSprite: {fileID: 0}
+    m_DisabledSprite: {fileID: 0}
   m_AnimationTriggers:
     m_NormalTrigger: Normal
     m_HighlightedTrigger: Highlighted
@@ -21829,11 +21648,6 @@ MonoBehaviour:
     m_DisabledTrigger: Disabled
   m_Interactable: 1
   m_TargetGraphic: {fileID: 1445437429}
-  m_GroupsAllowInteraction: 1
-  m_CurrentIndex: -1
-  <isPointerInside>k__BackingField: 0
-  <isPointerDown>k__BackingField: 0
-  <hasSelection>k__BackingField: 0
   m_FillRect: {fileID: 1445437428}
   m_HandleRect: {fileID: 0}
   m_Direction: 0
@@ -21844,14 +21658,6 @@ MonoBehaviour:
   m_OnValueChanged:
     m_PersistentCalls:
       m_Calls: []
-    m_CallsDirty: 1
-  m_FillImage: {fileID: 0}
-  m_FillTransform: {fileID: 0}
-  m_FillContainerRect: {fileID: 0}
-  m_HandleTransform: {fileID: 0}
-  m_HandleContainerRect: {fileID: 0}
-  m_Offset: {x: 0, y: 0}
-  m_DelayedUpdateVisuals: 0
 --- !u!1 &1104601726
 GameObject:
   m_ObjectHideFlags: 0
@@ -23682,28 +23488,13 @@ MonoBehaviour:
   healthSlider: {fileID: 2081904390}
   fillImage: {fileID: 1069179763}
   healthText: {fileID: 2072306451}
-  fullHealthColor:
-    r: 0
-    g: 1
-    b: 0
-    a: 1
-  midHealthColor:
-    r: 1
-    g: 0.92156863
-    b: 0.015686275
-    a: 1
-  lowHealthColor:
-    r: 1
-    g: 0
-    b: 0
-    a: 1
+  fullHealthColor: {r: 0, g: 1, b: 0, a: 1}
+  midHealthColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
+  lowHealthColor: {r: 1, g: 0, b: 0, a: 1}
   colorTransitionThresholdHigh: 0.7
   colorTransitionThresholdLow: 0.3
   fillSpeed: 2
   animateFill: 1
-  targetFillAmount: 0
-  currentHealth: 0
-  maxHealth: 100
 --- !u!1 &1277727806
 GameObject:
   m_ObjectHideFlags: 0
@@ -24222,23 +24013,26 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Text
   m_Material: {fileID: 0}
-  m_Color:
-    r: 1
-    g: 1
-    b: 1
-    a: 1
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_RaycastTarget: 1
-  m_RaycastTargetCache: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
-  <useLegacyMeshGeneration>k__BackingField: 0
   m_Maskable: 1
-  m_IsMaskingGraphic: 0
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-    m_CallsDirty: 1
-  m_FontData: {m_Font: {fileID: 10102, guid: 0000000000000000e000000000000000, type: 0}, m_FontSize: 14, m_FontStyle: 0, m_BestFit: 0, m_MinSize: 10, m_MaxSize: 40, m_Alignment: 4, m_AlignByGeometry: 0, m_RichText: 1, m_HorizontalOverflow: 0, m_VerticalOverflow: 0, m_LineSpacing: 1}
-  m_LastTrackedFont: {fileID: 0}
+  m_FontData:
+    m_Font: {fileID: 10102, guid: 0000000000000000e000000000000000, type: 0}
+    m_FontSize: 14
+    m_FontStyle: 0
+    m_BestFit: 0
+    m_MinSize: 10
+    m_MaxSize: 40
+    m_Alignment: 4
+    m_AlignByGeometry: 0
+    m_RichText: 1
+    m_HorizontalOverflow: 0
+    m_VerticalOverflow: 0
+    m_LineSpacing: 1
   m_Text: 0/100
 --- !u!222 &1311725814
 CanvasRenderer:
@@ -24392,12 +24186,6 @@ MonoBehaviour:
   showOnStart: 0
   alwaysVisible: 0
   healthBarSize: {x: 100, y: 20}
-  enemyTransform: {fileID: 412763971}
-  enemySprite: {fileID: 412763969}
-  mainCamera: {fileID: 519420031}
-  hideTimer: 0
-  isVisible: 0
-  dynamicOffset: {x: 0, y: 0.35, z: 0}
 --- !u!1 &1329972365
 GameObject:
   m_ObjectHideFlags: 0
@@ -24428,10 +24216,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SimpleRespawnManager
   defaultRespawnPosition: {x: 0, y: 0, z: 0}
-  currentRespawnPosition: {x: 0, y: 0, z: 0}
-  currentSavePointId: Default
-  hasInitializedPosition: 0
-  currentActiveSavePoint: {fileID: 0}
 --- !u!4 &1329972367
 Transform:
   m_ObjectHideFlags: 0
@@ -24657,28 +24441,13 @@ MonoBehaviour:
   healthSlider: {fileID: 1554822097}
   fillImage: {fileID: 422843737}
   healthText: {fileID: 1311725813}
-  fullHealthColor:
-    r: 0
-    g: 1
-    b: 0
-    a: 1
-  midHealthColor:
-    r: 1
-    g: 0.92156863
-    b: 0.015686275
-    a: 1
-  lowHealthColor:
-    r: 1
-    g: 0
-    b: 0
-    a: 1
+  fullHealthColor: {r: 0, g: 1, b: 0, a: 1}
+  midHealthColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
+  lowHealthColor: {r: 1, g: 0, b: 0, a: 1}
   colorTransitionThresholdHigh: 0.7
   colorTransitionThresholdLow: 0.3
   fillSpeed: 2
   animateFill: 1
-  targetFillAmount: 0
-  currentHealth: 0
-  maxHealth: 100
 --- !u!1 &1372621695
 GameObject:
   m_ObjectHideFlags: 0
@@ -25276,6 +25045,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Enemy1Hitbox
   playerLayers:
+    serializedVersion: 2
     m_Bits: 1
   knockbackDirection: {x: 1, y: 0}
   canHitMultipleTimes: 0
@@ -25284,9 +25054,6 @@ MonoBehaviour:
   chopOffset: {x: 0.4, y: 0.43}
   chopDamage: 15
   chopKnockback: 10
-  hitboxCollider: {fileID: 1406586474}
-  isActive: 0
-  previousFacingRight: 1
 --- !u!61 &1406586474
 BoxCollider2D:
   m_ObjectHideFlags: 0
@@ -25379,6 +25146,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Enemy1Hitbox
   playerLayers:
+    serializedVersion: 2
     m_Bits: 1
   knockbackDirection: {x: 1, y: 0}
   canHitMultipleTimes: 0
@@ -25387,9 +25155,6 @@ MonoBehaviour:
   chopOffset: {x: 0.4, y: 0.43}
   chopDamage: 15
   chopKnockback: 10
-  hitboxCollider: {fileID: 1444396389}
-  isActive: 0
-  previousFacingRight: 1
 --- !u!61 &1444396389
 BoxCollider2D:
   m_ObjectHideFlags: 0
@@ -25564,21 +25329,13 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
-  m_Color:
-    r: 0
-    g: 1
-    b: 0
-    a: 1
+  m_Color: {r: 0, g: 1, b: 0, a: 1}
   m_RaycastTarget: 1
-  m_RaycastTargetCache: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
-  <useLegacyMeshGeneration>k__BackingField: 0
   m_Maskable: 1
-  m_IsMaskingGraphic: 0
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-    m_CallsDirty: 1
   m_Sprite: {fileID: 0}
   m_Type: 0
   m_PreserveAspect: 0
@@ -25587,12 +25344,8 @@ MonoBehaviour:
   m_FillAmount: 1
   m_FillClockwise: 1
   m_FillOrigin: 0
-  m_AlphaHitTestMinimumThreshold: 0
-  m_Tracked: 0
   m_UseSpriteMesh: 0
   m_PixelsPerUnitMultiplier: 1
-  m_CachedReferencePixelsPerUnit: 100
-  m_SecondaryTextures: []
 --- !u!222 &1445437430
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -26099,11 +25852,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::InputManager
   enableInputDebugging: 1
-  <MoveInput>k__BackingField: {x: 0, y: 0}
-  <JumpPressed>k__BackingField: 0
-  <JumpHeld>k__BackingField: 0
-  <DashPressed>k__BackingField: 0
-  <AttackPressed>k__BackingField: 0
 --- !u!4 &1491447719
 Transform:
   m_ObjectHideFlags: 0
@@ -26716,6 +26464,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Enemy1Hitbox
   playerLayers:
+    serializedVersion: 2
     m_Bits: 1
   knockbackDirection: {x: 1, y: 0}
   canHitMultipleTimes: 0
@@ -26724,9 +26473,6 @@ MonoBehaviour:
   chopOffset: {x: 0.4, y: 0.43}
   chopDamage: 15
   chopKnockback: 10
-  hitboxCollider: {fileID: 1547969229}
-  isActive: 0
-  previousFacingRight: 1
 --- !u!61 &1547969229
 BoxCollider2D:
   m_ObjectHideFlags: 0
@@ -26978,7 +26724,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 67db9e8f0e2ae9c40bc1e2b64352a6b4, type: 3}
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Slider
-  m_EnableCalled: 0
   m_Navigation:
     m_Mode: 3
     m_WrapAround: 0
@@ -26988,34 +26733,18 @@ MonoBehaviour:
     m_SelectOnRight: {fileID: 0}
   m_Transition: 1
   m_Colors:
-    m_NormalColor:
-      r: 1
-      g: 1
-      b: 1
-      a: 1
-    m_HighlightedColor:
-      r: 0.9607843
-      g: 0.9607843
-      b: 0.9607843
-      a: 1
-    m_PressedColor:
-      r: 0.78431374
-      g: 0.78431374
-      b: 0.78431374
-      a: 1
-    m_SelectedColor:
-      r: 0.9607843
-      g: 0.9607843
-      b: 0.9607843
-      a: 1
-    m_DisabledColor:
-      r: 0.78431374
-      g: 0.78431374
-      b: 0.78431374
-      a: 0.5019608
+    m_NormalColor: {r: 1, g: 1, b: 1, a: 1}
+    m_HighlightedColor: {r: 0.9607843, g: 0.9607843, b: 0.9607843, a: 1}
+    m_PressedColor: {r: 0.78431374, g: 0.78431374, b: 0.78431374, a: 1}
+    m_SelectedColor: {r: 0.9607843, g: 0.9607843, b: 0.9607843, a: 1}
+    m_DisabledColor: {r: 0.78431374, g: 0.78431374, b: 0.78431374, a: 0.5019608}
     m_ColorMultiplier: 1
     m_FadeDuration: 0.1
-  m_SpriteState: {m_HighlightedSprite: {fileID: 0}, m_PressedSprite: {fileID: 0}, m_SelectedSprite: {fileID: 0}, m_DisabledSprite: {fileID: 0}}
+  m_SpriteState:
+    m_HighlightedSprite: {fileID: 0}
+    m_PressedSprite: {fileID: 0}
+    m_SelectedSprite: {fileID: 0}
+    m_DisabledSprite: {fileID: 0}
   m_AnimationTriggers:
     m_NormalTrigger: Normal
     m_HighlightedTrigger: Highlighted
@@ -27024,11 +26753,6 @@ MonoBehaviour:
     m_DisabledTrigger: Disabled
   m_Interactable: 1
   m_TargetGraphic: {fileID: 422843737}
-  m_GroupsAllowInteraction: 1
-  m_CurrentIndex: -1
-  <isPointerInside>k__BackingField: 0
-  <isPointerDown>k__BackingField: 0
-  <hasSelection>k__BackingField: 0
   m_FillRect: {fileID: 422843736}
   m_HandleRect: {fileID: 0}
   m_Direction: 0
@@ -27039,14 +26763,6 @@ MonoBehaviour:
   m_OnValueChanged:
     m_PersistentCalls:
       m_Calls: []
-    m_CallsDirty: 1
-  m_FillImage: {fileID: 0}
-  m_FillTransform: {fileID: 0}
-  m_FillContainerRect: {fileID: 0}
-  m_HandleTransform: {fileID: 0}
-  m_HandleContainerRect: {fileID: 0}
-  m_Offset: {x: 0, y: 0}
-  m_DelayedUpdateVisuals: 0
 --- !u!1 &1555828689
 GameObject:
   m_ObjectHideFlags: 0
@@ -27136,7 +26852,7 @@ GameObject:
   - component: {fileID: 1565343205}
   - component: {fileID: 1565343204}
   m_Layer: 0
-  m_Name: SpawnPoint_LevelEntry2-1
+  m_Name: LevelEntry2-1
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -27158,11 +26874,7 @@ MonoBehaviour:
   spawnOffset: {x: 0, y: 0, z: 0}
   setAsRespawnPoint: 1
   showGizmos: 1
-  gizmoColor:
-    r: 0
-    g: 1
-    b: 0
-    a: 1
+  gizmoColor: {r: 0, g: 1, b: 0, a: 1}
 --- !u!4 &1565343205
 Transform:
   m_ObjectHideFlags: 0
@@ -29057,28 +28769,13 @@ MonoBehaviour:
   healthSlider: {fileID: 1091394549}
   fillImage: {fileID: 1445437429}
   healthText: {fileID: 1055893443}
-  fullHealthColor:
-    r: 0
-    g: 1
-    b: 0
-    a: 1
-  midHealthColor:
-    r: 1
-    g: 0.92156863
-    b: 0.015686275
-    a: 1
-  lowHealthColor:
-    r: 1
-    g: 0
-    b: 0
-    a: 1
+  fullHealthColor: {r: 0, g: 1, b: 0, a: 1}
+  midHealthColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
+  lowHealthColor: {r: 1, g: 0, b: 0, a: 1}
   colorTransitionThresholdHigh: 0.7
   colorTransitionThresholdLow: 0.3
   fillSpeed: 2
   animateFill: 1
-  targetFillAmount: 0
-  currentHealth: 0
-  maxHealth: 100
 --- !u!1 &1752207465
 GameObject:
   m_ObjectHideFlags: 0
@@ -29129,21 +28826,13 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
-  m_Color:
-    r: 0.2
-    g: 0.2
-    b: 0.2
-    a: 0.8
+  m_Color: {r: 0.2, g: 0.2, b: 0.2, a: 0.8}
   m_RaycastTarget: 1
-  m_RaycastTargetCache: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
-  <useLegacyMeshGeneration>k__BackingField: 0
   m_Maskable: 1
-  m_IsMaskingGraphic: 0
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-    m_CallsDirty: 1
   m_Sprite: {fileID: 0}
   m_Type: 0
   m_PreserveAspect: 0
@@ -29152,12 +28841,8 @@ MonoBehaviour:
   m_FillAmount: 1
   m_FillClockwise: 1
   m_FillOrigin: 0
-  m_AlphaHitTestMinimumThreshold: 0
-  m_Tracked: 0
   m_UseSpriteMesh: 0
   m_PixelsPerUnitMultiplier: 1
-  m_CachedReferencePixelsPerUnit: 100
-  m_SecondaryTextures: []
 --- !u!222 &1752207468
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -31106,23 +30791,26 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Text
   m_Material: {fileID: 0}
-  m_Color:
-    r: 1
-    g: 1
-    b: 1
-    a: 1
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_RaycastTarget: 1
-  m_RaycastTargetCache: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
-  <useLegacyMeshGeneration>k__BackingField: 0
   m_Maskable: 1
-  m_IsMaskingGraphic: 0
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-    m_CallsDirty: 1
-  m_FontData: {m_Font: {fileID: 10102, guid: 0000000000000000e000000000000000, type: 0}, m_FontSize: 14, m_FontStyle: 0, m_BestFit: 0, m_MinSize: 10, m_MaxSize: 40, m_Alignment: 4, m_AlignByGeometry: 0, m_RichText: 1, m_HorizontalOverflow: 0, m_VerticalOverflow: 0, m_LineSpacing: 1}
-  m_LastTrackedFont: {fileID: 0}
+  m_FontData:
+    m_Font: {fileID: 10102, guid: 0000000000000000e000000000000000, type: 0}
+    m_FontSize: 14
+    m_FontStyle: 0
+    m_BestFit: 0
+    m_MinSize: 10
+    m_MaxSize: 40
+    m_Alignment: 4
+    m_AlignByGeometry: 0
+    m_RichText: 1
+    m_HorizontalOverflow: 0
+    m_VerticalOverflow: 0
+    m_LineSpacing: 1
   m_Text: 0/100
 --- !u!222 &2072306452
 CanvasRenderer:
@@ -31181,7 +30869,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 67db9e8f0e2ae9c40bc1e2b64352a6b4, type: 3}
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Slider
-  m_EnableCalled: 0
   m_Navigation:
     m_Mode: 3
     m_WrapAround: 0
@@ -31191,34 +30878,18 @@ MonoBehaviour:
     m_SelectOnRight: {fileID: 0}
   m_Transition: 1
   m_Colors:
-    m_NormalColor:
-      r: 1
-      g: 1
-      b: 1
-      a: 1
-    m_HighlightedColor:
-      r: 0.9607843
-      g: 0.9607843
-      b: 0.9607843
-      a: 1
-    m_PressedColor:
-      r: 0.78431374
-      g: 0.78431374
-      b: 0.78431374
-      a: 1
-    m_SelectedColor:
-      r: 0.9607843
-      g: 0.9607843
-      b: 0.9607843
-      a: 1
-    m_DisabledColor:
-      r: 0.78431374
-      g: 0.78431374
-      b: 0.78431374
-      a: 0.5019608
+    m_NormalColor: {r: 1, g: 1, b: 1, a: 1}
+    m_HighlightedColor: {r: 0.9607843, g: 0.9607843, b: 0.9607843, a: 1}
+    m_PressedColor: {r: 0.78431374, g: 0.78431374, b: 0.78431374, a: 1}
+    m_SelectedColor: {r: 0.9607843, g: 0.9607843, b: 0.9607843, a: 1}
+    m_DisabledColor: {r: 0.78431374, g: 0.78431374, b: 0.78431374, a: 0.5019608}
     m_ColorMultiplier: 1
     m_FadeDuration: 0.1
-  m_SpriteState: {m_HighlightedSprite: {fileID: 0}, m_PressedSprite: {fileID: 0}, m_SelectedSprite: {fileID: 0}, m_DisabledSprite: {fileID: 0}}
+  m_SpriteState:
+    m_HighlightedSprite: {fileID: 0}
+    m_PressedSprite: {fileID: 0}
+    m_SelectedSprite: {fileID: 0}
+    m_DisabledSprite: {fileID: 0}
   m_AnimationTriggers:
     m_NormalTrigger: Normal
     m_HighlightedTrigger: Highlighted
@@ -31227,11 +30898,6 @@ MonoBehaviour:
     m_DisabledTrigger: Disabled
   m_Interactable: 1
   m_TargetGraphic: {fileID: 1069179763}
-  m_GroupsAllowInteraction: 1
-  m_CurrentIndex: -1
-  <isPointerInside>k__BackingField: 0
-  <isPointerDown>k__BackingField: 0
-  <hasSelection>k__BackingField: 0
   m_FillRect: {fileID: 1069179762}
   m_HandleRect: {fileID: 0}
   m_Direction: 0
@@ -31242,14 +30908,6 @@ MonoBehaviour:
   m_OnValueChanged:
     m_PersistentCalls:
       m_Calls: []
-    m_CallsDirty: 1
-  m_FillImage: {fileID: 0}
-  m_FillTransform: {fileID: 0}
-  m_FillContainerRect: {fileID: 0}
-  m_HandleTransform: {fileID: 0}
-  m_HandleContainerRect: {fileID: 0}
-  m_Offset: {x: 0, y: 0}
-  m_DelayedUpdateVisuals: 0
 --- !u!1 &2086764734
 GameObject:
   m_ObjectHideFlags: 0
@@ -31637,13 +31295,6 @@ MonoBehaviour:
   inputThreshold: 0.1
   showDebugInfo: 0
   showDebugGizmos: 0
-  cinemachineCamera: {fileID: 0}
-  followComponent: {fileID: 0}
-  inputManager: {fileID: 0}
-  baseFollowOffset: {x: 0, y: 0, z: 0}
-  targetVerticalOffset: 0
-  currentVerticalOffset: 0
-  verticalInput: 0
 --- !u!4 &634304271514829390
 Transform:
   m_ObjectHideFlags: 0
@@ -31686,7 +31337,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f453f694addf4275988fac205bc91968, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  m_VcamOwner: {fileID: 5702448499803175292}
   BoundingShape2D: {fileID: 2881152814547473233}
   Damping: 0.5
   SlowingDistance: 5
@@ -31705,11 +31355,11 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 1173541640996456700, guid: b04ed85e888981040bd7cd08112d59f9, type: 3}
       propertyPath: m_AnchorMax.x
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 1173541640996456700, guid: b04ed85e888981040bd7cd08112d59f9, type: 3}
       propertyPath: m_AnchorMax.y
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 2690851061171857779, guid: b04ed85e888981040bd7cd08112d59f9, type: 3}
       propertyPath: m_Name
@@ -32101,25 +31751,13 @@ MonoBehaviour:
     Enabled: 0
     m_Value: 0
   OutputChannel: 1
-  ActivationId: 3
-  m_QueuePriority: 0
   StandbyUpdate: 2
-  m_CachedName: 
-  m_WasStarted: 1
-  m_ChildStatusUpdated: 1
-  m_ParentVcam: {fileID: 0}
-  m_CachedFollowTarget: {fileID: 649612988}
-  m_CachedFollowTargetVcam: {fileID: 0}
-  m_CachedLookAtTarget: {fileID: 649612988}
-  m_CachedLookAtTargetVcam: {fileID: 0}
   m_StreamingVersion: 20241001
   m_LegacyPriority: 0
-  <Extensions>k__BackingField:
-  - {fileID: 1917851699226819339}
-  <PreviousStateIsValid>k__BackingField: 1
-  <FollowTargetChanged>k__BackingField: 0
-  <LookAtTargetChanged>k__BackingField: 0
-  Target: {TrackingTarget: {fileID: 649612988}, LookAtTarget: {fileID: 0}, CustomLookAtTarget: 0}
+  Target:
+    TrackingTarget: {fileID: 649612988}
+    LookAtTarget: {fileID: 0}
+    CustomLookAtTarget: 0
   Lens:
     FieldOfView: 34
     OrthographicSize: 3
@@ -32139,12 +31777,7 @@ MonoBehaviour:
       Curvature: {x: 2, y: 11}
       BarrelClipping: 0.25
       Anamorphism: 0
-    m_OrthoFromCamera: 1
-    m_PhysicalFromCamera: 0
-    m_AspectFromCamera: 1.7777778
-    m_SourceCamera: {fileID: 519420031}
   BlendHint: 0
-  m_Pipeline: []
 --- !u!114 &7551850812115343840
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -32157,7 +31790,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b617507da6d07e749b7efdb34e1173e1, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  m_VcamOwner: {fileID: 5702448499803175292}
   TrackerSettings:
     BindingMode: 4
     PositionDamping: {x: 1, y: 0.5, z: 1}
@@ -32165,6 +31797,71 @@ MonoBehaviour:
     RotationDamping: {x: 1, y: 1, z: 1}
     QuaternionDamping: 1
   FollowOffset: {x: 0, y: 0, z: -10}
+--- !u!1001 &8743937439048576160
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: 3518554894802742788, guid: 74cd83d02c8ff1c4f98b9c369e36f18c, type: 3}
+      propertyPath: m_Name
+      value: MovingPlatform_Horizontal
+      objectReference: {fileID: 0}
+    - target: {fileID: 6351214908242450645, guid: 74cd83d02c8ff1c4f98b9c369e36f18c, type: 3}
+      propertyPath: movementType
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6351214908242450645, guid: 74cd83d02c8ff1c4f98b9c369e36f18c, type: 3}
+      propertyPath: showDebugGizmos
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 6858850478091268290, guid: 74cd83d02c8ff1c4f98b9c369e36f18c, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 4.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 6858850478091268290, guid: 74cd83d02c8ff1c4f98b9c369e36f18c, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: -2.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 6858850478091268290, guid: 74cd83d02c8ff1c4f98b9c369e36f18c, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6858850478091268290, guid: 74cd83d02c8ff1c4f98b9c369e36f18c, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 6858850478091268290, guid: 74cd83d02c8ff1c4f98b9c369e36f18c, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6858850478091268290, guid: 74cd83d02c8ff1c4f98b9c369e36f18c, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6858850478091268290, guid: 74cd83d02c8ff1c4f98b9c369e36f18c, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6858850478091268290, guid: 74cd83d02c8ff1c4f98b9c369e36f18c, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6858850478091268290, guid: 74cd83d02c8ff1c4f98b9c369e36f18c, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6858850478091268290, guid: 74cd83d02c8ff1c4f98b9c369e36f18c, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: 74cd83d02c8ff1c4f98b9c369e36f18c, type: 3}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
@@ -32185,6 +31882,7 @@ SceneRoots:
   - {fileID: 1329972367}
   - {fileID: 713780168}
   - {fileID: 1053607548}
-  - {fileID: 117717710}
   - {fileID: 2001960947}
   - {fileID: 1565343205}
+  - {fileID: 117717710}
+  - {fileID: 8743937439048576160}

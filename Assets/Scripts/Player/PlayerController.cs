@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.SceneManagement;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -139,6 +140,10 @@ public class PlayerController : MonoBehaviour
         {
             instance = this;
             DontDestroyOnLoad(gameObject);
+
+            // Subscribe to scene loaded events for level transitions
+            SceneManager.sceneLoaded += OnSceneLoaded;
+            Debug.Log("[PlayerController] Subscribed to scene load events");
         }
         else
         {
@@ -146,7 +151,7 @@ public class PlayerController : MonoBehaviour
             Destroy(gameObject);
             return;
         }
-        
+
         rb = GetComponent<Rigidbody2D>();
         animator = GetComponent<Animator>();
         combat = GetComponent<PlayerCombat>();
@@ -159,6 +164,29 @@ public class PlayerController : MonoBehaviour
         VerifyComponentSetup();
 
         // Note: Dash counts initialized in PlayerMovement component
+    }
+
+    private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+    {
+        Debug.Log($"[PlayerController] Scene loaded: {scene.name} | Player position: {transform.position} | Velocity: {rb.linearVelocity}");
+
+        // Note: We don't reset position here - LevelSpawnPoint handles that
+        // This is just for logging and ensuring physics state is clean if needed
+
+        if (mode == LoadSceneMode.Single)
+        {
+            Debug.Log($"[PlayerController] Single scene load detected. Waiting for LevelSpawnPoint to position player.");
+        }
+    }
+
+    private void OnDestroy()
+    {
+        // Unsubscribe from scene events to prevent memory leaks
+        if (instance == this)
+        {
+            SceneManager.sceneLoaded -= OnSceneLoaded;
+            Debug.Log("[PlayerController] Unsubscribed from scene load events");
+        }
     }
     
     void Start()
