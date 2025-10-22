@@ -366,24 +366,17 @@ public class PlayerController : MonoBehaviour
         // Handle wall stick transition side effects
         stateTracker.OnEnterWallStick += () =>
         {
-            // IMMEDIATELY and AGGRESSIVELY cancel ALL upward velocity when entering wall stick
-            // This is critical for high-velocity dash jumps that would otherwise cause falling
-            if (rb.linearVelocity.y > 0f)
+            // IMMEDIATELY cancel ALL velocity when entering wall stick
+            // CRITICAL FIX: Must zero velocity for BOTH upward AND downward motion
+            // When falling onto wall after dash jump, velocity is negative, so check was failing
+
+            // ZERO out ALL velocity immediately - both X and Y, regardless of direction
+            rb.linearVelocity = Vector2.zero;
+
+            // Clear any dash jump momentum that might interfere
+            if (dashJumpTime > 0f)
             {
-                // Store original velocity for debugging
-                float originalVelocity = rb.linearVelocity.y;
-
-                // ZERO out vertical velocity immediately - no gradual transition
-                rb.linearVelocity = new Vector2(rb.linearVelocity.x, 0f);
-
-                // Clear any dash jump momentum that might interfere
-                if (dashJumpTime > 0f)
-                {
-                    dashJumpTime = 0f; // Stop dash jump momentum preservation
-                }
-
-                // Note: showJumpDebug now owned by PlayerJumpSystem
-                // Removed debug logging that depended on migrated parameter
+                dashJumpTime = 0f; // Stop dash jump momentum preservation
             }
 
             // Clear coyote time when starting to wall stick

@@ -74,7 +74,9 @@ public class PlayerStateTracker : MonoBehaviour
     {
         // CRITICAL: Sequential wall state logic - stick must come before slide
         // First, calculate if wall sticking conditions are met (requires wall stick ability)
-        bool canWallStick = wallStickAllowed && !isDashing && !isDashAttacking && !isAirAttacking && hasWallStickAbility;
+        // CRITICAL FIX: Removed !isDashing - wall stick must be able to trigger DURING dash
+        // When dash jumping onto wall, wall stick should override the dash immediately
+        bool canWallStick = wallStickAllowed && !isDashAttacking && !isAirAttacking && hasWallStickAbility;
         IsWallSticking = canWallStick;
 
         // Track wall stick history for sequential logic and trigger event
@@ -90,7 +92,9 @@ public class PlayerStateTracker : MonoBehaviour
         }
 
         // Wall slide can ONLY trigger if player has wall stuck during this wall contact session
-        bool canWallSlide = onWall && velocity.y < -wallSlideSpeed && !isDashing && !isDashAttacking && !isAirAttacking && hasWallStickAbility;
+        // CRITICAL FIX: Don't allow wall slide if currently wall sticking
+        // This prevents stale velocity parameter from overriding wall stick
+        bool canWallSlide = onWall && velocity.y < -wallSlideSpeed && !isDashing && !isDashAttacking && !isAirAttacking && hasWallStickAbility && !IsWallSticking;
         bool allowWallSlide = canWallSlide && hasEverWallStuck;
 
         // Only allow wall slide if player has been wall sticking first

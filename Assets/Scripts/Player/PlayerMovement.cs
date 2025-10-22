@@ -69,6 +69,7 @@ public class PlayerMovement : MonoBehaviour
     private bool isRunning;
     private float facingDirection;
     private float horizontalInput;
+    private float originalGravityScale = 1f; // Store original gravity for wall stick
 
     // ===== MOVING PLATFORM STATE =====
     private MovingPlatform currentPlatformTracked;
@@ -211,6 +212,26 @@ public class PlayerMovement : MonoBehaviour
     /// </summary>
     public void HandleMovement()
     {
+        // CRITICAL: Wall stick takes ABSOLUTE priority - stop ALL movement AND gravity
+        if (isWallSticking)
+        {
+            // Store original gravity before disabling (if not already stored)
+            if (rb.gravityScale != 0f)
+            {
+                originalGravityScale = rb.gravityScale;
+            }
+
+            rb.linearVelocity = Vector2.zero;
+            rb.gravityScale = 0f; // Disable gravity to prevent sliding
+            return; // Exit immediately - no other movement logic
+        }
+
+        // Restore gravity when not wall sticking
+        if (rb.gravityScale == 0f && !isWallSticking)
+        {
+            rb.gravityScale = originalGravityScale;
+        }
+
         // MOVING PLATFORM MOVEMENT INHERITANCE
         // Apply platform movement FIRST, before any player movement code
         // This ensures platform movement doesn't interfere with player input
@@ -655,6 +676,16 @@ public class PlayerMovement : MonoBehaviour
     public void ApplyDashVelocity()
     {
         if (!isDashing) return;
+
+        // CRITICAL: Don't apply dash velocity if wall sticking
+        // Wall stick overrides dash - end the dash instead
+        if (isWallSticking)
+        {
+            isDashing = false;
+            lastDashEndTime = Time.time;
+            combat?.OnDashEnd();
+            return;
+        }
 
         // Check if dash should end early due to wall collision
         bool dashEndedByWall = CheckDashWallCollision();
