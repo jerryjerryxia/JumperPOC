@@ -7,6 +7,10 @@
 /[Ll]ogs/
 /[Uu]ser[Ss]ettings/
 
+# Plastic SCM (version control conflict with Git)
+/.plastic/
+.plastic/
+
 # Asset store tools
 /[Aa]ssets/AssetStoreTools*
 

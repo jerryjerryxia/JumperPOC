@@ -1,0 +1,96 @@
+# Unity YAML files - use LF line endings (prevents parser warnings)
+*.unity text eol=lf
+*.prefab text eol=lf
+*.asset text eol=lf
+*.mat text eol=lf
+*.anim text eol=lf
+*.controller text eol=lf
+*.overrideController text eol=lf
+*.physicMaterial text eol=lf
+*.physicsMaterial2D text eol=lf
+*.playable text eol=lf
+*.mask text eol=lf
+*.brush text eol=lf
+*.flare text eol=lf
+*.fontsettings text eol=lf
+*.giparams text eol=lf
+*.renderTexture text eol=lf
+*.spriteatlas text eol=lf
+*.terrainlayer text eol=lf
+*.mixer text eol=lf
+*.shadervariants text eol=lf
+*.preset text eol=lf
+
+# Unity meta files
+*.meta text eol=lf
+
+# Unity Input System
+*.inputactions text eol=lf
+
+# C# source files
+*.cs text eol=lf diff=csharp
+*.shader text eol=lf
+*.cginc text eol=lf
+*.hlsl text eol=lf
+
+# Documentation
+*.md text eol=lf
+*.txt text eol=lf
+
+# Plastic SCM files - treat as binary (don't let Git touch them)
+.plastic/** binary
+*.plastic binary
+
+# Unity binary files
+*.cubemap binary
+*.unitypackage binary
+*.exr binary
+*.hdr binary
+*.tga binary
+*.jpg binary
+*.jpeg binary
+*.png binary
+*.bmp binary
+*.psd binary
+*.tif binary
+*.tiff binary
+*.iff binary
+*.pict binary
+*.dds binary
+*.xcf binary
+*.gif binary
+*.fbx binary
+*.obj binary
+*.max binary
+*.blend binary
+*.dae binary
+*.mb binary
+*.ma binary
+*.3ds binary
+*.dfx binary
+*.c4d binary
+*.lwo binary
+*.lwo2 binary
+*.abc binary
+*.3dm binary
+*.bin binary
+*.smr binary
+*.mp3 binary
+*.ogg binary
+*.wav binary
+*.aiff binary
+*.aif binary
+*.mod binary
+*.it binary
+*.s3m binary
+*.xm binary
+*.ttf binary
+*.otf binary
+*.dll binary
+*.so binary
+*.dylib binary
+*.exe binary
+*.a binary
+*.lib binary
+*.mdb binary
+*.pdb binary
