@@ -53,19 +53,10 @@ public class LevelSpawnPoint : MonoBehaviour
             Debug.Log($"[LevelSpawnPoint] Physics state cleared");
         }
 
-        // Reset player state via respawn system (clears dash, jump, combat state)
-        var respawnSystem = player.GetComponent<PlayerRespawnSystem>();
-        if (respawnSystem != null)
-        {
-            respawnSystem.ResetToPosition(spawnPosition);
-            Debug.Log($"[LevelSpawnPoint] Player state reset via RespawnSystem");
-        }
-        else
-        {
-            // Fallback: just set position
-            player.transform.position = spawnPosition;
-            Debug.Log($"[LevelSpawnPoint] Player position set directly (no RespawnSystem)");
-        }
+        // Reset player state via controller's respawn system
+        player.SetRespawnPoint(spawnPosition);
+        player.ResetToRespawnPoint();
+        Debug.Log($"[LevelSpawnPoint] Player state reset via PlayerController");
 
         Debug.Log($"[LevelSpawnPoint] AFTER SPAWN - Player position: {player.transform.position}");
 

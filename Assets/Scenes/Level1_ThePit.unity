@@ -1323,6 +1323,56 @@ PolygonCollider2D:
       - {x: 0, y: 0.5}
       - {x: 0, y: 0}
   m_UseDelaunayMesh: 0
+--- !u!21 &147339294
+Material:
+  serializedVersion: 8
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: Sprite-Lit-Default (Instance) (Instance) (Instance) (Instance)
+  m_Shader: {fileID: 4800000, guid: e260cfa7296ee7642b167f1eb5be5023, type: 3}
+  m_Parent: {fileID: 0}
+  m_ModifiedSerializedProperties: 0
+  m_ValidKeywords: []
+  m_InvalidKeywords:
+  - ETC1_EXTERNAL_ALPHA
+  m_LightmapFlags: 4
+  m_EnableInstancingVariants: 0
+  m_DoubleSidedGI: 0
+  m_CustomRenderQueue: -1
+  stringTagMap: {}
+  disabledShaderPasses: []
+  m_LockedProperties: 
+  m_SavedProperties:
+    serializedVersion: 3
+    m_TexEnvs:
+    - _AlphaTex:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _MainTex:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _MaskTex:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _NormalMap:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    m_Ints: []
+    m_Floats:
+    - _EnableExternalAlpha: 0
+    - _ZWrite: 0
+    m_Colors:
+    - _Color: {r: 1, g: 1, b: 1, a: 1}
+    - _Flip: {r: 1, g: 1, b: 1, a: 1}
+    - _RendererColor: {r: 1, g: 1, b: 1, a: 1}
+  m_BuildTextureStacks: []
+  m_AllowLocking: 1
 --- !u!1 &156301150
 GameObject:
   m_ObjectHideFlags: 0
@@ -29631,56 +29681,6 @@ BoxCollider2D:
   m_AutoTiling: 0
   m_Size: {x: 0.28, y: 0.05}
   m_EdgeRadius: 0
---- !u!21 &1914551918
-Material:
-  serializedVersion: 8
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_Name: Sprite-Lit-Default (Instance) (Instance) (Instance)
-  m_Shader: {fileID: 4800000, guid: e260cfa7296ee7642b167f1eb5be5023, type: 3}
-  m_Parent: {fileID: 0}
-  m_ModifiedSerializedProperties: 0
-  m_ValidKeywords: []
-  m_InvalidKeywords:
-  - ETC1_EXTERNAL_ALPHA
-  m_LightmapFlags: 4
-  m_EnableInstancingVariants: 0
-  m_DoubleSidedGI: 0
-  m_CustomRenderQueue: -1
-  stringTagMap: {}
-  disabledShaderPasses: []
-  m_LockedProperties: 
-  m_SavedProperties:
-    serializedVersion: 3
-    m_TexEnvs:
-    - _AlphaTex:
-        m_Texture: {fileID: 0}
-        m_Scale: {x: 1, y: 1}
-        m_Offset: {x: 0, y: 0}
-    - _MainTex:
-        m_Texture: {fileID: 0}
-        m_Scale: {x: 1, y: 1}
-        m_Offset: {x: 0, y: 0}
-    - _MaskTex:
-        m_Texture: {fileID: 0}
-        m_Scale: {x: 1, y: 1}
-        m_Offset: {x: 0, y: 0}
-    - _NormalMap:
-        m_Texture: {fileID: 0}
-        m_Scale: {x: 1, y: 1}
-        m_Offset: {x: 0, y: 0}
-    m_Ints: []
-    m_Floats:
-    - _EnableExternalAlpha: 0
-    - _ZWrite: 0
-    m_Colors:
-    - _Color: {r: 1, g: 1, b: 1, a: 1}
-    - _Flip: {r: 1, g: 1, b: 1, a: 1}
-    - _RendererColor: {r: 1, g: 1, b: 1, a: 1}
-  m_BuildTextureStacks: []
-  m_AllowLocking: 1
 --- !u!1 &1927496365
 GameObject:
   m_ObjectHideFlags: 0
@@ -31583,14 +31583,27 @@ PrefabInstance:
       value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 4156483103085682113, guid: ebd59aa10e47e0e428432c89ec85f1e1, type: 3}
+      propertyPath: m_EditorClassIdentifier
+      value: JumperGame::PlayerController
+      objectReference: {fileID: 0}
+    - target: {fileID: 4156483103085682113, guid: ebd59aa10e47e0e428432c89ec85f1e1, type: 3}
       propertyPath: climbingAssistanceOffset
       value: 0.06
       objectReference: {fileID: 0}
     - target: {fileID: 7359456463047706548, guid: ebd59aa10e47e0e428432c89ec85f1e1, type: 3}
       propertyPath: 'm_Materials.Array.data[0]'
       value: 
-      objectReference: {fileID: 1914551918}
-    m_RemovedComponents: []
+      objectReference: {fileID: 147339294}
+    m_RemovedComponents:
+    - {fileID: -7027220865976239144, guid: ebd59aa10e47e0e428432c89ec85f1e1, type: 3}
+    - {fileID: 1864909341138742646, guid: ebd59aa10e47e0e428432c89ec85f1e1, type: 3}
+    - {fileID: 3293366863225908851, guid: ebd59aa10e47e0e428432c89ec85f1e1, type: 3}
+    - {fileID: -8907313174223624960, guid: ebd59aa10e47e0e428432c89ec85f1e1, type: 3}
+    - {fileID: 3603355167932824703, guid: ebd59aa10e47e0e428432c89ec85f1e1, type: 3}
+    - {fileID: 5453981786391944949, guid: ebd59aa10e47e0e428432c89ec85f1e1, type: 3}
+    - {fileID: 7494720635182309984, guid: ebd59aa10e47e0e428432c89ec85f1e1, type: 3}
+    - {fileID: -861106453994670169, guid: ebd59aa10e47e0e428432c89ec85f1e1, type: 3}
+    - {fileID: 2404340546186456667, guid: ebd59aa10e47e0e428432c89ec85f1e1, type: 3}
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
     m_AddedComponents: []
