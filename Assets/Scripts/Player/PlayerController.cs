@@ -382,6 +382,10 @@ public class PlayerController : MonoBehaviour
             // Clear coyote time when starting to wall stick
             // Note: enableCoyoteTime now owned by PlayerGroundDetection
             coyoteTimeCounter = 0f;
+
+            // FIX: Reset air dash counter when wall sticking (similar to landing)
+            // This prevents infinite air dashes by wall stick -> dash -> wall stick loop
+            airDashesUsed = 0;
             leftGroundByJumping = false;
         };
     }
@@ -486,14 +490,14 @@ public class PlayerController : MonoBehaviour
         coyoteTimeCounter = groundDetection.CoyoteTimeCounter;
         leftGroundByJumping = groundDetection.LeftGroundByJumping;
 
-        // Sync dash state from detection component (updated on landing)
-        airDashesRemaining = groundDetection.AirDashesRemaining;
-        airDashesUsed = groundDetection.AirDashesUsed;
-        dashesRemaining = groundDetection.DashesRemaining;
-
         // Handle landing-specific logic that's not in groundDetection
         if (!wasGroundedBeforeCheck && isGrounded)
         {
+            // Sync dash state from detection component ONLY ON LANDING
+            airDashesRemaining = groundDetection.AirDashesRemaining;
+            airDashesUsed = groundDetection.AirDashesUsed;
+            dashesRemaining = groundDetection.DashesRemaining;
+
             // Clear dash jump momentum preservation on landing
             dashJumpTime = 0f;
         }

@@ -599,6 +599,7 @@ public class PlayerMovement : MonoBehaviour
         bool canDash = false;
         if (isGrounded)
         {
+            // Allow dash if we have charges OR cooldown expired
             canDash = (dashesRemaining > 0) || (dashesRemaining <= 0 && dashCDTimer <= 0);
         }
         else
@@ -617,16 +618,20 @@ public class PlayerMovement : MonoBehaviour
             {
                 if (dashesRemaining > 0)
                 {
+                    // Normal consumption
                     dashesRemaining--;
+                    Debug.Log($"[DASH] Consumed charge. Remaining: {dashesRemaining}, CD: {dashCDTimer:F2}");
                     if (dashesRemaining <= 0)
                     {
                         dashCDTimer = dashCooldown;
+                        Debug.Log($"[DASH] Out of charges, starting cooldown: {dashCDTimer:F2}");
                     }
                 }
-                else
+                else // dashesRemaining <= 0 && dashCDTimer <= 0 (cooldown expired)
                 {
+                    // FIX: Restore to FULL charges, then consume one
                     dashesRemaining = maxDashes - 1;
-                    dashCDTimer = 0;
+                    Debug.Log($"[DASH] Cooldown expired, restored and consumed. Remaining: {dashesRemaining}");
                 }
             }
             else
@@ -665,7 +670,12 @@ public class PlayerMovement : MonoBehaviour
     {
         if (dashesRemaining <= 0)
         {
+            float oldTimer = dashCDTimer;
             dashCDTimer -= Time.fixedDeltaTime;
+            if (Mathf.Abs(oldTimer - dashCDTimer) > 0.001f && dashCDTimer > 0 && dashCDTimer < 0.1f)
+            {
+                Debug.Log($"[DASH COOLDOWN] Decrementing: {oldTimer:F3} → {dashCDTimer:F3}");
+            }
         }
     }
 

@@ -319,7 +319,8 @@ public class PlayerJumpSystem : MonoBehaviour
             Jump(wallJump.y, wallJump.x * (facingRight ? 1 : -1));
             JumpsRemaining = extraJumps;
             airDashesRemaining = maxAirDashes;
-            airDashesUsed = 0;
+            // FIX: Don't reset airDashesUsed on wall jump - only reset on ground jump and double jump
+            // airDashesUsed = 0; // REMOVED - was causing infinite air dashes
             dashesRemaining = maxDashes;
             if (animator != null) SafeSetTrigger("Jump");
 
