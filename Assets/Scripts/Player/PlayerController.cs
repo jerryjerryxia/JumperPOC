@@ -2676,18 +2676,8 @@ public class PlayerController : MonoBehaviour
         }
     }
     
-    // Death/Reset system for testing
-    void OnTriggerEnter2D(Collider2D other)
-    {
-        if (other.CompareTag("Camera Bounder"))
-        {
-            // Debug.Log("[Death/Reset] Camera Bounder detected! Resetting...");
-            ResetToRespawnPoint();
-        }
-    }
-    
-    // Camera Bounder collision detection removed - Camera Bounder is only for camera constraints, not death zones
-    // void OnCollisionEnter2D(Collision2D other)
+    // Camera Bounder trigger detection removed - Camera Bounder is only for camera constraints, not death zones
+    // void OnTriggerEnter2D(Collider2D other)
     // {
     //     // Removed: Camera Bounder respawn trigger
     // }
