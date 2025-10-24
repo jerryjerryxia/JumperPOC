@@ -40,18 +40,22 @@ public class CameraController : MonoBehaviour
         // Get required components
         cinemachineCamera = GetComponent<CinemachineCamera>();
         followComponent = GetComponent<CinemachineFollow>();
-        
+
         if (cinemachineCamera == null)
         {
             Debug.LogError("[CameraController] CinemachineCamera component not found!");
         }
-        
+
         if (followComponent == null)
         {
             Debug.LogError("[CameraController] CinemachineFollow component not found!");
         }
+
+        // Subscribe to scene loaded events in Awake() to catch the current scene load
+        // This ensures we don't miss the sceneLoaded event that fires before Start()
+        SceneManager.sceneLoaded += OnSceneLoaded;
     }
-    
+
     void Start()
     {
         // Store the base follow offset for reference
@@ -73,9 +77,6 @@ public class CameraController : MonoBehaviour
             Debug.LogWarning("[CameraController] InputManager not found! Camera adjustment will not work.");
         }
 
-        // Subscribe to scene loaded events to re-find player on transitions
-        SceneManager.sceneLoaded += OnSceneLoaded;
-
         // Validate setup
         ValidateSetup();
     }
@@ -91,7 +92,10 @@ public class CameraController : MonoBehaviour
     private System.Collections.IEnumerator RevalidatePlayerTarget()
     {
         // Wait for LevelSpawnPoint.Start() to execute and position player
-        yield return new WaitForEndOfFrame();
+        // Use WaitForFixedUpdate to ensure LevelSpawnPoint's VerifySpawnPosition() completes first
+        // Then wait one more frame to be absolutely sure the position is stable
+        yield return new WaitForFixedUpdate();
+        yield return null; // Wait one additional frame for safety
 
         // Re-find and re-target the player
         PlayerController player = FindFirstObjectByType<PlayerController>();
@@ -106,6 +110,11 @@ public class CameraController : MonoBehaviour
             {
                 // Reset camera offset to prevent weird initial state
                 ResetCameraOffset();
+
+                // Force Cinemachine to immediately snap to the player's position
+                // This bypasses the smooth damping and teleports the camera
+                cinemachineCamera.ForceCameraPosition(player.transform.position + followComponent.FollowOffset, cinemachineCamera.transform.rotation);
+                Debug.Log($"[CameraController] Forced camera snap to player position");
             }
         }
         else
