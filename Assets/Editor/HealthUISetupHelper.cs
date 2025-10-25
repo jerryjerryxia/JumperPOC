@@ -104,11 +104,17 @@ public class HealthUISetupHelper : EditorWindow
             EditorUtility.DisplayDialog("No Selection", "Please select an enemy GameObject", "OK");
             return;
         }
-        
-        SimpleEnemy enemy = selected.GetComponent<SimpleEnemy>();
+
+        // Check for either SimpleEnemy or FlyingEnemy (both implement IEnemyBase)
+        IEnemyBase enemy = selected.GetComponent<SimpleEnemy>();
         if (enemy == null)
         {
-            EditorUtility.DisplayDialog("Invalid Selection", "Selected GameObject must have a SimpleEnemy component", "OK");
+            enemy = selected.GetComponent<FlyingEnemy>();
+        }
+
+        if (enemy == null)
+        {
+            EditorUtility.DisplayDialog("Invalid Selection", "Selected GameObject must have a SimpleEnemy or FlyingEnemy component", "OK");
             return;
         }
         

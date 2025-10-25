@@ -105,22 +105,32 @@ public class SimpleHeadStompSetup : EditorWindow
     
     private void AddToAllEnemies()
     {
-        SimpleEnemy[] enemies = FindObjectsByType<SimpleEnemy>(FindObjectsSortMode.None);
+        // Find both SimpleEnemy and FlyingEnemy
+        SimpleEnemy[] simpleEnemies = FindObjectsByType<SimpleEnemy>(FindObjectsSortMode.None);
+        FlyingEnemy[] flyingEnemies = FindObjectsByType<FlyingEnemy>(FindObjectsSortMode.None);
         int added = 0;
         int updated = 0;
-        
-        foreach (var enemy in enemies)
+
+        foreach (var enemy in simpleEnemies)
         {
             if (AddSimpleHeadStomp(enemy.gameObject))
                 added++;
             else
                 updated++;
         }
-        
-        EditorUtility.DisplayDialog("Complete", 
-            $"Added SimpleHeadStomp to {added} enemies.\nUpdated {updated} existing components.", 
+
+        foreach (var enemy in flyingEnemies)
+        {
+            if (AddSimpleHeadStomp(enemy.gameObject))
+                added++;
+            else
+                updated++;
+        }
+
+        EditorUtility.DisplayDialog("Complete",
+            $"Added SimpleHeadStomp to {added} enemies.\nUpdated {updated} existing components.",
             "OK");
-        
+
         if (added > 0 || updated > 0)
         {
             UnityEditor.SceneManagement.EditorSceneManager.MarkSceneDirty(
@@ -133,10 +143,11 @@ public class SimpleHeadStompSetup : EditorWindow
         GameObject[] selected = Selection.gameObjects;
         int added = 0;
         int updated = 0;
-        
+
         foreach (var obj in selected)
         {
-            if (obj.GetComponent<SimpleEnemy>() != null)
+            // Check for either SimpleEnemy or FlyingEnemy
+            if (obj.GetComponent<SimpleEnemy>() != null || obj.GetComponent<FlyingEnemy>() != null)
             {
                 if (AddSimpleHeadStomp(obj))
                     added++;
@@ -144,18 +155,18 @@ public class SimpleHeadStompSetup : EditorWindow
                     updated++;
             }
         }
-        
+
         if (added == 0 && updated == 0)
         {
-            EditorUtility.DisplayDialog("No Enemies Selected", 
-                "Please select enemy GameObjects with SimpleEnemy component.", "OK");
+            EditorUtility.DisplayDialog("No Enemies Selected",
+                "Please select enemy GameObjects with SimpleEnemy or FlyingEnemy component.", "OK");
         }
         else
         {
-            EditorUtility.DisplayDialog("Complete", 
-                $"Added SimpleHeadStomp to {added} enemies.\nUpdated {updated} existing components.", 
+            EditorUtility.DisplayDialog("Complete",
+                $"Added SimpleHeadStomp to {added} enemies.\nUpdated {updated} existing components.",
                 "OK");
-            
+
             UnityEditor.SceneManagement.EditorSceneManager.MarkSceneDirty(
                 UnityEditor.SceneManagement.EditorSceneManager.GetActiveScene());
         }
@@ -329,28 +340,29 @@ public class SimpleHeadStompSetup : EditorWindow
     {
         string[] prefabGuids = AssetDatabase.FindAssets("t:Prefab", new[] { "Assets" });
         int updated = 0;
-        
+
         foreach (string guid in prefabGuids)
         {
             string path = AssetDatabase.GUIDToAssetPath(guid);
             GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(path);
-            
-            if (prefab != null && prefab.GetComponent<SimpleEnemy>() != null)
+
+            // Check for either SimpleEnemy or FlyingEnemy
+            if (prefab != null && (prefab.GetComponent<SimpleEnemy>() != null || prefab.GetComponent<FlyingEnemy>() != null))
             {
                 // Load prefab for editing
                 GameObject prefabInstance = PrefabUtility.LoadPrefabContents(path);
-                
+
                 try
                 {
                     // Add or update SimpleHeadStomp
                     bool modified = AddSimpleHeadStomp(prefabInstance);
-                    
+
                     // Remove old components if requested
                     if (removeOldComponents)
                     {
                         modified |= RemoveOldComponentsFromPrefab(prefabInstance);
                     }
-                    
+
                     if (modified)
                     {
                         PrefabUtility.SaveAsPrefabAsset(prefabInstance, path);
@@ -364,11 +376,11 @@ public class SimpleHeadStompSetup : EditorWindow
                 }
             }
         }
-        
+
         AssetDatabase.Refresh();
-        
-        EditorUtility.DisplayDialog("Prefab Update Complete", 
-            $"Updated {updated} enemy prefabs with SimpleHeadStomp.", 
+
+        EditorUtility.DisplayDialog("Prefab Update Complete",
+            $"Updated {updated} enemy prefabs with SimpleHeadStomp.",
             "OK");
     }
     
@@ -383,29 +395,42 @@ public class SimpleHeadStompSetup : EditorWindow
         int enemiesWithSimple = 0;
         int enemiesWithOld = 0;
         int enemiesWithout = 0;
-        
-        SimpleEnemy[] enemies = FindObjectsByType<SimpleEnemy>(FindObjectsSortMode.None);
-        
-        foreach (var enemy in enemies)
+
+        // Find both SimpleEnemy and FlyingEnemy
+        SimpleEnemy[] simpleEnemies = FindObjectsByType<SimpleEnemy>(FindObjectsSortMode.None);
+        FlyingEnemy[] flyingEnemies = FindObjectsByType<FlyingEnemy>(FindObjectsSortMode.None);
+        int totalEnemies = simpleEnemies.Length + flyingEnemies.Length;
+
+        foreach (var enemy in simpleEnemies)
         {
             bool hasSimple = enemy.GetComponent<SimpleHeadStomp>() != null;
-            
+
             if (hasSimple)
                 enemiesWithSimple++;
             else
                 enemiesWithout++;
         }
-        
+
+        foreach (var enemy in flyingEnemies)
+        {
+            bool hasSimple = enemy.GetComponent<SimpleHeadStomp>() != null;
+
+            if (hasSimple)
+                enemiesWithSimple++;
+            else
+                enemiesWithout++;
+        }
+
         // Player status - old components removed
         string playerStatus = "Clean";
-        
+
         string message = $"Enemy Status:\n" +
                         $"• {enemiesWithSimple} with SimpleHeadStomp ✓\n" +
                         $"• {enemiesWithOld} with old system\n" +
                         $"• {enemiesWithout} without head stomp\n\n" +
                         $"Player Status: {playerStatus}\n\n" +
-                        $"Total Enemies: {enemies.Length}";
-        
+                        $"Total Enemies: {totalEnemies}";
+
         EditorUtility.DisplayDialog("Head Stomp Status", message, "OK");
     }
     

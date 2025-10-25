@@ -21,7 +21,7 @@ public class LevelSpawnPoint : MonoBehaviour
     private void Start()
     {
         // Check if this spawn point should be activated due to level transition
-        if (LevelTransitionManager.HasPendingTransition() && 
+        if (LevelTransitionManager.HasPendingTransition() &&
             LevelTransitionManager.GetPendingSpawnPointId() == spawnPointId)
         {
             SpawnPlayerHere();
