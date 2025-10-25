@@ -136,12 +136,12 @@ TextureImporter:
       name: Shaman_Idle_0
       rect:
         serializedVersion: 2
-        x: 43
-        y: 54
-        width: 98
-        height: 82
+        x: 0
+        y: 42
+        width: 192
+        height: 110
       alignment: 0
-      pivot: {x: 0, y: 0}
+      pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
@@ -158,12 +158,12 @@ TextureImporter:
       name: Shaman_Idle_1
       rect:
         serializedVersion: 2
-        x: 51
-        y: 132
-        width: 7
-        height: 6
+        x: 192
+        y: 42
+        width: 192
+        height: 110
       alignment: 0
-      pivot: {x: 0, y: 0}
+      pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
@@ -180,12 +180,12 @@ TextureImporter:
       name: Shaman_Idle_2
       rect:
         serializedVersion: 2
-        x: 234
-        y: 54
-        width: 100
-        height: 86
+        x: 384
+        y: 42
+        width: 192
+        height: 110
       alignment: 0
-      pivot: {x: 0, y: 0}
+      pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
@@ -202,12 +202,12 @@ TextureImporter:
       name: Shaman_Idle_3
       rect:
         serializedVersion: 2
-        x: 426
-        y: 54
-        width: 102
-        height: 82
+        x: 576
+        y: 42
+        width: 192
+        height: 110
       alignment: 0
-      pivot: {x: 0, y: 0}
+      pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
@@ -224,12 +224,12 @@ TextureImporter:
       name: Shaman_Idle_4
       rect:
         serializedVersion: 2
-        x: 619
-        y: 54
-        width: 102
-        height: 82
+        x: 768
+        y: 42
+        width: 192
+        height: 110
       alignment: 0
-      pivot: {x: 0, y: 0}
+      pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
@@ -246,12 +246,12 @@ TextureImporter:
       name: Shaman_Idle_5
       rect:
         serializedVersion: 2
-        x: 812
-        y: 54
-        width: 102
-        height: 82
+        x: 960
+        y: 42
+        width: 192
+        height: 110
       alignment: 0
-      pivot: {x: 0, y: 0}
+      pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
@@ -268,12 +268,12 @@ TextureImporter:
       name: Shaman_Idle_6
       rect:
         serializedVersion: 2
-        x: 1004
-        y: 54
-        width: 100
-        height: 82
+        x: 1152
+        y: 42
+        width: 192
+        height: 110
       alignment: 0
-      pivot: {x: 0, y: 0}
+      pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
@@ -290,12 +290,12 @@ TextureImporter:
       name: Shaman_Idle_7
       rect:
         serializedVersion: 2
-        x: 1193
-        y: 54
-        width: 101
-        height: 82
+        x: 1344
+        y: 42
+        width: 192
+        height: 110
       alignment: 0
-      pivot: {x: 0, y: 0}
+      pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
@@ -308,99 +308,11 @@ TextureImporter:
       indices: 
       edges: []
       weights: []
-    - serializedVersion: 2
-      name: Shaman_Idle_8
-      rect:
-        serializedVersion: 2
-        x: 1388
-        y: 54
-        width: 95
-        height: 82
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: eb6e6d6e8d0984300800000000000000
-      internalID: 236598241697130174
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: Shaman_Idle_9
-      rect:
-        serializedVersion: 2
-        x: 618
-        y: 103
-        width: 14
-        height: 28
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: ec40bd759d6e8bfe0800000000000000
-      internalID: -1172933881773751090
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: Shaman_Idle_10
-      rect:
-        serializedVersion: 2
-        x: 809
-        y: 105
-        width: 17
-        height: 24
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: aa81b88ca97796bd0800000000000000
-      internalID: -2636444600175486806
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: Shaman_Idle_11
-      rect:
-        serializedVersion: 2
-        x: 1001
-        y: 106
-        width: 18
-        height: 21
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: 6a5aadf64fcf1bd30800000000000000
-      internalID: 4445612433970210214
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
     outline: []
     customData: 
     physicsShape: []
     bones: []
-    spriteID: 
+    spriteID: d8f7dcfeb66d14940a7a22ccb3c5d98b
     internalID: 0
     vertices: []
     indices: 
@@ -408,20 +320,18 @@ TextureImporter:
     weights: []
     secondaryTextures: []
     spriteCustomMetadata:
-      entries: []
+      entries:
+      - key: SpriteEditor.SliceSettings
+        value: '{"sliceOnImport":false,"gridCellCount":{"x":1.0,"y":1.0},"gridSpriteSize":{"x":192.0,"y":110.0},"gridSpriteOffset":{"x":0.0,"y":40.0},"gridSpritePadding":{"x":0.0,"y":0.0},"pivot":{"x":0.5,"y":0.5},"pivotPixels":{"x":0.0,"y":0.0},"autoSlicingMethod":0,"spriteAlignment":0,"pivotUnitMode":0,"slicingType":1,"keepEmptyRects":false,"isAlternate":false}'
     nameFileIdTable:
       Shaman_Idle_0: -493310475744596764
       Shaman_Idle_1: -873321116242878267
-      Shaman_Idle_10: -2636444600175486806
-      Shaman_Idle_11: 4445612433970210214
       Shaman_Idle_2: -6235809038419256129
       Shaman_Idle_3: -2612597594459788785
       Shaman_Idle_4: 87698195039186918
       Shaman_Idle_5: -7133801238358545687
       Shaman_Idle_6: 3682433274791983212
       Shaman_Idle_7: 2902144569901462769
-      Shaman_Idle_8: 236598241697130174
-      Shaman_Idle_9: -1172933881773751090
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 
