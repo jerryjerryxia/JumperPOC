@@ -60,8 +60,8 @@ This is a Unity 2D platformer Metroidvania proof-of-concept (POC) game built wit
    - Players DON'T experience: code architecture, test coverage, design patterns
 
 3. **If It Works, Don't Touch It**
-   - Current 11-component player system? ✅ **KEEP IT. IT WORKS.**
-   - Bad reasons to refactor: "This file is 600 lines", "Could be more modular", "Best practices say X"
+   - Current monolithic PlayerController (2,820 lines)? ✅ **KEEP IT. IT WORKS.**
+   - Bad reasons to refactor: "This file is too big", "Could be more modular", "Best practices say X"
    - Good reasons to refactor: "Cannot add feature X without rewriting", "Every bug takes >2 hours to find"
    - **Only refactor when actively blocked by current architecture**
 
@@ -98,7 +98,7 @@ This is a Unity 2D platformer Metroidvania proof-of-concept (POC) game built wit
 ### Acceptable vs. Unacceptable Technical Debt
 
 **Acceptable for v1.0:**
-- ✅ Large files (600-800 lines)
+- ✅ Large files (even 2000+ lines if they work)
 - ✅ Some code duplication
 - ✅ TODOs and commented code
 - ✅ Untested systems that work
@@ -195,56 +195,115 @@ Version control is essential. After a version of the code base is fully tested a
 
 ## Architecture Overview
 
-**Current Approach:** 15-Component Player System (~6,907 lines) + Simplified Enemy System
+**Current Approach:** Monolithic Player System (4 Components, ~4,110 lines) + Simplified Enemy System
 
-### Player System (15 Components)
+**Philosophy:** Pragmatic monolith. Works great for solo dev shipping v1.0. Refactor in v2.0 if game succeeds.
 
-**Orchestrator:**
-- `PlayerController.cs` (688 lines) - Central coordination hub
+### Player System (4 Components)
 
-**Movement & Physics (4 components, 2,143 lines):**
-- `PlayerMovement.cs` (791 lines) - Running, dashing, wall sliding, climbing
-- `PlayerJumpSystem.cs` (687 lines) - Variable jump, double jump, wall jump, coyote time
-- `PlayerGroundDetection.cs` (363 lines) - Slope detection, landing buffer
-- `PlayerWallDetection.cs` (139 lines) - Wall detection with triple raycast
+**Core Player Components:**
 
-**Combat & Interaction (4 components, 1,370 lines):**
-- `PlayerCombat.cs` (733 lines) - 3-hit combo, air attacks, dash attack, head stomp
-- `PlayerAbilities.cs` (360 lines) - Ability unlock system (double jump, dash, wall jump)
-- `PlayerInteractionDetector.cs` (346 lines) - Ledge detection and grabbing
-- `AttackHitbox.cs` (291 lines) - Attack collision and damage
+1. **`PlayerController.cs` (2,820 lines)** - Monolithic controller
+   - **Movement:** Running, dashing, wall sliding, ledge climbing, slope handling
+   - **Jump System:** Variable jump (Hollow Knight style), double jump, wall jump, coyote time
+   - **Ground Detection:** Slope detection, landing buffer, moving platform tracking
+   - **Wall Detection:** Triple raycast system for wall sliding/sticking
+   - **Input Handling:** Input buffering, queue management
+   - **Animation State:** 22 animator parameters, state synchronization
+   - **Death/Respawn:** Death zones, checkpoint system
 
-**State & Animation (3 components, 490 lines):**
-- `PlayerAnimationController.cs` (157 lines) - Animation state machine
-- `PlayerStateTracker.cs` (130 lines) - Centralized state tracking
-- `PlayerHealth.cs` (203 lines) - Health system with damage/death
+   **Why monolithic?** Tried splitting into 11+ components, caused state synchronization hell. Consolidated back into one file. Works perfectly for adding features fast.
 
-**Support (3 components, 846 lines):**
-- `PlayerInputHandler.cs` (138 lines) - Input routing from Unity Input System
-- `PlayerRespawnSystem.cs` (197 lines) - Death zones and checkpoints
-- `PlayerDebugVisualizer.cs` (308 lines) - Debug gizmos for raycasts
+2. **`PlayerCombat.cs` (733 lines)** - Combat system
+   - 3-hit combo system with timing windows
+   - Air attack limiting (max 2 before landing)
+   - Dash attack with momentum
+   - Head stomp integration
+   - Attack hitbox management
+   - Input buffering for attacks
+
+3. **`PlayerHealth.cs` (203 lines)** - Health system
+   - Damage handling with invincibility frames
+   - Death detection and events
+   - Health UI integration
+   - Respawn coordination
+
+4. **`PlayerAbilities.cs` (354 lines)** - Ability unlock system
+   - Progression tracking (double jump, dash, wall jump, etc.)
+   - Singleton pattern for global access
+   - Ability state management
+   - Event system for UI updates
+
+**Supporting Components:**
+- `AttackHitbox.cs` (291 lines) - Attack collision and damage dealing
+- `PlayerInteractionDetector.cs` (346 lines) - Ledge detection and grabbing (optional system)
+
+**Total Player Code:** ~4,110 lines across 4 main components
 
 ### Other Systems
 
-**Enemy:** `SimpleEnemy.cs` (patrol/chase/attack AI), head stomp interaction
-**UI:** Health bars (player overlay + enemy floating bars)
-**Input:** `Controls.inputactions` (WASD, Space, Shift, Left Click)
-**Levels:** 2 scenes (Level1_ThePit, Level2_CommercialArea), checkpoint system
-**Tilemap:** Custom collider generation, tile offset handling
+**Enemy System:**
+- `SimpleEnemy.cs` (720 lines) - Clean state machine (Patrol/Chase/Attack/Dead)
+- Platform-aware AI (edge detection, wall avoidance)
+- Event-driven health system for UI integration
+- Head stomp compatibility via `SimpleHeadStomp.cs`
+
+**Environment:**
+- `MovingPlatform.cs` (285 lines) - Horizontal/vertical/diagonal platforms with velocity inheritance
+- `BreakableTerrain.cs` (780 lines) - Destructible terrain system
+- Level transitions and spawn point management
+
+**UI Systems:**
+- Player health overlay
+- Enemy floating health bars
+- Health bar component (`HealthBarUI.cs`)
+
+**Input:**
+- New Unity Input System (`Controls.inputactions`)
+- WASD movement, Space (jump), Shift (dash), Left Click (attack)
+
+**Levels:**
+- 3 scenes: Level1_ThePit, Level2_CommercialArea, Level3_HomeArea
+- Checkpoint/save point system
+- Scene transition management
+
+**Tilemap:**
+- Custom composite collider generation
+- Tile offset handling for pixel-perfect collisions
 
 ### Key Dependencies
 
-**Unity Packages:** Test Framework 1.5.1, Input System 1.14.0, Cinemachine 3.1.3, URP 17.2.0, 2D Animation 12.0.2
-**Third-Party:** DOTween Pro (Demigiant), Unity MCP
+**Unity Packages:**
+- Test Framework 1.5.1
+- Input System 1.14.0
+- Cinemachine 3.1.3
+- URP 17.2.0
+- 2D Animation 12.0.2
 
-### Architecture Status
+**Third-Party:**
+- DOTween Pro (Demigiant)
+- Unity MCP (UnityMCP server)
 
-✅ **KEEP IT. IT WORKS.** (See Core Development Philosophy)
+### Architecture Philosophy
 
-- Each component has single responsibility
-- Parameters owned by components (not Inspector)
-- Direct component references for fast communication
-- `PlayerController` orchestrates high-level coordination
-- Scales well for new abilities
+✅ **MONOLITHIC BY CHOICE** - Not by accident
 
-**Detailed breakdown:** See `docs/ARCHITECTURE_GUIDELINES.md`
+**Why this works for solo dev:**
+- ✅ All movement logic in one place (easy to debug)
+- ✅ No state synchronization across 15+ components
+- ✅ Adding new movement features is straightforward
+- ✅ 68 serialized fields in one Inspector (not scattered across 11 components)
+- ✅ Comprehensive test coverage (98 tests) catches regressions
+
+**Known tradeoffs:**
+- ⚠️ Large file (2,820 lines) - but Find in File works great
+- ⚠️ Not "clean code" by textbook standards - but it ships
+- ⚠️ Some duplicate logic - acceptable for v1.0
+
+**Refactoring policy:**
+- 📅 **Review after v1.0 ships** - IF game succeeds, consider splitting PlayerController into:
+  - `PlayerMovement.cs` (500-700 lines) - Pure movement logic
+  - `PlayerController.cs` (200-300 lines) - Orchestration only
+- 📅 **If game fails** - Move to next project, don't refactor
+
+**See also:** `docs/outdated_docs/ARCHITECTURE_GUIDELINES.md` for alternative 3-4 component design (future v2.0 option)
