@@ -89,9 +89,12 @@ public class HealthUISetupHelper : EditorWindow
         SerializedObject playerHealthSO = new SerializedObject(playerHealthUI);
         playerHealthSO.FindProperty("healthBar").objectReferenceValue = healthBar.GetComponent<HealthBarUI>();
         playerHealthSO.ApplyModifiedProperties();
-        
+
+        // Ensure all children have UI layer set (including nested objects)
+        SetLayerRecursive(healthUIContainer, LayerMask.NameToLayer("UI"));
+
         Debug.Log("Player Health UI created successfully!");
-        
+
         // Select the created object
         Selection.activeGameObject = healthUIContainer;
     }
@@ -120,11 +123,13 @@ public class HealthUISetupHelper : EditorWindow
         
         // Create enemy health UI container
         GameObject healthUIContainer = new GameObject("EnemyHealthUI");
+        healthUIContainer.layer = LayerMask.NameToLayer("UI");
         healthUIContainer.transform.SetParent(selected.transform, false);
         healthUIContainer.transform.localPosition = new Vector3(0, 1.0f, 0);
-        
+
         // Create world space canvas
         GameObject canvasGO = new GameObject("HealthCanvas");
+        canvasGO.layer = LayerMask.NameToLayer("UI");
         canvasGO.transform.SetParent(healthUIContainer.transform, false);
         Canvas worldCanvas = canvasGO.AddComponent<Canvas>();
         worldCanvas.renderMode = RenderMode.WorldSpace;
@@ -155,10 +160,13 @@ public class HealthUISetupHelper : EditorWindow
         enemyHealthSO.FindProperty("alwaysVisible").boolValue = true; // Make it always visible for testing
         enemyHealthSO.ApplyModifiedProperties();
         
+        // Ensure all children have UI layer set (including nested objects)
+        SetLayerRecursive(healthUIContainer, LayerMask.NameToLayer("UI"));
+
         // Mark objects as dirty for proper saving
         EditorUtility.SetDirty(enemyHealthUI);
         EditorUtility.SetDirty(healthBar.GetComponent<HealthBarUI>());
-        
+
         // Initialize the enemy health UI (this should be called in play mode)
         if (Application.isPlaying)
         {
@@ -168,11 +176,20 @@ public class HealthUISetupHelper : EditorWindow
         {
             Debug.Log("Enemy Health UI will initialize when play mode starts");
         }
-        
+
         Debug.Log($"Enemy Health UI created for {selected.name}!");
-        
+
         // Select the created object
         Selection.activeGameObject = healthUIContainer;
+    }
+
+    private static void SetLayerRecursive(GameObject obj, int layer)
+    {
+        obj.layer = layer;
+        foreach (Transform child in obj.transform)
+        {
+            SetLayerRecursive(child.gameObject, layer);
+        }
     }
     
     private static GameObject CreateHealthBar(string name)
@@ -261,7 +278,10 @@ public class HealthUISetupHelper : EditorWindow
         healthBarSO.FindProperty("fillImage").objectReferenceValue = fillImage;
         healthBarSO.FindProperty("healthText").objectReferenceValue = healthText;
         healthBarSO.ApplyModifiedProperties();
-        
+
+        // Final safety check: ensure all objects have UI layer
+        SetLayerRecursive(healthBarGO, LayerMask.NameToLayer("UI"));
+
         return healthBarGO;
     }
 }
