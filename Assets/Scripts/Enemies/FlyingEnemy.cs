@@ -48,7 +48,7 @@ public class FlyingEnemy : MonoBehaviour, IEnemyBase
     [SerializeField] private float boundaryCheckDistance = 2f; // Distance to check for walls
     [SerializeField] private LayerMask obstacleLayer = 1 << 6; // Ground and obstacles
 
-    [Header("Obstacle Avoidance - Steering Behaviors")]
+    [Header("Obstacle Avoidance - Steering Behaviors (Reactive)")]
     [SerializeField] private bool useSteeringBehaviors = true; // Enable/disable steering obstacle avoidance
     [SerializeField] private float steeringWeight = 1.0f; // How much steering affects movement (0-1 = blend, >1 = stronger)
     [SerializeField] private float obstacleAvoidDistance = 2.5f; // How far ahead to detect obstacles
@@ -57,6 +57,10 @@ public class FlyingEnemy : MonoBehaviour, IEnemyBase
     [SerializeField] private float raySpreadAngle = 45f; // Angular spread of detection rays
     [SerializeField] private float maxSteeringForce = 15f; // Maximum steering force that can be applied
     [SerializeField] private bool showSteeringDebug = true; // Show debug rays and forces in scene view
+
+    [Header("Platform Prediction (Proactive)")]
+    [SerializeField] private bool usePlatformPrediction = true; // Enable/disable predictive platform avoidance
+    [SerializeField] private float predictionWeight = 0.8f; // How much prediction affects movement (0-1)
 
     [Header("Health")]
     [SerializeField] private float maxHealth = 80f;
@@ -78,6 +82,7 @@ public class FlyingEnemy : MonoBehaviour, IEnemyBase
     private SpriteRenderer spriteRenderer;
     private Collider2D col;
     private SteeringBehaviors steering;
+    private PlatformPredictor predictor;
 
     // Compatibility with existing systems
     public bool IsFacingRight => facingRight;
@@ -134,6 +139,13 @@ public class FlyingEnemy : MonoBehaviour, IEnemyBase
                 showSteeringDebug,
                 obstacleLayer
             );
+        }
+
+        // Get or add platform predictor component
+        predictor = GetComponent<PlatformPredictor>();
+        if (predictor == null && usePlatformPrediction)
+        {
+            predictor = gameObject.AddComponent<PlatformPredictor>();
         }
 
         // Initialize health
@@ -575,7 +587,14 @@ public class FlyingEnemy : MonoBehaviour, IEnemyBase
                 break;
         }
 
-        // STEERING OBSTACLE AVOIDANCE: Avoid platforms and walls dynamically
+        // PLATFORM PREDICTION (PROACTIVE): Avoid predicted platform positions
+        if (usePlatformPrediction && predictor != null && predictor.ShouldAvoidPlatforms)
+        {
+            Vector2 predictiveOffset = predictor.SuggestedAvoidanceOffset * predictionWeight;
+            velocity += predictiveOffset;
+        }
+
+        // STEERING OBSTACLE AVOIDANCE (REACTIVE): Avoid platforms and walls dynamically
         if (useSteeringBehaviors && steering != null)
         {
             Vector2 avoidanceForce = steering.AvoidObstacles(velocity);
@@ -691,6 +710,13 @@ public class FlyingEnemy : MonoBehaviour, IEnemyBase
         float yVelocity = Mathf.Clamp(yDelta * 2f, -1f, 1f); // Clamped for stability
 
         Vector2 velocity = new Vector2(0, yVelocity);
+
+        // Apply platform prediction even while hovering
+        if (usePlatformPrediction && predictor != null && predictor.ShouldAvoidPlatforms)
+        {
+            Vector2 predictiveOffset = predictor.SuggestedAvoidanceOffset * predictionWeight * 0.7f; // Reduced strength while hovering
+            velocity += predictiveOffset;
+        }
 
         // Apply steering obstacle avoidance even while hovering
         if (useSteeringBehaviors && steering != null)

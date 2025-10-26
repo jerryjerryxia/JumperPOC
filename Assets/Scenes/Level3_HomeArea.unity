@@ -4932,8 +4932,24 @@ PrefabInstance:
       value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 7997212834100546506, guid: 06eab82fc977dfd4aba6d7e9bf13aa5b, type: 3}
+      propertyPath: raySpreadAngle
+      value: 360
+      objectReference: {fileID: 0}
+    - target: {fileID: 7997212834100546506, guid: 06eab82fc977dfd4aba6d7e9bf13aa5b, type: 3}
       propertyPath: steeringWeight
-      value: 1.5
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 7997212834100546506, guid: 06eab82fc977dfd4aba6d7e9bf13aa5b, type: 3}
+      propertyPath: predictionWeight
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 7997212834100546506, guid: 06eab82fc977dfd4aba6d7e9bf13aa5b, type: 3}
+      propertyPath: showSteeringDebug
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 7997212834100546506, guid: 06eab82fc977dfd4aba6d7e9bf13aa5b, type: 3}
+      propertyPath: obstacleAvoidDistance
+      value: 3
       objectReference: {fileID: 0}
     - target: {fileID: 8502705933992876353, guid: 06eab82fc977dfd4aba6d7e9bf13aa5b, type: 3}
       propertyPath: m_LocalPosition.y
