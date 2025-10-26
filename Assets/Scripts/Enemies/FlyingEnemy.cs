@@ -48,6 +48,10 @@ public class FlyingEnemy : MonoBehaviour, IEnemyBase
     [SerializeField] private float boundaryCheckDistance = 2f; // Distance to check for walls
     [SerializeField] private LayerMask obstacleLayer = 1 << 6; // Ground and obstacles
 
+    [Header("Obstacle Avoidance - Steering Behaviors")]
+    [SerializeField] private bool useSteeringBehaviors = true; // Enable/disable steering obstacle avoidance
+    [SerializeField] private float steeringWeight = 1.0f; // How much steering affects movement (0-1 = blend, >1 = stronger)
+
     [Header("Health")]
     [SerializeField] private float maxHealth = 80f;
 
@@ -67,6 +71,7 @@ public class FlyingEnemy : MonoBehaviour, IEnemyBase
     private Animator animator;
     private SpriteRenderer spriteRenderer;
     private Collider2D col;
+    private SteeringBehaviors steering;
 
     // Compatibility with existing systems
     public bool IsFacingRight => facingRight;
@@ -103,6 +108,13 @@ public class FlyingEnemy : MonoBehaviour, IEnemyBase
         animator = GetComponent<Animator>();
         spriteRenderer = GetComponent<SpriteRenderer>();
         col = GetComponent<Collider2D>();
+
+        // Get or add steering behaviors component
+        steering = GetComponent<SteeringBehaviors>();
+        if (steering == null && useSteeringBehaviors)
+        {
+            steering = gameObject.AddComponent<SteeringBehaviors>();
+        }
 
         // Initialize health
         currentHealth = maxHealth;
@@ -543,6 +555,13 @@ public class FlyingEnemy : MonoBehaviour, IEnemyBase
                 break;
         }
 
+        // STEERING OBSTACLE AVOIDANCE: Avoid platforms and walls dynamically
+        if (useSteeringBehaviors && steering != null)
+        {
+            Vector2 avoidanceForce = steering.AvoidObstacles(velocity);
+            velocity += avoidanceForce * steeringWeight;
+        }
+
         // GROUND AVOIDANCE: Check if too close to ground and add upward force
         velocity = ApplyGroundAvoidance(velocity);
 
@@ -651,8 +670,16 @@ public class FlyingEnemy : MonoBehaviour, IEnemyBase
         float yDelta = targetY - transform.position.y;
         float yVelocity = Mathf.Clamp(yDelta * 2f, -1f, 1f); // Clamped for stability
 
-        // Apply ground avoidance to hover motion too
         Vector2 velocity = new Vector2(0, yVelocity);
+
+        // Apply steering obstacle avoidance even while hovering
+        if (useSteeringBehaviors && steering != null)
+        {
+            Vector2 avoidanceForce = steering.AvoidObstacles(velocity);
+            velocity += avoidanceForce * steeringWeight * 0.5f; // Reduced strength while hovering
+        }
+
+        // Apply ground avoidance to hover motion too
         velocity = ApplyGroundAvoidance(velocity);
 
         rb.linearVelocity = velocity;

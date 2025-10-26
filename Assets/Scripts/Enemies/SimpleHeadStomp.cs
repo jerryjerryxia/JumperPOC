@@ -197,8 +197,10 @@ public class SimpleHeadStomp : MonoBehaviour
     public void OnPlayerEnterTrigger(Collider2D player)
     {
         if (enableDebugLogging)
+        {
             // Debug.Log($"[SimpleHeadStomp] Player entered head stomp trigger on {name}");
-            
+        }
+
         ProcessPotentialStompFromTrigger(player);
     }
     

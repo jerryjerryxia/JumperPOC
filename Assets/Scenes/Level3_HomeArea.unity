@@ -4837,11 +4837,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3921356903630783656, guid: 06eab82fc977dfd4aba6d7e9bf13aa5b, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 4.1
+      value: 4.41
       objectReference: {fileID: 0}
     - target: {fileID: 3921356903630783656, guid: 06eab82fc977dfd4aba6d7e9bf13aa5b, type: 3}
       propertyPath: m_LocalPosition.y
-      value: -5.75
+      value: -5.409
       objectReference: {fileID: 0}
     - target: {fileID: 3921356903630783656, guid: 06eab82fc977dfd4aba6d7e9bf13aa5b, type: 3}
       propertyPath: m_LocalPosition.z
@@ -4896,7 +4896,31 @@ PrefabInstance:
       value: 14
       objectReference: {fileID: 0}
     - target: {fileID: 7371084024878303688, guid: 06eab82fc977dfd4aba6d7e9bf13aa5b, type: 3}
+      propertyPath: gizmoColor.b
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 7371084024878303688, guid: 06eab82fc977dfd4aba6d7e9bf13aa5b, type: 3}
+      propertyPath: gizmoColor.r
+      value: 0.4980392
+      objectReference: {fileID: 0}
+    - target: {fileID: 7371084024878303688, guid: 06eab82fc977dfd4aba6d7e9bf13aa5b, type: 3}
+      propertyPath: triggerSize.x
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 7371084024878303688, guid: 06eab82fc977dfd4aba6d7e9bf13aa5b, type: 3}
+      propertyPath: triggerSize.y
+      value: 0.01
+      objectReference: {fileID: 0}
+    - target: {fileID: 7371084024878303688, guid: 06eab82fc977dfd4aba6d7e9bf13aa5b, type: 3}
       propertyPath: showDebugGizmos
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 7371084024878303688, guid: 06eab82fc977dfd4aba6d7e9bf13aa5b, type: 3}
+      propertyPath: minimumFallSpeed
+      value: -1
+      objectReference: {fileID: 0}
+    - target: {fileID: 7371084024878303688, guid: 06eab82fc977dfd4aba6d7e9bf13aa5b, type: 3}
+      propertyPath: enableDebugLogging
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 7454439206933547024, guid: 06eab82fc977dfd4aba6d7e9bf13aa5b, type: 3}
