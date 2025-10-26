@@ -4931,6 +4931,10 @@ PrefabInstance:
       propertyPath: m_AnchorMax.y
       value: 1
       objectReference: {fileID: 0}
+    - target: {fileID: 7997212834100546506, guid: 06eab82fc977dfd4aba6d7e9bf13aa5b, type: 3}
+      propertyPath: steeringWeight
+      value: 1.5
+      objectReference: {fileID: 0}
     - target: {fileID: 8502705933992876353, guid: 06eab82fc977dfd4aba6d7e9bf13aa5b, type: 3}
       propertyPath: m_LocalPosition.y
       value: 0.3499999

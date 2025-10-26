@@ -43,6 +43,29 @@ namespace Enemies
         }
 
         /// <summary>
+        /// Configure steering behavior parameters from external source (e.g., FlyingEnemy).
+        /// Call this after adding the component to override default values.
+        /// </summary>
+        public void Configure(
+            float obstacleAvoidDist,
+            float avoidForce,
+            int numRays,
+            float raySpread,
+            float maxForceLimit,
+            bool showDebug,
+            LayerMask obstacles)
+        {
+            obstacleAvoidDistance = obstacleAvoidDist;
+            avoidanceForce = avoidForce;
+            rayCount = numRays;
+            raySpreadAngle = raySpread;
+            maxForce = maxForceLimit;
+            showDebugRays = showDebug;
+            showSteeringForces = showDebug;
+            obstacleLayer = obstacles;
+        }
+
+        /// <summary>
         /// Calculate steering force to seek toward a target position.
         /// </summary>
         public Vector2 Seek(Vector2 targetPosition)

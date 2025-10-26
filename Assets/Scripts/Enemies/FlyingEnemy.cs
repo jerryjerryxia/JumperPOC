@@ -51,6 +51,12 @@ public class FlyingEnemy : MonoBehaviour, IEnemyBase
     [Header("Obstacle Avoidance - Steering Behaviors")]
     [SerializeField] private bool useSteeringBehaviors = true; // Enable/disable steering obstacle avoidance
     [SerializeField] private float steeringWeight = 1.0f; // How much steering affects movement (0-1 = blend, >1 = stronger)
+    [SerializeField] private float obstacleAvoidDistance = 2.5f; // How far ahead to detect obstacles
+    [SerializeField] private float avoidanceForce = 8f; // Strength of avoidance steering
+    [SerializeField] private int rayCount = 5; // Number of detection rays (more = smoother but more expensive)
+    [SerializeField] private float raySpreadAngle = 45f; // Angular spread of detection rays
+    [SerializeField] private float maxSteeringForce = 15f; // Maximum steering force that can be applied
+    [SerializeField] private bool showSteeringDebug = true; // Show debug rays and forces in scene view
 
     [Header("Health")]
     [SerializeField] private float maxHealth = 80f;
@@ -114,6 +120,20 @@ public class FlyingEnemy : MonoBehaviour, IEnemyBase
         if (steering == null && useSteeringBehaviors)
         {
             steering = gameObject.AddComponent<SteeringBehaviors>();
+        }
+
+        // Configure steering behaviors with inspector parameters
+        if (steering != null && useSteeringBehaviors)
+        {
+            steering.Configure(
+                obstacleAvoidDistance,
+                avoidanceForce,
+                rayCount,
+                raySpreadAngle,
+                maxSteeringForce,
+                showSteeringDebug,
+                obstacleLayer
+            );
         }
 
         // Initialize health
@@ -953,6 +973,28 @@ public class FlyingEnemy : MonoBehaviour, IEnemyBase
             Vector3 point2 = center + new Vector3(Mathf.Cos(angle2) * radius, Mathf.Sin(angle2) * radius, 0);
 
             Gizmos.DrawLine(point1, point2);
+        }
+    }
+
+    #endregion
+
+    #region Editor Utilities
+
+    // Called when values are changed in the Inspector (Edit Mode or Play Mode)
+    private void OnValidate()
+    {
+        // Only reconfigure steering if we're in play mode and steering is active
+        if (Application.isPlaying && steering != null && useSteeringBehaviors)
+        {
+            steering.Configure(
+                obstacleAvoidDistance,
+                avoidanceForce,
+                rayCount,
+                raySpreadAngle,
+                maxSteeringForce,
+                showSteeringDebug,
+                obstacleLayer
+            );
         }
     }
 
