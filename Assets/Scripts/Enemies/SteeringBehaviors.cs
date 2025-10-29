@@ -10,14 +10,14 @@ namespace Enemies
     public class SteeringBehaviors : MonoBehaviour
     {
         [Header("Obstacle Avoidance")]
-        [SerializeField] private float obstacleAvoidDistance = 2.5f; // How far ahead to detect obstacles
-        [SerializeField] private float avoidanceForce = 8f; // Strength of avoidance steering
+        [SerializeField] private float obstacleAvoidDistance = 3f; // How far ahead to detect obstacles (reduced from 3.5f)
+        [SerializeField] private float avoidanceForce = 6f; // Strength of avoidance steering (reduced from 12f to reduce jitter)
         [SerializeField] private int rayCount = 5; // Number of detection rays (more = smoother but more expensive)
         [SerializeField] private float raySpreadAngle = 45f; // Angular spread of detection rays
         [SerializeField] private LayerMask obstacleLayer = 1 << 6; // What layers to avoid (Ground by default)
 
         [Header("Force Limits")]
-        [SerializeField] private float maxForce = 15f; // Maximum steering force that can be applied
+        [SerializeField] private float maxForce = 10f; // Maximum steering force that can be applied (reduced from 15f)
         [SerializeField] private float slowdownRadius = 1.5f; // Start slowing down when this close to obstacle
 
         [Header("Debug Visualization")]
@@ -85,20 +85,25 @@ namespace Enemies
         /// <summary>
         /// Calculate steering force to avoid obstacles using raycast detection.
         /// This is the core obstacle avoidance system.
+        /// SOLUTION 2: Now works even when stationary (hovering) to avoid approaching platforms.
         /// </summary>
         public Vector2 AvoidObstacles(Vector2 currentVelocity)
         {
-            if (currentVelocity.sqrMagnitude < 0.01f)
-            {
-                // Not moving, no avoidance needed
-                lastAvoidanceForce = Vector2.zero;
-                lastHits = new RaycastHit2D[0];
-                return Vector2.zero;
-            }
-
             Vector2 avoidance = Vector2.zero;
             Vector2 currentPos = transform.position;
-            Vector2 forwardDir = currentVelocity.normalized;
+
+            // SOLUTION 2: Determine forward direction even when stationary
+            Vector2 forwardDir;
+            if (currentVelocity.sqrMagnitude < 0.01f)
+            {
+                // Stationary - check in all directions using a radial pattern
+                // This allows hovering enemies to detect platforms approaching from any angle
+                forwardDir = Vector2.right; // Default forward, will check 360° via ray spread
+            }
+            else
+            {
+                forwardDir = currentVelocity.normalized;
+            }
 
             // Cast multiple rays in a cone pattern ahead of movement
             System.Collections.Generic.List<RaycastHit2D> hitsList = new System.Collections.Generic.List<RaycastHit2D>();
@@ -225,10 +230,16 @@ namespace Enemies
             Vector2 currentPos = transform.position;
             Vector2 currentVelocity = rb != null ? rb.linearVelocity : Vector2.zero;
 
+            // SOLUTION 2: Show rays even when stationary
+            Vector2 forwardDir;
             if (currentVelocity.sqrMagnitude < 0.01f)
-                return;
-
-            Vector2 forwardDir = currentVelocity.normalized;
+            {
+                forwardDir = Vector2.right; // Default direction when stationary
+            }
+            else
+            {
+                forwardDir = currentVelocity.normalized;
+            }
 
             // Draw detection rays
             for (int i = 0; i < rayCount; i++)

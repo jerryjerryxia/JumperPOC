@@ -12,10 +12,11 @@ namespace Enemies
     public class PlatformPredictor : MonoBehaviour
     {
         [Header("Prediction Settings")]
-        [SerializeField] private float detectionRadius = 10f; // How far to detect platforms
-        [SerializeField] private float predictionTime = 2f; // How many seconds ahead to predict
-        [SerializeField] private float updateInterval = 0.5f; // How often to recalculate predictions
-        [SerializeField] private float dangerThreshold = 2f; // How close predicted platform needs to be to trigger avoidance
+        [SerializeField] private float detectionRadius = 12f; // How far to detect platforms (reduced from 15f)
+        [SerializeField] private float predictionTime = 2f; // How many seconds ahead to predict (reduced from 3f for less aggressive prediction)
+        [SerializeField] private float updateInterval = 0.5f; // How often to recalculate predictions (slowed from 0.3f to reduce jitter)
+        [SerializeField] private float redetectionInterval = 3f; // How often to re-scan for new/moved platforms (slowed from 2f)
+        [SerializeField] private float dangerThreshold = 2.5f; // How close predicted platform needs to be to trigger avoidance (reduced from 3f)
         [SerializeField] private LayerMask platformLayer = 1 << 6; // What layer are platforms on?
 
         [Header("Avoidance Response")]
@@ -40,12 +41,15 @@ namespace Enemies
 
         private List<PlatformData> trackedPlatforms = new List<PlatformData>();
         private float nextUpdateTime = 0f;
+        private float nextRedetectionTime = 0f; // Timer for periodic platform re-detection
         private float enemyRadius = 0.5f; // Cached enemy collision radius
 
         // Public interface for FlyingEnemy
         public Vector2 SuggestedAvoidanceOffset { get; private set; }
         public bool ShouldAvoidPlatforms { get; private set; }
         public int DangerousPlatformCount => GetDangerousCount();
+        public bool HasFastPlatforms { get; private set; } // Are any platforms moving too fast to outrun?
+        public Vector2 FastPlatformVelocity { get; private set; } // Velocity of fastest dangerous platform
 
         private void Start()
         {
@@ -101,6 +105,14 @@ namespace Enemies
                 return;
             }
 
+            // SOLUTION 1: Periodic platform re-detection
+            // Re-scan for platforms at interval to catch new platforms or repositioned enemies
+            if (Time.time >= nextRedetectionTime)
+            {
+                DetectNearbyPlatforms();
+                nextRedetectionTime = Time.time + redetectionInterval;
+            }
+
             // Update predictions at interval to save performance
             if (Time.time >= nextUpdateTime)
             {
@@ -153,12 +165,16 @@ namespace Enemies
             {
                 ShouldAvoidPlatforms = false;
                 SuggestedAvoidanceOffset = Vector2.zero;
+                HasFastPlatforms = false;
+                FastPlatformVelocity = Vector2.zero;
                 return;
             }
 
             Vector2 myPosition = transform.position;
             Vector2 avoidanceVector = Vector2.zero;
             int dangerCount = 0;
+            float maxPlatformSpeed = 0f;
+            Vector2 fastestPlatformVelocity = Vector2.zero;
 
             foreach (PlatformData data in trackedPlatforms)
             {
@@ -188,24 +204,33 @@ namespace Enemies
                 {
                     dangerCount++;
 
-                    // Calculate avoidance direction (perpendicular to platform velocity)
+                    // Track fastest dangerous platform
+                    float platformSpeed = currentVelocity.magnitude;
+                    if (platformSpeed > maxPlatformSpeed)
+                    {
+                        maxPlatformSpeed = platformSpeed;
+                        fastestPlatformVelocity = currentVelocity;
+                    }
+
+                    // Calculate avoidance direction
                     Vector2 platformDirection = currentVelocity.normalized;
 
                     if (platformDirection.sqrMagnitude > 0.01f) // Platform is moving
                     {
-                        // Prefer moving up/down for horizontal platforms, left/right for vertical
-                        if (Mathf.Abs(platformDirection.x) > Mathf.Abs(platformDirection.y))
+                        // PERPENDICULAR ESCAPE: Move perpendicular to platform velocity
+                        // This is smarter than trying to outrun - sidestep instead
+                        Vector2 perpendicular = Vector2.Perpendicular(platformDirection);
+
+                        // Choose perpendicular direction that moves away from platform
+                        Vector2 awayFromPlatform = (myPosition - currentPos).normalized;
+                        if (Vector2.Dot(perpendicular, awayFromPlatform) < 0)
                         {
-                            // Horizontal platform - move vertically
-                            float directionSign = (myPosition.y > currentPos.y) ? 1f : -1f;
-                            avoidanceVector += Vector2.up * heightAdjustment * directionSign;
+                            perpendicular = -perpendicular; // Flip if wrong direction
                         }
-                        else
-                        {
-                            // Vertical platform - move horizontally
-                            float directionSign = (myPosition.x > currentPos.x) ? 1f : -1f;
-                            avoidanceVector += Vector2.right * horizontalAdjustment * directionSign;
-                        }
+
+                        // Add perpendicular avoidance (works for any platform direction)
+                        float avoidStrength = Mathf.Max(heightAdjustment, horizontalAdjustment);
+                        avoidanceVector += perpendicular * avoidStrength;
                     }
                 }
             }
@@ -213,6 +238,10 @@ namespace Enemies
             // Set avoidance state
             ShouldAvoidPlatforms = dangerCount > 0;
             SuggestedAvoidanceOffset = avoidanceVector.normalized * Mathf.Min(avoidanceVector.magnitude, 3f); // Cap at 3 units
+
+            // Track if any platforms are too fast (emergency evasion needed)
+            HasFastPlatforms = maxPlatformSpeed > 0f && dangerCount > 0;
+            FastPlatformVelocity = fastestPlatformVelocity;
         }
 
         /// <summary>

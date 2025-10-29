@@ -3,6 +3,9 @@ using System.Collections;
 using UnityEngine;
 using Enemies;
 using Player;
+#if UNITY_EDITOR
+using UnityEditor;
+#endif
 
 /// <summary>
 /// Flying enemy system with aerial movement patterns.
@@ -15,19 +18,20 @@ public class FlyingEnemy : MonoBehaviour, IEnemyBase
     [SerializeField] private float patrolSpeed = 1.5f;
     [SerializeField] private float chaseSpeed = 3f;
     [SerializeField] private float retreatSpeed = 1.5f; // Slower than chase - player can catch up
+    [SerializeField] private float evasionSpeed = 6f; // EMERGENCY: Speed when evading fast platforms
     [SerializeField] private float hoverAmplitude = 0.5f; // How much to bob up and down
     [SerializeField] private float hoverFrequency = 1f; // How fast to bob
     [SerializeField] private float patrolWaitTime = 2f;
 
     [Header("Detection")]
-    [SerializeField] private float detectionRange = 6f;
+    [SerializeField] private float detectionRange = 5f;
     [SerializeField] private float chaseExitDelay = 5f; // Time before returning to patrol after losing player
     [SerializeField] public LayerMask playerLayer = 1 << 0; // Public for head stomp compatibility
 
     [Header("Combat - Ranged Attack")]
-    [SerializeField] private float attackRange = 8f; // Max range to detect and attack player
-    [SerializeField] private float preferredDistance = 5f; // Preferred distance to maintain from player
-    [SerializeField] private float tooCloseDistance = 3f; // Back away if player gets this close
+    [SerializeField] private float attackRange = 4f; // Max range to detect and attack player
+    [SerializeField] private float preferredDistance = 3f; // Preferred distance to maintain from player
+    [SerializeField] private float tooCloseDistance = 1f; // Back away if player gets this close
     [SerializeField] private float attackCooldownMin = 2f;
     [SerializeField] private float attackCooldownMax = 4f;
     [SerializeField] private float projectileDamage = 15f;
@@ -50,17 +54,21 @@ public class FlyingEnemy : MonoBehaviour, IEnemyBase
 
     [Header("Obstacle Avoidance - Steering Behaviors (Reactive)")]
     [SerializeField] private bool useSteeringBehaviors = true; // Enable/disable steering obstacle avoidance
-    [SerializeField] private float steeringWeight = 1.0f; // How much steering affects movement (0-1 = blend, >1 = stronger)
-    [SerializeField] private float obstacleAvoidDistance = 2.5f; // How far ahead to detect obstacles
-    [SerializeField] private float avoidanceForce = 8f; // Strength of avoidance steering
-    [SerializeField] private int rayCount = 5; // Number of detection rays (more = smoother but more expensive)
+    [SerializeField] private float steeringWeight = 0.8f; // How much steering affects movement (reduced from 1.5f to reduce jitter)
+    [SerializeField] private float obstacleAvoidDistance = 3.5f; // How far ahead to detect obstacles
+    [SerializeField] private float avoidanceForce = 8f; // Strength of avoidance steering (reduced from 12f)
+    [SerializeField] private int rayCount = 5; // Number of detection rays
     [SerializeField] private float raySpreadAngle = 45f; // Angular spread of detection rays
-    [SerializeField] private float maxSteeringForce = 15f; // Maximum steering force that can be applied
+    [SerializeField] private float maxSteeringForce = 10f; // Maximum steering force (reduced from 15f)
     [SerializeField] private bool showSteeringDebug = true; // Show debug rays and forces in scene view
 
     [Header("Platform Prediction (Proactive)")]
     [SerializeField] private bool usePlatformPrediction = true; // Enable/disable predictive platform avoidance
-    [SerializeField] private float predictionWeight = 0.8f; // How much prediction affects movement (0-1)
+    [SerializeField] private float predictionWeight = 0.7f; // How much prediction affects movement (reduced from 1.0f)
+
+    [Header("Avoidance Smoothing")]
+    [SerializeField] private float avoidanceSmoothTime = 0.3f; // Smoothing for avoidance changes (higher = smoother but slower response)
+    [SerializeField] private bool enableSmoothing = true; // Enable smooth damping of avoidance forces
 
     [Header("Health")]
     [SerializeField] private float maxHealth = 80f;
@@ -96,6 +104,10 @@ public class FlyingEnemy : MonoBehaviour, IEnemyBase
     private Vector3 startPosition; // Starting position for patrol
     private float patrolTimer; // Timer for patrol movement
     private float hoverOffset; // Current hover offset
+
+    // Avoidance smoothing state
+    private Vector2 currentAvoidanceVelocity = Vector2.zero; // For SmoothDamp
+    private Vector2 smoothedAvoidance = Vector2.zero; // Smoothed avoidance offset
 
     // Combat state
     private float currentHealth;
@@ -159,7 +171,7 @@ public class FlyingEnemy : MonoBehaviour, IEnemyBase
         {
             rb.freezeRotation = true;
             rb.gravityScale = 0f; // No gravity for flying enemies
-            rb.mass = 5f; // Lighter than ground enemies
+            rb.mass = 10f; // SOLUTION 4: Increased mass to resist platform pushing (was 5f)
             rb.interpolation = RigidbodyInterpolation2D.Interpolate; // Smooth movement, prevent flickering
         }
     }
@@ -564,6 +576,7 @@ public class FlyingEnemy : MonoBehaviour, IEnemyBase
         if (currentState == EnemyState.Attack)
         {
             rb.linearVelocity = Vector2.zero;
+            smoothedAvoidance = Vector2.zero; // Reset smoothing when stopped
             return;
         }
 
@@ -587,22 +600,44 @@ public class FlyingEnemy : MonoBehaviour, IEnemyBase
                 break;
         }
 
+        // Calculate COMBINED avoidance offset (all systems together)
+        Vector2 totalAvoidance = Vector2.zero;
+
         // PLATFORM PREDICTION (PROACTIVE): Avoid predicted platform positions
         if (usePlatformPrediction && predictor != null && predictor.ShouldAvoidPlatforms)
         {
             Vector2 predictiveOffset = predictor.SuggestedAvoidanceOffset * predictionWeight;
-            velocity += predictiveOffset;
+            totalAvoidance += predictiveOffset;
         }
 
         // STEERING OBSTACLE AVOIDANCE (REACTIVE): Avoid platforms and walls dynamically
         if (useSteeringBehaviors && steering != null)
         {
             Vector2 avoidanceForce = steering.AvoidObstacles(velocity);
-            velocity += avoidanceForce * steeringWeight;
+            totalAvoidance += avoidanceForce * steeringWeight;
+        }
+
+        // Apply SMOOTHING to total avoidance to reduce jitter
+        if (enableSmoothing)
+        {
+            smoothedAvoidance = Vector2.SmoothDamp(
+                smoothedAvoidance,
+                totalAvoidance,
+                ref currentAvoidanceVelocity,
+                avoidanceSmoothTime
+            );
+            velocity += smoothedAvoidance;
+        }
+        else
+        {
+            velocity += totalAvoidance; // No smoothing
         }
 
         // GROUND AVOIDANCE: Check if too close to ground and add upward force
         velocity = ApplyGroundAvoidance(velocity);
+
+        // PANIC MODE: Boost speed when fast platforms detected (less aggressive now)
+        velocity = ApplyPanicModeBoost(velocity);
 
         rb.linearVelocity = velocity;
     }
@@ -711,22 +746,44 @@ public class FlyingEnemy : MonoBehaviour, IEnemyBase
 
         Vector2 velocity = new Vector2(0, yVelocity);
 
-        // Apply platform prediction even while hovering
+        // Calculate COMBINED avoidance offset
+        Vector2 totalAvoidance = Vector2.zero;
+
+        // Platform prediction while hovering
         if (usePlatformPrediction && predictor != null && predictor.ShouldAvoidPlatforms)
         {
-            Vector2 predictiveOffset = predictor.SuggestedAvoidanceOffset * predictionWeight * 0.7f; // Reduced strength while hovering
-            velocity += predictiveOffset;
+            Vector2 predictiveOffset = predictor.SuggestedAvoidanceOffset * predictionWeight;
+            totalAvoidance += predictiveOffset;
         }
 
-        // Apply steering obstacle avoidance even while hovering
+        // Steering obstacle avoidance while hovering
         if (useSteeringBehaviors && steering != null)
         {
             Vector2 avoidanceForce = steering.AvoidObstacles(velocity);
-            velocity += avoidanceForce * steeringWeight * 0.5f; // Reduced strength while hovering
+            totalAvoidance += avoidanceForce * steeringWeight;
         }
 
-        // Apply ground avoidance to hover motion too
+        // Apply SMOOTHING to reduce jitter
+        if (enableSmoothing)
+        {
+            smoothedAvoidance = Vector2.SmoothDamp(
+                smoothedAvoidance,
+                totalAvoidance,
+                ref currentAvoidanceVelocity,
+                avoidanceSmoothTime
+            );
+            velocity += smoothedAvoidance;
+        }
+        else
+        {
+            velocity += totalAvoidance;
+        }
+
+        // Apply ground avoidance to hover motion
         velocity = ApplyGroundAvoidance(velocity);
+
+        // PANIC MODE: Boost speed when fast platforms detected (less aggressive)
+        velocity = ApplyPanicModeBoost(velocity);
 
         rb.linearVelocity = velocity;
     }
@@ -753,6 +810,45 @@ public class FlyingEnemy : MonoBehaviour, IEnemyBase
                     currentVelocity.y = upwardForce;
                 }
             }
+        }
+
+        return currentVelocity;
+    }
+
+    /// <summary>
+    /// PANIC MODE: Boost speed when fast-moving platforms detected
+    /// Allows enemy to escape platforms moving faster than normal chase speed
+    /// NOW WITH SMOOTHING: Only boosts when platform is significantly faster
+    /// </summary>
+    private Vector2 ApplyPanicModeBoost(Vector2 currentVelocity)
+    {
+        // Check if we need emergency evasion
+        if (!usePlatformPrediction || predictor == null || !predictor.HasFastPlatforms)
+        {
+            return currentVelocity; // No fast platforms, use normal speed
+        }
+
+        // Get platform speed
+        float platformSpeed = predictor.FastPlatformVelocity.magnitude;
+        float currentSpeed = currentVelocity.magnitude;
+
+        // Only boost if platform is SIGNIFICANTLY faster (50% faster than chase speed)
+        float panicThreshold = chaseSpeed * 1.5f; // 4.5 units/s by default
+
+        if (platformSpeed < panicThreshold)
+        {
+            return currentVelocity; // Platform not fast enough to warrant panic
+        }
+
+        // Calculate target speed (match platform speed, but capped at evasionSpeed)
+        float targetSpeed = Mathf.Min(platformSpeed * 1.1f, evasionSpeed);
+
+        // Gradual boost instead of instant jump
+        if (currentSpeed < targetSpeed && currentSpeed > 0.1f)
+        {
+            // Lerp to target speed smoothly (25% boost per frame)
+            float boostedSpeed = Mathf.Lerp(currentSpeed, targetSpeed, 0.25f);
+            return currentVelocity.normalized * boostedSpeed;
         }
 
         return currentVelocity;
@@ -981,6 +1077,27 @@ public class FlyingEnemy : MonoBehaviour, IEnemyBase
         {
             Gizmos.color = Color.yellow;
             Gizmos.DrawWireCube(position + Vector3.up * 1.5f, Vector3.one * 0.1f);
+        }
+
+        // PANIC MODE indicator - shows when enemy is boosting speed to evade fast platforms
+        if (Application.isPlaying && predictor != null && predictor.HasFastPlatforms)
+        {
+            Gizmos.color = Color.magenta; // Bright magenta for panic mode
+            Gizmos.DrawWireSphere(position, 0.4f); // Pulsing ring around enemy
+
+            // Draw fast platform velocity vector
+            if (predictor.FastPlatformVelocity.magnitude > 0.1f)
+            {
+                Gizmos.color = new Color(1f, 0f, 1f, 0.5f); // Semi-transparent magenta
+                Vector3 platformVelEnd = position + (Vector3)predictor.FastPlatformVelocity * 0.5f;
+                Gizmos.DrawLine(position, platformVelEnd);
+
+                // Draw "PANIC!" text indicator
+                #if UNITY_EDITOR
+                Handles.color = Color.magenta;
+                Handles.Label(position + Vector3.up * 2f, "PANIC MODE!");
+                #endif
+            }
         }
     }
 

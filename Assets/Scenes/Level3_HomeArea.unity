@@ -512,6 +512,56 @@ Transform:
   - {fileID: 144605606}
   m_Father: {fileID: 85451177}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!21 &258340995
+Material:
+  serializedVersion: 8
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: Sprite-Lit-Default (Instance) (Instance) (Instance) (Instance)
+  m_Shader: {fileID: 4800000, guid: e260cfa7296ee7642b167f1eb5be5023, type: 3}
+  m_Parent: {fileID: 0}
+  m_ModifiedSerializedProperties: 0
+  m_ValidKeywords: []
+  m_InvalidKeywords:
+  - ETC1_EXTERNAL_ALPHA
+  m_LightmapFlags: 4
+  m_EnableInstancingVariants: 0
+  m_DoubleSidedGI: 0
+  m_CustomRenderQueue: -1
+  stringTagMap: {}
+  disabledShaderPasses: []
+  m_LockedProperties: 
+  m_SavedProperties:
+    serializedVersion: 3
+    m_TexEnvs:
+    - _AlphaTex:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _MainTex:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _MaskTex:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _NormalMap:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    m_Ints: []
+    m_Floats:
+    - _EnableExternalAlpha: 0
+    - _ZWrite: 0
+    m_Colors:
+    - _Color: {r: 1, g: 1, b: 1, a: 1}
+    - _Flip: {r: 1, g: 1, b: 1, a: 1}
+    - _RendererColor: {r: 1, g: 1, b: 1, a: 1}
+  m_BuildTextureStacks: []
+  m_AllowLocking: 1
 --- !u!1 &291910029
 GameObject:
   m_ObjectHideFlags: 0
@@ -4188,56 +4238,6 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 74cd83d02c8ff1c4f98b9c369e36f18c, type: 3}
---- !u!21 &1914551918
-Material:
-  serializedVersion: 8
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_Name: Sprite-Lit-Default (Instance) (Instance) (Instance)
-  m_Shader: {fileID: 4800000, guid: e260cfa7296ee7642b167f1eb5be5023, type: 3}
-  m_Parent: {fileID: 0}
-  m_ModifiedSerializedProperties: 0
-  m_ValidKeywords: []
-  m_InvalidKeywords:
-  - ETC1_EXTERNAL_ALPHA
-  m_LightmapFlags: 4
-  m_EnableInstancingVariants: 0
-  m_DoubleSidedGI: 0
-  m_CustomRenderQueue: -1
-  stringTagMap: {}
-  disabledShaderPasses: []
-  m_LockedProperties: 
-  m_SavedProperties:
-    serializedVersion: 3
-    m_TexEnvs:
-    - _AlphaTex:
-        m_Texture: {fileID: 0}
-        m_Scale: {x: 1, y: 1}
-        m_Offset: {x: 0, y: 0}
-    - _MainTex:
-        m_Texture: {fileID: 0}
-        m_Scale: {x: 1, y: 1}
-        m_Offset: {x: 0, y: 0}
-    - _MaskTex:
-        m_Texture: {fileID: 0}
-        m_Scale: {x: 1, y: 1}
-        m_Offset: {x: 0, y: 0}
-    - _NormalMap:
-        m_Texture: {fileID: 0}
-        m_Scale: {x: 1, y: 1}
-        m_Offset: {x: 0, y: 0}
-    m_Ints: []
-    m_Floats:
-    - _EnableExternalAlpha: 0
-    - _ZWrite: 0
-    m_Colors:
-    - _Color: {r: 1, g: 1, b: 1, a: 1}
-    - _Flip: {r: 1, g: 1, b: 1, a: 1}
-    - _RendererColor: {r: 1, g: 1, b: 1, a: 1}
-  m_BuildTextureStacks: []
-  m_AllowLocking: 1
 --- !u!21 &1936161581
 Material:
   serializedVersion: 8
@@ -4667,7 +4667,7 @@ PrefabInstance:
     - target: {fileID: 7359456463047706548, guid: ebd59aa10e47e0e428432c89ec85f1e1, type: 3}
       propertyPath: 'm_Materials.Array.data[0]'
       value: 
-      objectReference: {fileID: 1914551918}
+      objectReference: {fileID: 258340995}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
@@ -4932,16 +4932,48 @@ PrefabInstance:
       value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 7997212834100546506, guid: 06eab82fc977dfd4aba6d7e9bf13aa5b, type: 3}
+      propertyPath: attackRange
+      value: 4
+      objectReference: {fileID: 0}
+    - target: {fileID: 7997212834100546506, guid: 06eab82fc977dfd4aba6d7e9bf13aa5b, type: 3}
+      propertyPath: detectionRange
+      value: 5
+      objectReference: {fileID: 0}
+    - target: {fileID: 7997212834100546506, guid: 06eab82fc977dfd4aba6d7e9bf13aa5b, type: 3}
+      propertyPath: patrolWaitTime
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 7997212834100546506, guid: 06eab82fc977dfd4aba6d7e9bf13aa5b, type: 3}
       propertyPath: raySpreadAngle
-      value: 360
+      value: 45
       objectReference: {fileID: 0}
     - target: {fileID: 7997212834100546506, guid: 06eab82fc977dfd4aba6d7e9bf13aa5b, type: 3}
       propertyPath: steeringWeight
-      value: 1
+      value: 0.8
+      objectReference: {fileID: 0}
+    - target: {fileID: 7997212834100546506, guid: 06eab82fc977dfd4aba6d7e9bf13aa5b, type: 3}
+      propertyPath: aimHeightOffset
+      value: 0.8
       objectReference: {fileID: 0}
     - target: {fileID: 7997212834100546506, guid: 06eab82fc977dfd4aba6d7e9bf13aa5b, type: 3}
       propertyPath: predictionWeight
+      value: 0.7
+      objectReference: {fileID: 0}
+    - target: {fileID: 7997212834100546506, guid: 06eab82fc977dfd4aba6d7e9bf13aa5b, type: 3}
+      propertyPath: projectileDamage
+      value: 15
+      objectReference: {fileID: 0}
+    - target: {fileID: 7997212834100546506, guid: 06eab82fc977dfd4aba6d7e9bf13aa5b, type: 3}
+      propertyPath: projectilePrefab
+      value: 
+      objectReference: {fileID: 7416876001681010168, guid: 3512b49664b7d694fba44d45b416f948, type: 3}
+    - target: {fileID: 7997212834100546506, guid: 06eab82fc977dfd4aba6d7e9bf13aa5b, type: 3}
+      propertyPath: tooCloseDistance
       value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 7997212834100546506, guid: 06eab82fc977dfd4aba6d7e9bf13aa5b, type: 3}
+      propertyPath: preferredDistance
+      value: 3
       objectReference: {fileID: 0}
     - target: {fileID: 7997212834100546506, guid: 06eab82fc977dfd4aba6d7e9bf13aa5b, type: 3}
       propertyPath: showSteeringDebug
@@ -4949,7 +4981,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7997212834100546506, guid: 06eab82fc977dfd4aba6d7e9bf13aa5b, type: 3}
       propertyPath: obstacleAvoidDistance
-      value: 3
+      value: 3.5
       objectReference: {fileID: 0}
     - target: {fileID: 8502705933992876353, guid: 06eab82fc977dfd4aba6d7e9bf13aa5b, type: 3}
       propertyPath: m_LocalPosition.y
