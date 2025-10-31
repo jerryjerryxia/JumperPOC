@@ -103,6 +103,15 @@ public class PlayerController : MonoBehaviour
     private Vector3 lastPlatformPosition;
     public MovingPlatform CurrentPlatform { get; private set; }
 
+    // Platform velocity debug throttle
+    private float lastPlatformVelocityLogTime;
+    private const float platformVelocityLogInterval = 0.5f; // Log every 0.5 seconds
+
+    // Platform peak detection for downward velocity assist
+    private float previousPlatformVelocityY;
+    private bool applyDownwardAssist;
+    [SerializeField] private float downwardAssistVelocity = -5f; // Additional downward velocity when idle on platform
+
     // Input
     private Vector2 moveInput;
     private bool jumpQueued, dashQueued;
@@ -736,7 +745,26 @@ public class PlayerController : MonoBehaviour
 
         return false; // No slope grounding found
     }
-        
+
+    /// <summary>
+    /// Checks if player is idle on platform (no movement input or actions).
+    /// Used for downward velocity assist on fast-moving platforms.
+    /// </summary>
+    private bool IsPlayerIdleOnPlatform()
+    {
+        // Check for horizontal movement input
+        if (Mathf.Abs(moveInput.x) > 0.1f) return false;
+
+        // Check for active movement states
+        if (isJumping) return false;
+        if (isDashing) return false;
+        if (isWallSliding || isWallSticking) return false;
+        if (isClimbing || isLedgeGrabbing) return false;
+
+        // Player is idle on platform
+        return true;
+    }
+
     // This should be back in CheckGrounding method - let me fix the structure
     private void FinishCheckGrounding(bool wasGrounded)
     {
@@ -1028,6 +1056,60 @@ public class PlayerController : MonoBehaviour
         {
             // Not on platform anymore, clear tracking
             currentPlatformTracked = null;
+        }
+
+        // PLATFORM PEAK DETECTION AND DOWNWARD ASSIST
+        // Detect when platform reaches peak, then apply additional downward velocity
+
+        // Throttled debug logging
+        bool shouldLog = Time.time - lastPlatformVelocityLogTime >= platformVelocityLogInterval;
+
+        if (isGrounded && currentPlatform != null)
+        {
+            float currentVelocityY = currentPlatform.Velocity.y;
+
+            // Detect peak: platform was moving up (>0.1), now stopped (~0)
+            if (previousPlatformVelocityY > 0.1f && Mathf.Abs(currentVelocityY) < 0.1f)
+            {
+                applyDownwardAssist = true;
+                if (shouldLog)
+                {
+                    lastPlatformVelocityLogTime = Time.time;
+                    Debug.Log($"[Platform Stick] Peak detected! Previous vel: {previousPlatformVelocityY:F2}, Current: {currentVelocityY:F2}. Enabling downward assist.");
+                }
+            }
+
+            // Store current velocity for next frame
+            previousPlatformVelocityY = currentVelocityY;
+
+            // Apply additional downward velocity ONLY when completely idle
+            // No horizontal movement, no jumping, no dashing
+            if (applyDownwardAssist && IsPlayerIdleOnPlatform())
+            {
+                // Apply ADDITIONAL downward velocity (not acceleration - direct velocity addition)
+                rb.linearVelocity = new Vector2(rb.linearVelocity.x, rb.linearVelocity.y + downwardAssistVelocity);
+
+                if (shouldLog)
+                {
+                    Debug.Log($"[Platform Stick] Downward assist active (idle): {downwardAssistVelocity:F2}, Player vel: {rb.linearVelocity.y:F2}");
+                }
+            }
+
+            // Clear assist flag if player moves or jumps
+            if (!IsPlayerIdleOnPlatform() || jumpQueued || dashQueued)
+            {
+                if (applyDownwardAssist && shouldLog)
+                {
+                    Debug.Log($"[Platform Stick] Player input detected - cancelling downward assist");
+                }
+                applyDownwardAssist = false;
+            }
+        }
+        else
+        {
+            // Not on platform, clear assist and reset tracking
+            applyDownwardAssist = false;
+            previousPlatformVelocityY = 0f;
         }
 
         // Buffer climbing assistance - provide upward and forward momentum
