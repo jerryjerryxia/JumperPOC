@@ -10,7 +10,7 @@ This skill provides essential context about the Jumper 2D platformer project to 
 ## Project Overview
 
 **Project**: Jumper (JumperPOC)
-**Engine**: Unity 6000.2.0b9
+**Engine**: Unity 6000.1.4f1
 **Type**: 2D Platformer
 **Location**: X:/GameDev/Jumper/JumperPOC
 

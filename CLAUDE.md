@@ -181,7 +181,7 @@ Version control is essential. After a version of the code base is fully tested a
 
 ## Unity Quick Reference
 
-**Unity Version:** 6000.2.0b9 (Unity 6 Beta)
+**Unity Version:** 6000.1.4f1
 
 **Run Tests:**
 - Unity Editor: Window → General → Test Runner → EditMode → Run All
@@ -191,7 +191,7 @@ Version control is essential. After a version of the code base is fully tested a
 
 **Build Project:**
 - Prefer Unity Editor GUI: File → Build Settings
-- Command Line: `"C:\Program Files\Unity\Hub\Editor\6000.2.0b9\Editor\Unity.exe" -batchmode -quit -projectPath . -buildTarget StandaloneWindows64`
+- Command Line: `"C:\Program Files\Unity\Hub\Editor\6000.1.4f1\Editor\Unity.exe" -batchmode -quit -projectPath . -buildTarget StandaloneWindows64`
 
 ## Architecture Overview
 

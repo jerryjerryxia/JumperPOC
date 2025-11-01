@@ -322,7 +322,15 @@ TextureImporter:
     secondaryTextures: []
     spriteCustomMetadata:
       entries: []
-    nameFileIdTable: {}
+    nameFileIdTable:
+      player katana running attack (upper body)_0: -2149359970371805568
+      player katana running attack (upper body)_1: 2627861820871527384
+      player katana running attack (upper body)_2: -7434194396358324874
+      player katana running attack (upper body)_3: -180609836918639292
+      player katana running attack (upper body)_4: 7368711971671170004
+      player katana running attack (upper body)_5: -4990239102159606898
+      player katana running attack (upper body)_6: -6074737898138928874
+      player katana running attack (upper body)_7: -8628829697849715012
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

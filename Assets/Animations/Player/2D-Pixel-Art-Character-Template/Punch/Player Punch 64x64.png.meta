@@ -422,7 +422,19 @@ TextureImporter:
     secondaryTextures: []
     spriteCustomMetadata:
       entries: []
-    nameFileIdTable: {}
+    nameFileIdTable:
+      Player Punch 64x64_0: -3265511694173517792
+      Player Punch 64x64_1: -5958394551721289882
+      Player Punch 64x64_10: -3448787175358288976
+      Player Punch 64x64_11: 418967443538332138
+      Player Punch 64x64_2: 4648443667726022596
+      Player Punch 64x64_3: 7906255216823545266
+      Player Punch 64x64_4: -5437086216529083779
+      Player Punch 64x64_5: -2093828169686684309
+      Player Punch 64x64_6: 2760074175503823497
+      Player Punch 64x64_7: 3628804719239001658
+      Player Punch 64x64_8: 7137891975270234453
+      Player Punch 64x64_9: 5625896990181949946
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

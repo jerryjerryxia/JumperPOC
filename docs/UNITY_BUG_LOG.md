@@ -1,9 +1,9 @@
 # Unity Bug Log - Jumper 2D Platformer
 
 **Project:** Jumper 2D Platformer
-**Unity Version:** 6000.2.0b9 (Unity 6 Beta)
+**Unity Version:** 6000.1.4f1
 **Documentation Format:** Unity Debug SOP Compliant
-**Last Updated:** 2025-10-25
+**Last Updated:** 2025-11-01
 
 This document logs all major bugs encountered during development with complete debugging processes following the Unity Debug SOP. Each bug entry includes: symptoms, root cause analysis, diagnostic process, fix implementation, and verification steps.
 

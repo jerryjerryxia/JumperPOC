@@ -322,7 +322,15 @@ TextureImporter:
     secondaryTextures: []
     spriteCustomMetadata:
       entries: []
-    nameFileIdTable: {}
+    nameFileIdTable:
+      Player Running Aiming 48x48_0: -2751568700582329785
+      Player Running Aiming 48x48_1: 4230457507719964508
+      Player Running Aiming 48x48_2: 7057509627812796697
+      Player Running Aiming 48x48_3: 5159917442000017623
+      Player Running Aiming 48x48_4: -3821455873200773785
+      Player Running Aiming 48x48_5: 6532689154392971796
+      Player Running Aiming 48x48_6: 7054380212480482339
+      Player Running Aiming 48x48_7: -5144479786937471091
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

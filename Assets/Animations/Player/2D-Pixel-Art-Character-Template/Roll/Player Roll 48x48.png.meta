@@ -297,7 +297,14 @@ TextureImporter:
     secondaryTextures: []
     spriteCustomMetadata:
       entries: []
-    nameFileIdTable: {}
+    nameFileIdTable:
+      Player Roll 48x48_0: 673447027458071385
+      Player Roll 48x48_1: -3034405771608494184
+      Player Roll 48x48_2: -2585844204823095454
+      Player Roll 48x48_3: -6212262919610547693
+      Player Roll 48x48_4: -2095249858663488199
+      Player Roll 48x48_5: 8913698385737720853
+      Player Roll 48x48_6: -8598818882322683679
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

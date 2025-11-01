@@ -372,7 +372,17 @@ TextureImporter:
     secondaryTextures: []
     spriteCustomMetadata:
       entries: []
-    nameFileIdTable: {}
+    nameFileIdTable:
+      player shoot 2H 48x48_0: -3119918555971630234
+      player shoot 2H 48x48_1: 4768435314748133892
+      player shoot 2H 48x48_2: 5773493485595049241
+      player shoot 2H 48x48_3: -4107210971995178841
+      player shoot 2H 48x48_4: -5765292461626849274
+      player shoot 2H 48x48_5: -4588935058044840430
+      player shoot 2H 48x48_6: -2645517767399019270
+      player shoot 2H 48x48_7: 6674906730279609082
+      player shoot 2H 48x48_8: 835563839265370369
+      player shoot 2H 48x48_9: 1029502818103195705
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

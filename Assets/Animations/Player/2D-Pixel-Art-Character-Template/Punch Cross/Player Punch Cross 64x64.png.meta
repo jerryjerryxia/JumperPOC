@@ -372,7 +372,17 @@ TextureImporter:
     secondaryTextures: []
     spriteCustomMetadata:
       entries: []
-    nameFileIdTable: {}
+    nameFileIdTable:
+      Player Punch Cross 64x64_0: -3478019811509702237
+      Player Punch Cross 64x64_1: -9027997249275329682
+      Player Punch Cross 64x64_2: -3883414527870476205
+      Player Punch Cross 64x64_3: 8889319545137206078
+      Player Punch Cross 64x64_4: -5523492385490000993
+      Player Punch Cross 64x64_5: 5396370504654771824
+      Player Punch Cross 64x64_6: -8037071679433020297
+      Player Punch Cross 64x64_7: 2808273349627430583
+      Player Punch Cross 64x64_8: 4325490824847436267
+      Player Punch Cross 64x64_9: -8331880707780287953
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

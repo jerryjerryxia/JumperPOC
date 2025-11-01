@@ -372,7 +372,17 @@ TextureImporter:
     secondaryTextures: []
     spriteCustomMetadata:
       entries: []
-    nameFileIdTable: {}
+    nameFileIdTable:
+      player crouch-walk 48x48_0: -3501540991144534565
+      player crouch-walk 48x48_1: 6949548005444769606
+      player crouch-walk 48x48_2: 4063281719370450837
+      player crouch-walk 48x48_3: 4369745543758730650
+      player crouch-walk 48x48_4: -4698321721044533971
+      player crouch-walk 48x48_5: 6576826956546989169
+      player crouch-walk 48x48_6: 8195099221594068158
+      player crouch-walk 48x48_7: -819847542535416671
+      player crouch-walk 48x48_8: -3763785006355946578
+      player crouch-walk 48x48_9: -1976618435671211153
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

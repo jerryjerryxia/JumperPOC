@@ -2,7 +2,7 @@
 ## Comprehensive Analysis for Unit Test Planning
 
 **Analysis Date:** 2025-10-20
-**Unity Version:** 6000.2.0b9 (Beta)
+**Unity Version:** 6000.1.4f1
 **Project:** JumperPOC - Vertical Metroidvania Platformer
 **Analysis Purpose:** Unit test planning and architecture evaluation
 

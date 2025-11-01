@@ -147,7 +147,8 @@ TextureImporter:
     secondaryTextures: []
     spriteCustomMetadata:
       entries: []
-    nameFileIdTable: {}
+    nameFileIdTable:
+      katana walk_0: 6928504691474790592
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

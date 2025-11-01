@@ -322,7 +322,15 @@ TextureImporter:
     secondaryTextures: []
     spriteCustomMetadata:
       entries: []
-    nameFileIdTable: {}
+    nameFileIdTable:
+      player katana run 48x48_0: -2576460650531550128
+      player katana run 48x48_1: 5033838030824504890
+      player katana run 48x48_2: -5959798075595461011
+      player katana run 48x48_3: -5395218289841124690
+      player katana run 48x48_4: -5092689494865433972
+      player katana run 48x48_5: -4653485118686412231
+      player katana run 48x48_6: 78419309424119116
+      player katana run 48x48_7: -8592859603182978673
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

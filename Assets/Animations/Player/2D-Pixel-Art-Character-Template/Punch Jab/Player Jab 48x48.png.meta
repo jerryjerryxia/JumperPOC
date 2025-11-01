@@ -497,7 +497,22 @@ TextureImporter:
     secondaryTextures: []
     spriteCustomMetadata:
       entries: []
-    nameFileIdTable: {}
+    nameFileIdTable:
+      Player Jab 48x48_0: -1827589326547013534
+      Player Jab 48x48_1: 8028498442987966868
+      Player Jab 48x48_10: 622979767498307916
+      Player Jab 48x48_11: 865805634084333592
+      Player Jab 48x48_12: -5305155698348169109
+      Player Jab 48x48_13: -2605525191476537467
+      Player Jab 48x48_14: 1149995351747608712
+      Player Jab 48x48_2: 4241943168559607210
+      Player Jab 48x48_3: 7358134961966794755
+      Player Jab 48x48_4: 5390217390189812637
+      Player Jab 48x48_5: -390413386964367934
+      Player Jab 48x48_6: -6907203695606842912
+      Player Jab 48x48_7: -1298289975688924126
+      Player Jab 48x48_8: 3871557679080840335
+      Player Jab 48x48_9: 6271025027982053665
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 
